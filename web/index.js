@@ -1,30 +1,51 @@
 const fs = require('fs');
 const path = require('path');
 
-async function run() {
-    const wasmPath = path.join(__dirname, "./parser.wasm");
-    const wasmBuffer = fs.readFileSync(wasmPath);
-    const { instance } = await WebAssembly.instantiate(wasmBuffer);
+class God {
+    async run() {
+        const wasmPath = path.join(__dirname, "./parser.wasm");
+        const wasmBuffer = fs.readFileSync(wasmPath);
+        const { instance } = await WebAssembly.instantiate(wasmBuffer, {
+            env: makeEnv(this)
+        });
 
-    const memory_buffer = instance.exports.memory.buffer;
+        this.instance = instance;
+        let memory_buffer = instance.exports.memory.buffer;
 
-    const inputString = "Hello, World!";
-    const jsArray = new TextEncoder().encode(inputString); // Convert string to Uint8Array
+        const inputString = fs.readFileSync("./web/source.sol", 'utf-8')
+        const jsArray = new TextEncoder().encode(inputString); // Convert string to Uint8Array
 
-    const cArrayPointer = instance.exports.malloc(jsArray.length);
-    const cArray = new Uint8Array(
-      memory_buffer,
-      cArrayPointer,
-      jsArray.length
-    );
-    cArray.set(jsArray);
+        const cArrayPointer = instance.exports.malloc(jsArray.length);
+        memory_buffer = instance.exports.memory.buffer;
+        this.cArray = new Uint8Array(memory_buffer, cArrayPointer, jsArray.length);
+        this.cArray.set(jsArray);
 
-    const string_struct_pointer = instance.exports.entry_point(cArrayPointer, jsArray.length);
-    const json_string = struct_string_by_pointer(memory_buffer, string_struct_pointer);
-    console.log("JSON string:", json_string);
+        const string_struct_pointer = instance.exports.entry_point(cArrayPointer, jsArray.length);
+
+        memory_buffer = instance.exports.memory.buffer;
+        const json_string = struct_string_by_pointer(memory_buffer, string_struct_pointer);
+        console.log("JSON string:", json_string);
+    }
+
+    assert(condition) {
+        if(!condition) {
+            throw new Error('Assertion failed');
+        }
+    }
+
+    javascriptPrintStringPtr(pointer) {
+        const memory_buffer = this.instance.exports.memory.buffer;
+        const json_string = struct_string_by_pointer(memory_buffer, pointer);
+        console.log(json_string);
+    }
+
+    javascriptPrintNumber(number) {
+        console.log(number);
+    }
 }
 
-run().catch(console.error);
+const god = new God();
+god.run().catch(console.error);
 
 function hexdump(mem_buffer, index, size) {
     const mem = new Uint8Array(mem_buffer);
@@ -52,4 +73,17 @@ function struct_string_by_pointer(mem_buffer, ptr) {
     const string_length = mem[(ptr / 4) + 1];
     const bytes = new Uint8Array(mem_buffer, string_pointer, string_length);
     return new TextDecoder().decode(bytes);
+}
+
+function makeEnv(env) {
+    return new Proxy(env, {
+        get(target, prop, receiver) {
+            if (env[prop] !== undefined) {
+                return env[prop].bind(env);
+            }
+            return (...args) => {
+                throw new Error(`NOT IMPLEMENTED: ${prop} ${args}`);
+            }
+        }
+    });
 }

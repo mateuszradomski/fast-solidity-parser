@@ -1,19 +1,16 @@
 #include "./src/utils.c"
 #include "./src/tokenize.c"
 
-typedef struct String {
-    char *data;
-    int len;
-} String;
-
-static char buffer[128] = { 0 };
 static String result = { 0 };
 
-#define LIT_TO_STR(x) ((String){ .data = x, .len = sizeof(x) - 1 })
+const u32 Kilobyte = 1024;
+const u32 Megabyte = Kilobyte * 1024;
 
 String *
 entry_point(const char *string, int len) {
-    String input = { .data = (char *)string, .len = len };
+    Arena arena = arenaCreate(64 * Megabyte, 32 * Kilobyte, 64);
+    String input = { .data = (u8 *)string, .size = len };
+    TokenizeResult tokens = tokenize(input, &arena);
 
     result = LIT_TO_STR("Hello, World!");
     return &result;
