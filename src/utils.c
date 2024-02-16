@@ -378,15 +378,31 @@ isWhitespace(char c) {
     return c == 0x20 || (c >= 0x09 && c <= 0x0d);
 }
 
+static char
+toUpper(char c) {
+    return c & ~(1 << 5);
+}
+
 static bool
 isAlphabet(char c) {
-    c = c & ~(1 << 5);
+    c = toUpper(c);
     return (c >= 'A' && c <= 'Z');
 }
 
 static bool
 isDigit(char c) {
     return (c >= '0' && c <= '9');
+}
+
+static bool
+isHexDigit(char c) {
+    char upper = toUpper(c);
+    return (c >= '0' && c <= '9') | (upper >= 'A' && upper <= 'F');
+}
+
+static bool
+isBinDigit(char c) {
+    return (c >= '0' && c <= '1');
 }
 
 static u32
