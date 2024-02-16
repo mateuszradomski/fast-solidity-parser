@@ -12,7 +12,7 @@ class God {
         this.instance = instance;
         let memory_buffer = instance.exports.memory.buffer;
 
-        const inputString = fs.readFileSync("./web/source.sol", 'utf-8')
+        const inputString = fs.readFileSync("./web/sourceBig2.sol", 'utf-8')
         const jsArray = new TextEncoder().encode(inputString); // Convert string to Uint8Array
 
         const cArrayPointer = instance.exports.malloc(jsArray.length);
@@ -20,7 +20,12 @@ class God {
         this.cArray = new Uint8Array(memory_buffer, cArrayPointer, jsArray.length);
         this.cArray.set(jsArray);
 
+        let elapsed = -performance.now()
         const string_struct_pointer = instance.exports.entry_point(cArrayPointer, jsArray.length);
+        elapsed += performance.now();
+        const lines = inputString.split('\n').length;
+        const linesPerSeconds = lines / (elapsed / 1000);
+        // console.log("Lines per second:", formatSI(linesPerSeconds, "LPS"));
 
         memory_buffer = instance.exports.memory.buffer;
         const json_string = struct_string_by_pointer(memory_buffer, string_struct_pointer);
@@ -86,4 +91,17 @@ function makeEnv(env) {
             }
         }
     });
+}
+
+function formatSI(value, unit) {
+  if (value === 0) {
+    return `0 ${unit}`
+  }
+
+  const orderPrefix = [' ', ' K', ' M', ' G', ' T', ' P']
+  const order = Math.floor(Math.log2(value) / Math.log2(1000))
+  const newValue = value / Math.pow(1000, order)
+
+  const prefix = orderPrefix[order]
+  return `${newValue.toFixed(2)}${prefix}${unit}`
 }

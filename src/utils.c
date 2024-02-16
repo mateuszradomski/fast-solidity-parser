@@ -176,7 +176,6 @@ arenaCreateZeros(size_t size, size_t chunkSize, size_t alignment) {
 
 static void *
 arenaPush(Arena *arena, size_t size) {
-    javascriptPrintNumber(size);
     void *result = 0x0;
     
     assert(arena);
