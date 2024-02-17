@@ -12,7 +12,7 @@ class God {
         this.instance = instance;
         let memory_buffer = instance.exports.memory.buffer;
 
-        const inputString = fs.readFileSync("./web/sourceBig2.sol", 'utf-8')
+        const inputString = fs.readFileSync("./web/integrationBig2.sol", 'utf-8')
         const jsArray = new TextEncoder().encode(inputString); // Convert string to Uint8Array
 
         const cArrayPointer = instance.exports.malloc(jsArray.length);
@@ -25,17 +25,11 @@ class God {
         elapsed += performance.now();
         const lines = inputString.split('\n').length;
         const linesPerSeconds = lines / (elapsed / 1000);
-        // console.log("Lines per second:", formatSI(linesPerSeconds, "LPS"));
+        console.error("Lines per second:", formatSI(linesPerSeconds, "LPS"));
 
         memory_buffer = instance.exports.memory.buffer;
         const json_string = struct_string_by_pointer(memory_buffer, string_struct_pointer);
         console.log("JSON string:", json_string);
-    }
-
-    assert(condition) {
-        if(!condition) {
-            throw new Error('Assertion failed');
-        }
     }
 
     javascriptPrintStringPtr(pointer) {

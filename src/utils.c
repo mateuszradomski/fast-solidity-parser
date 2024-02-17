@@ -34,9 +34,16 @@ unsigned int bumpPointer = (unsigned int)(&__heap_base);
 
 extern void javascriptPrintStringPtr(void *s);
 extern void javascriptPrintNumber(u32 n);
-extern void assert(void *boolean);
 
 #define WASM_PAGE_SIZE 65536
+
+#define assert(expression) __assert((void*)(expression))
+
+static void __assert(void *boolean) {
+    if (!boolean) {
+        __builtin_unreachable();
+    }
+}
 
 void*
 malloc(unsigned long n) {
@@ -48,13 +55,14 @@ malloc(unsigned long n) {
 
 static void free(void* p) {}
 
-static void
-memcpy(void *dst, void *src, int n) {
+void *
+memcpy(void *dst, const void *src, unsigned long n) {
     char *d = dst;
-    char *s = src;
+    const char *s = src;
     for (int i = 0; i < n; i++) {
         d[i] = s[i];
     }
+    return dst;
 }
 
 static void
