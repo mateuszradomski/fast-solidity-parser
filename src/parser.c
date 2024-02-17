@@ -9,6 +9,6 @@ entry_point(const char *string, int len) {
     String input = { .data = (u8 *)string, .size = len };
     TokenizeResult tokens = tokenize(input, &arena);
 
-    result = LIT_TO_STR("Hello, World!");
+    result = LIT_TO_STR("{\"type\": \"SourceUnit\", \"children\": []}");
     return &result;
 }

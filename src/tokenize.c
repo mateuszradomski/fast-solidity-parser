@@ -290,7 +290,6 @@ pushToken(TokenizeResult *result, TokenType tokenType, String string) {
     assert(result->count < result->capacity);
 
     //printToken(tokenType, string);
-    //javascriptPrintNumber(result->count);
 
     result->tokens[result->count++] = (Token){
         .type = tokenType,

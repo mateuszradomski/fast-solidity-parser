@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@solidity-parser/parser": "^0.18.0"
+  }
+}
