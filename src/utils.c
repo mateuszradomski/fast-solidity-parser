@@ -10,6 +10,10 @@ typedef u32 bool;
 
 typedef u32 size_t;
 
+const u32 Kilobyte = 1024;
+const u32 Megabyte = Kilobyte * 1024;
+const u32 Gigabyte = Megabyte * 1024;
+
 #define true 1
 #define false 0
 
