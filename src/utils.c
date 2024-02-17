@@ -428,13 +428,13 @@ consumerGoodN(ByteConsumer *c, u32 size) {
 
 static u8
 consumeByte(ByteConsumer *c) {
-    assert((void*)consumerGood(c));
+    assert(consumerGood(c));
     return *(c->head++);
 }
 
 static u8
 peekByte(ByteConsumer *c) {
-    assert((void*)consumerGood(c));
+    assert(consumerGood(c));
     return *(c->head);
 }
 

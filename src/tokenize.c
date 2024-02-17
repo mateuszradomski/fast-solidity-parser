@@ -287,7 +287,7 @@ printToken(TokenType tokenType, String string) {
 
 static void
 pushToken(TokenizeResult *result, TokenType tokenType, String string) {
-    assert((void *)(result->count < result->capacity));
+    assert(result->count < result->capacity);
 
     //printToken(tokenType, string);
     //javascriptPrintNumber(result->count);
@@ -590,7 +590,7 @@ tokenize(String source, Arena *arena) {
         } else if(byte == '?') {
             pushToken(&result, TokenType_QuestionMark, (String){ .data = c.head - 1, .size = 1 });
         } else {
-            assert((void *)false);
+            assert(false);
         }
     }
 
