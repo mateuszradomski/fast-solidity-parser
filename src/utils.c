@@ -21,6 +21,8 @@ const u32 Gigabyte = Megabyte * 1024;
 #define MAX(a,b) (((a)>(b))?(a):(b))
 #define ARRAY_LENGTH(a) (sizeof((a))/sizeof((a)[0]))
 
+#define STMNT(s) do{ s }while(0)
+
 #define SLL_STACK_PUSH_(H,N) N->next=H,H=N
 #define SLL_STACK_POP_(H) H=H=H->next
 #define SLL_QUEUE_PUSH_MULTIPLE_(F,L,FF,LL) if(LL){if(F){L->next=FF;}else{F=FF;}L=LL;L->next=0;}
@@ -445,3 +447,13 @@ peekString(ByteConsumer *c, u32 size) {
         .size = size,
     };
 }
+
+typedef struct StringNode {
+    String string;
+    struct StringNode *next;
+} StringNode;
+
+typedef struct StringList {
+    StringNode *head;
+    StringNode *last;
+} StringList;

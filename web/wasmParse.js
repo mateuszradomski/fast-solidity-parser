@@ -10,6 +10,7 @@ class WasmParser {
         const { instance } = await WebAssembly.instantiate(wasmBuffer, {
             env: makeEnv(this)
         });
+        this.instance = instance;
 
         const jsArray = new TextEncoder().encode(input);
 

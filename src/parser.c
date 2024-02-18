@@ -3,12 +3,182 @@
 
 static String result = { 0 };
 
+typedef enum ASTNodeType {
+    ASTNodeType_None,
+    ASTNodeType_SourceUnit,
+    ASTNodeType_Import,
+    ASTNodeType_Count,
+} ASTNodeType;
+
+typedef struct ASTNodeLink ASTNodeLink;
+
+typedef struct ASTNodeList {
+    ASTNodeLink *head;
+    ASTNodeLink *last;
+    u32 count;
+} ASTNodeList;
+
+typedef struct ASTNode {
+    ASTNodeType type;
+
+    union {
+        struct { // ASTNodeType_SourceUnit
+            ASTNodeList children;
+        };
+        struct { // ASTNodeType_Import
+            String path;
+            String unitAlias;
+        };
+    };
+} ASTNode;
+
+typedef struct ASTNodeLink {
+    ASTNode node;
+    struct ASTNodeLink *next;
+} ASTNodeLink;
+
+#include "./src/astprint.c"
+
+typedef struct Parser {
+    Token *tokens;
+    u32 tokenCount;
+    u32 current;
+} Parser;
+
+static Parser
+createParser(TokenizeResult tokens) {
+    Parser parser = {
+        .tokens = tokens.tokens,
+        .tokenCount = tokens.count,
+        .current = 0,
+    };
+    return parser;
+}
+
+static Token
+peekToken(Parser *parser) {
+    return parser->tokens[parser->current];
+}
+
+static Token
+peekLastToken(Parser *parser) {
+    assert(parser->current > 0);
+    return parser->tokens[parser->current - 1];
+}
+
+static Token
+advanceToken(Parser *parser) {
+    return parser->tokens[parser->current++];
+}
+
+static bool
+acceptToken(Parser *parser, TokenType type) {
+    if(peekToken(parser).type == type) {
+        advanceToken(parser);
+        return true;
+    }
+
+    return false;
+}
+
+static void
+expectToken(Parser *parser, TokenType type) {
+    assert(acceptToken(parser, type));
+}
+
+static bool
+parseIdentifier(Parser *parser) {
+    if(acceptToken(parser, TokenType_Symbol)) {
+    } else if(acceptToken(parser, TokenType_From)) {
+    } else if(acceptToken(parser, TokenType_Receive)) {
+    } else if(acceptToken(parser, TokenType_Revert)) {
+    } else if(acceptToken(parser, TokenType_Error)) {
+    } else if(acceptToken(parser, TokenType_Global)) {
+    } else if(acceptToken(parser, TokenType_Payable)) {
+    } else {
+        return false;
+    }
+
+    return true;
+}
+
+static bool
+parseImport(Parser *parser, Arena *arena, ASTNode *node) {
+    if(acceptToken(parser, TokenType_StringLit)) {
+        Token path = peekLastToken(parser);
+        node->path = path.string;
+
+        if(acceptToken(parser, TokenType_As)) {
+            assert(parseIdentifier(parser));
+        }
+    } else if(acceptToken(parser, TokenType_Star)) {
+        expectToken(parser, TokenType_As);
+        assert(parseIdentifier(parser));
+        expectToken(parser, TokenType_From);
+        expectToken(parser, TokenType_StringLit);
+    } else if(acceptToken(parser, TokenType_LBrace)) {
+        assert(parseIdentifier(parser));
+        if(acceptToken(parser, TokenType_As)) {
+            assert(parseIdentifier(parser));
+        }
+
+        while(acceptToken(parser, TokenType_Comma)) {
+            assert(parseIdentifier(parser));
+            if(acceptToken(parser, TokenType_As)) {
+                assert(parseIdentifier(parser));
+            }
+        }
+
+        expectToken(parser, TokenType_RBrace);
+        expectToken(parser, TokenType_From);
+        expectToken(parser, TokenType_StringLit);
+    } else {
+        return false;
+    }
+
+    node->type = ASTNodeType_Import;
+
+    expectToken(parser, TokenType_Semicolon);
+
+    return true;
+}
+
+static ASTNode
+parseSourceUnit(Parser *parser, Arena *arena) {
+    ASTNode node = { .type = ASTNodeType_SourceUnit };
+
+    while(true) {
+        ASTNodeLink *child = arrayPush(arena, ASTNodeLink, 1);
+
+        if(acceptToken(parser, TokenType_Pragma)) {
+            assert(parseIdentifier(parser));
+            expectToken(parser, TokenType_Symbol);
+            expectToken(parser, TokenType_Semicolon);
+        } else if(acceptToken(parser, TokenType_Import)) {
+            assert(parseImport(parser, arena, &child->node));
+        } else if(acceptToken(parser, TokenType_EOF)) {
+            break;
+        } else if(acceptToken(parser, TokenType_Comment)) {
+            continue;
+        } else {
+            assert(false);
+        }
+
+        SLL_QUEUE_PUSH(node.children.head, node.children.last, child);
+        node.children.count += 1;
+    }
+
+    return node;
+}
+
 String *
 entry_point(const char *string, int len) {
     Arena arena = arenaCreate(64 * Megabyte, 32 * Kilobyte, 64);
     String input = { .data = (u8 *)string, .size = len };
     TokenizeResult tokens = tokenize(input, &arena);
+    Parser parser = createParser(tokens);
+    ASTNode node = parseSourceUnit(&parser, &arena);
+    result = astNodeToString(node, &arena);
 
-    result = LIT_TO_STR("{\"type\": \"SourceUnit\", \"children\": []}");
     return &result;
 }

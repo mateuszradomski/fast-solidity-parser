@@ -275,13 +275,13 @@ formatToken(String *output, TokenType tokenType, String string) {
 }
 
 static void
-printToken(TokenType tokenType, String string) {
+printToken(Token token) {
     u8 buffer[2048];
     String message = {
         .data = buffer,
         .size = 0,
     };
-    formatToken(&message, tokenType, string);
+    formatToken(&message, token.type, token.string);
     javascriptPrintStringPtr(&message);
 }
 
