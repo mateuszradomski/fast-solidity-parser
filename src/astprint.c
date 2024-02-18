@@ -65,8 +65,66 @@ pushASTNode(TokenizeResult tokens, char **head, ASTNode node) {
         result += pushIdentifier(head, unitAlias.string);
     }
 
-    result += pushString(head, LIT_TO_STR(",\"symbolAliases\":null"));
-    result += pushString(head, LIT_TO_STR(",\"symbolAliasesIdentifiers\":null}"));
+    result += pushString(head, LIT_TO_STR(",\"symbolAliases\":"));
+    if(node.symbols.count == 0) {
+        result += pushString(head, LIT_TO_STR("null"));
+    } else {
+        result += pushString(head, LIT_TO_STR("["));
+        for(u32 i = 0; i < node.symbols.count; i++) {
+            result += pushString(head, LIT_TO_STR("[\""));
+
+            TokenId symbol = listGetTokenId(&node.symbols, i);
+            result += pushString(head, getToken(tokens, symbol).string);
+
+            result += pushString(head, LIT_TO_STR("\","));
+
+            TokenId alias = listGetTokenId(&node.symbolAliases, i);
+            if(alias == INVALID_TOKEN_ID) {
+                result += pushString(head, LIT_TO_STR("null"));
+            } else {
+                result += pushString(head, LIT_TO_STR("\""));
+                result += pushString(head, getToken(tokens, alias).string);
+                result += pushString(head, LIT_TO_STR("\""));
+            }
+
+            result += pushString(head, LIT_TO_STR("]"));
+            if(i != node.symbols.count - 1) {
+                result += pushString(head, LIT_TO_STR(","));
+            }
+        }
+        result += pushString(head, LIT_TO_STR("]"));
+    }
+
+    result += pushString(head, LIT_TO_STR(",\"symbolAliasesIdentifiers\":"));
+    if(node.symbols.count == 0) {
+        result += pushString(head, LIT_TO_STR("null"));
+    } else {
+        result += pushString(head, LIT_TO_STR("["));
+        for(u32 i = 0; i < node.symbols.count; i++) {
+            result += pushString(head, LIT_TO_STR("["));
+
+            TokenId symbol = listGetTokenId(&node.symbols, i);
+            result += pushIdentifier(head, getToken(tokens, symbol).string);
+
+            result += pushString(head, LIT_TO_STR(","));
+
+            TokenId alias = listGetTokenId(&node.symbolAliases, i);
+            if(alias != INVALID_TOKEN_ID) {
+                result += pushIdentifier(head, getToken(tokens, alias).string);
+            } else {
+                result += pushString(head, LIT_TO_STR("null"));
+            }
+
+            result += pushString(head, LIT_TO_STR("]"));
+            if(i != node.symbols.count - 1) {
+                result += pushString(head, LIT_TO_STR(","));
+            }
+        }
+        result += pushString(head, LIT_TO_STR("]"));
+    }
+
+    result += pushString(head, LIT_TO_STR("}"));
+
     return result;
 };
 

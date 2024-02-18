@@ -144,6 +144,18 @@ typedef enum TokenType {
 #define INVALID_TOKEN_ID (-1)
 typedef s32 TokenId;
 
+typedef struct TokenIdBucket {
+    TokenId tokens[16];
+    u32 count;
+    struct TokenIdBucket *next;
+} TokenIdBucket;
+
+typedef struct TokenIdList {
+    TokenIdBucket *first;
+    TokenIdBucket *last;
+    u32 count;
+} TokenIdList;
+
 typedef struct Token {
     TokenType type;
     String string;
@@ -245,6 +257,39 @@ tokenTypeToString(TokenType tokenType) {
         case TokenType_Count: return LIT_TO_STR("Count");
         case TokenType_EOF: return LIT_TO_STR("EOF");
     }
+}
+
+static TokenIdBucket *
+listPushTokenId(TokenIdList *list, TokenId token, Arena *arena) {
+    TokenIdBucket *bucket = 0x0;
+    if(list->count == 0) {
+        assert(list->first == 0x0 && list->last == 0x0);
+        bucket = structPush(arena, TokenIdBucket);
+        SLL_QUEUE_PUSH(list->first, list->last, bucket);
+    } else {
+        bucket = list->last;
+    }
+
+    if(bucket->count >= ARRAY_LENGTH(bucket->tokens)) {
+        bucket = structPush(arena, TokenIdBucket);
+        SLL_QUEUE_PUSH(list->first, list->last, bucket);
+    }
+
+    bucket->tokens[bucket->count++] = token;
+    list->count += 1;
+
+    return bucket;
+}
+
+static TokenId
+listGetTokenId(TokenIdList *list, u32 index) {
+    assert(index < list->count);
+    TokenIdBucket *bucket = list->first;
+    for(u32 i = 0; i < index / ARRAY_LENGTH(bucket->tokens); i++) {
+        bucket = bucket->next;
+    }
+
+    return bucket->tokens[index % ARRAY_LENGTH(bucket->tokens)];
 }
 
 static TokenizeResult

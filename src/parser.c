@@ -28,6 +28,8 @@ typedef struct ASTNode {
         struct { // ASTNodeType_Import
             TokenId pathTokenId;
             TokenId unitAliasTokenId;
+            TokenIdList symbols;
+            TokenIdList symbolAliases;
         };
     };
 } ASTNode;
@@ -122,21 +124,37 @@ parseImport(Parser *parser, Arena *arena, ASTNode *node) {
         expectToken(parser, TokenType_StringLit);
         node->pathTokenId = peekLastTokenId(parser);
     } else if(acceptToken(parser, TokenType_LBrace)) {
-        assert(parseIdentifier(parser) > 0);
+        TokenId symbolName = parseIdentifier(parser);
+        assert(symbolName > 0);
+        listPushTokenId(&node->symbols, symbolName, arena);
+
         if(acceptToken(parser, TokenType_As)) {
-            assert(parseIdentifier(parser) > 0);
+            TokenId symbolAliasName = parseIdentifier(parser);
+            assert(symbolAliasName > 0);
+            listPushTokenId(&node->symbolAliases, symbolAliasName, arena);
+        } else {
+            listPushTokenId(&node->symbolAliases, INVALID_TOKEN_ID, arena);
         }
 
         while(acceptToken(parser, TokenType_Comma)) {
-            assert(parseIdentifier(parser) > 0);
+            TokenId symbolName = parseIdentifier(parser);
+            assert(symbolName > 0);
+            listPushTokenId(&node->symbols, symbolName, arena);
+
             if(acceptToken(parser, TokenType_As)) {
-                assert(parseIdentifier(parser) > 0);
+                TokenId symbolAliasName = parseIdentifier(parser);
+                assert(symbolAliasName > 0);
+                listPushTokenId(&node->symbolAliases, symbolAliasName, arena);
+            } else {
+                listPushTokenId(&node->symbolAliases, INVALID_TOKEN_ID, arena);
             }
         }
 
         expectToken(parser, TokenType_RBrace);
         expectToken(parser, TokenType_From);
         expectToken(parser, TokenType_StringLit);
+        node->pathTokenId = peekLastTokenId(parser);
+        node->unitAliasTokenId = INVALID_TOKEN_ID;
     } else {
         return false;
     }
