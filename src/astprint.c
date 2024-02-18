@@ -31,9 +31,9 @@ static u32
 pushASTNode(char **head, ASTNode node) {
     u32 result = 0;
     result += pushString(head, LIT_TO_STR("{\"type\":\"ImportDirective\","));
-    result += pushString(head, LIT_TO_STR("\"path\":"));
-    result += pushString(head, node.path);
-    result += pushString(head, LIT_TO_STR(",\"pathLiteral\":"));
+    result += pushString(head, LIT_TO_STR("\"path\":\""));
+    result += pushStringWithoutQuote(head, node.path);
+    result += pushString(head, LIT_TO_STR("\",\"pathLiteral\":"));
     result += pushStringLiteral(head, node.path);
     result += pushString(head, LIT_TO_STR(",\"unitAlias\":null,"));
     result += pushString(head, LIT_TO_STR("\"unitAliasIdentifier\":null,"));
