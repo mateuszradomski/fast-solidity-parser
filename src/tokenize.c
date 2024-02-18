@@ -141,6 +141,8 @@ typedef enum TokenType {
     TokenType_Count,
 } TokenType;
 
+typedef s32 TokenId;
+
 typedef struct Token {
     TokenType type;
     String string;
@@ -250,6 +252,12 @@ allocateTokenSpace(Arena *arena, u32 capacity) {
     result.tokens = arrayPush(arena, Token, capacity);
     result.capacity = capacity;
     return result;
+}
+
+static Token
+getToken(TokenizeResult tokens, TokenId tokenId) {
+    assert(tokenId >= 0);
+    return tokens.tokens[tokenId];
 }
 
 static void

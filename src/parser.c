@@ -26,7 +26,7 @@ typedef struct ASTNode {
             ASTNodeList children;
         };
         struct { // ASTNodeType_Import
-            String path;
+            u32 pathTokenId;
             String unitAlias;
         };
     };
@@ -60,10 +60,10 @@ peekToken(Parser *parser) {
     return parser->tokens[parser->current];
 }
 
-static Token
-peekLastToken(Parser *parser) {
+static u32
+peekLastTokenId(Parser *parser) {
     assert(parser->current > 0);
-    return parser->tokens[parser->current - 1];
+    return parser->current - 1;
 }
 
 static Token
@@ -105,8 +105,7 @@ parseIdentifier(Parser *parser) {
 static bool
 parseImport(Parser *parser, Arena *arena, ASTNode *node) {
     if(acceptToken(parser, TokenType_StringLit)) {
-        Token path = peekLastToken(parser);
-        node->path = path.string;
+        node->pathTokenId = peekLastTokenId(parser);
 
         if(acceptToken(parser, TokenType_As)) {
             assert(parseIdentifier(parser));
@@ -178,7 +177,7 @@ entry_point(const char *string, int len) {
     TokenizeResult tokens = tokenize(input, &arena);
     Parser parser = createParser(tokens);
     ASTNode node = parseSourceUnit(&parser, &arena);
-    result = astNodeToString(node, &arena);
+    result = astNodeToString(tokens, node, &arena);
 
     return &result;
 }
