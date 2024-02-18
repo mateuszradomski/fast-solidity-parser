@@ -124,19 +124,7 @@ parseImport(Parser *parser, Arena *arena, ASTNode *node) {
         expectToken(parser, TokenType_StringLit);
         node->pathTokenId = peekLastTokenId(parser);
     } else if(acceptToken(parser, TokenType_LBrace)) {
-        TokenId symbolName = parseIdentifier(parser);
-        assert(symbolName > 0);
-        listPushTokenId(&node->symbols, symbolName, arena);
-
-        if(acceptToken(parser, TokenType_As)) {
-            TokenId symbolAliasName = parseIdentifier(parser);
-            assert(symbolAliasName > 0);
-            listPushTokenId(&node->symbolAliases, symbolAliasName, arena);
-        } else {
-            listPushTokenId(&node->symbolAliases, INVALID_TOKEN_ID, arena);
-        }
-
-        while(acceptToken(parser, TokenType_Comma)) {
+       do {
             TokenId symbolName = parseIdentifier(parser);
             assert(symbolName > 0);
             listPushTokenId(&node->symbols, symbolName, arena);
@@ -148,7 +136,7 @@ parseImport(Parser *parser, Arena *arena, ASTNode *node) {
             } else {
                 listPushTokenId(&node->symbolAliases, INVALID_TOKEN_ID, arena);
             }
-        }
+        } while(acceptToken(parser, TokenType_Comma));
 
         expectToken(parser, TokenType_RBrace);
         expectToken(parser, TokenType_From);
