@@ -28,6 +28,15 @@ pushStringLiteral(char **head, String string) {
 }
 
 static u32
+pushIdentifier(char **head, String string) {
+    u32 result = 0;
+    result += pushString(head, LIT_TO_STR("{\"type\":\"Identifier\",\"name\":\""));
+    result += pushString(head, string);
+    result += pushString(head, LIT_TO_STR("\"}"));
+    return result;
+}
+
+static u32
 pushASTNode(TokenizeResult tokens, char **head, ASTNode node) {
     u32 result = 0;
 
@@ -38,10 +47,26 @@ pushASTNode(TokenizeResult tokens, char **head, ASTNode node) {
     result += pushStringWithoutQuote(head, pathToken.string);
     result += pushString(head, LIT_TO_STR("\",\"pathLiteral\":"));
     result += pushStringLiteral(head, pathToken.string);
-    result += pushString(head, LIT_TO_STR(",\"unitAlias\":null,"));
-    result += pushString(head, LIT_TO_STR("\"unitAliasIdentifier\":null,"));
-    result += pushString(head, LIT_TO_STR("\"symbolAliases\":null,"));
-    result += pushString(head, LIT_TO_STR("\"symbolAliasesIdentifiers\":null}"));
+
+    result += pushString(head, LIT_TO_STR(",\"unitAlias\":"));
+    if(node.unitAliasTokenId == INVALID_TOKEN_ID) {
+        result += pushString(head, LIT_TO_STR("null"));
+    } else {
+        Token unitAlias = getToken(tokens, node.unitAliasTokenId);
+        result += pushString(head, LIT_TO_STR("\""));
+        result += pushString(head, unitAlias.string);
+        result += pushString(head, LIT_TO_STR("\""));
+    }
+    result += pushString(head, LIT_TO_STR(",\"unitAliasIdentifier\":"));
+    if(node.unitAliasTokenId == INVALID_TOKEN_ID) {
+        result += pushString(head, LIT_TO_STR("null"));
+    } else {
+        Token unitAlias = getToken(tokens, node.unitAliasTokenId);
+        result += pushIdentifier(head, unitAlias.string);
+    }
+
+    result += pushString(head, LIT_TO_STR(",\"symbolAliases\":null"));
+    result += pushString(head, LIT_TO_STR(",\"symbolAliasesIdentifiers\":null}"));
     return result;
 };
 

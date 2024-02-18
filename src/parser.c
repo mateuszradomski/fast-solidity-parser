@@ -26,8 +26,8 @@ typedef struct ASTNode {
             ASTNodeList children;
         };
         struct { // ASTNodeType_Import
-            u32 pathTokenId;
-            String unitAlias;
+            TokenId pathTokenId;
+            TokenId unitAliasTokenId;
         };
     };
 } ASTNode;
@@ -86,7 +86,7 @@ expectToken(Parser *parser, TokenType type) {
     assert(acceptToken(parser, type));
 }
 
-static bool
+static TokenId
 parseIdentifier(Parser *parser) {
     if(acceptToken(parser, TokenType_Symbol)) {
     } else if(acceptToken(parser, TokenType_From)) {
@@ -96,10 +96,10 @@ parseIdentifier(Parser *parser) {
     } else if(acceptToken(parser, TokenType_Global)) {
     } else if(acceptToken(parser, TokenType_Payable)) {
     } else {
-        return false;
+        return INVALID_TOKEN_ID;
     }
 
-    return true;
+    return peekLastTokenId(parser);
 }
 
 static bool
@@ -107,24 +107,30 @@ parseImport(Parser *parser, Arena *arena, ASTNode *node) {
     if(acceptToken(parser, TokenType_StringLit)) {
         node->pathTokenId = peekLastTokenId(parser);
 
+        node->unitAliasTokenId = INVALID_TOKEN_ID;
         if(acceptToken(parser, TokenType_As)) {
-            assert(parseIdentifier(parser));
+            TokenId unitAliasTokenId = parseIdentifier(parser);
+            assert(unitAliasTokenId > 0);
+            node->unitAliasTokenId = unitAliasTokenId;
         }
     } else if(acceptToken(parser, TokenType_Star)) {
         expectToken(parser, TokenType_As);
-        assert(parseIdentifier(parser));
+        TokenId unitAliasTokenId = parseIdentifier(parser);
+        assert(unitAliasTokenId > 0);
+        node->unitAliasTokenId = unitAliasTokenId;
         expectToken(parser, TokenType_From);
         expectToken(parser, TokenType_StringLit);
+        node->pathTokenId = peekLastTokenId(parser);
     } else if(acceptToken(parser, TokenType_LBrace)) {
-        assert(parseIdentifier(parser));
+        assert(parseIdentifier(parser) > 0);
         if(acceptToken(parser, TokenType_As)) {
-            assert(parseIdentifier(parser));
+            assert(parseIdentifier(parser) > 0);
         }
 
         while(acceptToken(parser, TokenType_Comma)) {
-            assert(parseIdentifier(parser));
+            assert(parseIdentifier(parser) > 0);
             if(acceptToken(parser, TokenType_As)) {
-                assert(parseIdentifier(parser));
+                assert(parseIdentifier(parser) > 0);
             }
         }
 
