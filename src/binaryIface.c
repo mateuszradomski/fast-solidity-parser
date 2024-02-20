@@ -1,24 +1,43 @@
+typedef struct Serializer {
+    Arena *arena;
+    TokenizeResult tokens;
+    const u8 *inputStringBase;
+    char **head;
+} Serializer;
+
+static Serializer
+createSerializer(Arena *arena, const void *inputStringBase, TokenizeResult tokens) {
+    Serializer s = {
+        .arena = arena,
+        .tokens = tokens,
+        .inputStringBase = (const u8 *)inputStringBase,
+        .head = 0x0,
+    };
+
+    return s;
+}
+
 static u32
-pushU32(char **head, u32 value) {
-    if(head) {
-        u32 *ptr = (u32 *)*head;
+pushU32(Serializer *s, u32 value) {
+    if(s->head) {
+        u32 *ptr = (u32 *)*s->head;
         *ptr = value;
-        *head += sizeof(u32);
+        *s->head += sizeof(u32);
     }
 
     return sizeof(u32);
 }
 
 static u32
-pushTokenStringById(char **head, TokenizeResult tokens, TokenId token) {
-    if(head) {
+pushTokenStringById(Serializer *s, TokenId token) {
+    if(s->head) {
         if(token == INVALID_TOKEN_ID) {
-            pushU32(head, INVALID_TOKEN_ID);
-            pushU32(head, 0);
+            pushU32(s, INVALID_TOKEN_ID);
+            pushU32(s, 0);
         } else {
-            Token t = getToken(tokens, token);
-            pushU32(head, (u32)t.string.data);
-            pushU32(head, (u32)t.string.size);
+            Token t = getToken(s->tokens, token);
+            pushU32(s, (u32)(t.string.data - s->inputStringBase));
+            pushU32(s, (u32)t.string.size);
         }
     }
 
@@ -26,13 +45,14 @@ pushTokenStringById(char **head, TokenizeResult tokens, TokenId token) {
 }
 
 static u32
-pushImportDirective(TokenizeResult tokens, char **head, ASTNode node) {
+pushImportDirective(Serializer *s, ASTNode node) {
     u32 l = 0;
 
-    l += pushTokenStringById(head, tokens, node.pathTokenId);
-    l += pushTokenStringById(head, tokens, node.unitAliasTokenId);
+    l += pushU32(s, node.type);
+    l += pushTokenStringById(s, node.pathTokenId);
+    l += pushTokenStringById(s, node.unitAliasTokenId);
 
-    l += pushU32(head, node.symbols.count);
+    l += pushU32(s, node.symbols.count);
     for(u32 i = 0; i < node.symbols.count; i++) {
         // PERF-NOTE(radomski): we could pull out pushing a token string just
         // by itself since we know that the token here is never going to be
@@ -41,20 +61,20 @@ pushImportDirective(TokenizeResult tokens, char **head, ASTNode node) {
 
         TokenId symbol = listGetTokenId(&node.symbols, i);
         TokenId alias = listGetTokenId(&node.symbolAliases, i);
-        l += pushTokenStringById(head, tokens, symbol);
-        l += pushTokenStringById(head, tokens, alias);
+        l += pushTokenStringById(s, symbol);
+        l += pushTokenStringById(s, alias);
     }
 
     return l;
 }
 
 static u32
-pushASTNode(TokenizeResult tokens, char **head, ASTNode node) {
+pushASTNode(Serializer *s, ASTNode node) {
     u32 l = 0;
 
     switch(node.type) {
         case ASTNodeType_Import: {
-            l = pushImportDirective(tokens, head, node);
+            l = pushImportDirective(s, node);
         } break;
         default: {
             assert(0);
@@ -65,33 +85,35 @@ pushASTNode(TokenizeResult tokens, char **head, ASTNode node) {
 };
 
 static u32
-pushSourceUnit(TokenizeResult tokens, char **head, ASTNode node) {
+pushSourceUnit(Serializer *s, ASTNode node) {
     u32 l = 0;
 
-    l += pushU32(head, node.type);
-    l += pushU32(head, node.children.count);
+    l += pushU32(s, node.type);
+    l += pushU32(s, node.children.count);
 
     ASTNodeLink *child = node.children.head;
     for(u32 i = 0; i < node.children.count; i++, child = child->next) {
-        l += pushASTNode(tokens, head, child->node);
+        l += pushASTNode(s, child->node);
     }
 
     return l;
 }
 
 static u32
-calculateResultingSize(TokenizeResult tokens, ASTNode node) {
-    u32 result = pushSourceUnit(tokens, 0x0, node);
+calculateResultingSize(Serializer *s, ASTNode node) {
+    assert(s->head == 0x0);
+    u32 result = pushSourceUnit(s, node);
     return result;
 }
 
 static String
-astNodeToBinary(TokenizeResult tokens, ASTNode node, Arena *arena) {
-    u32 size = calculateResultingSize(tokens, node);
-    u8 *data = arrayPush(arena, u8, size);
+astNodeToBinary(Serializer *s, ASTNode node) {
+    u32 size = calculateResultingSize(s, node);
+    u8 *data = arrayPush(s->arena, u8, size);
     String result = { .data = data, .size = size };
+    s->head = (char **)&data;
 
-    pushSourceUnit(tokens, (char **)&data, node);
+    pushSourceUnit(s, node);
 
     return result;
 }

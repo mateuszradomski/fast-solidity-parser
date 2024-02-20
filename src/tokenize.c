@@ -527,26 +527,26 @@ tokenize(String source, Arena *arena) {
                 pushToken(&result, TokenType_Divide, symbol);
             }
         } else if(byte == '"') {
-            String symbol = { .data = c.head - 1, .size = 1 };
+            String symbol = { .data = c.head, .size = 0 };
             while(consumerGood(&c)) {
                 u8 nextByte = consumeByte(&c);
-                symbol.size += 1;
-
                 if(nextByte == '"') {
                     break;
                 }
+
+                symbol.size += 1;
             }
 
             pushToken(&result, TokenType_StringLit, symbol);
         } else if(byte == '\'') {
-            String symbol = { .data = c.head - 1, .size = 1 };
+            String symbol = { .data = c.head, .size = 0 };
             while(consumerGood(&c)) {
                 u8 nextByte = consumeByte(&c);
-                symbol.size += 1;
-
                 if(nextByte == '\'') {
                     break;
                 }
+
+                symbol.size += 1;
             }
 
             pushToken(&result, TokenType_StringLit, symbol);
