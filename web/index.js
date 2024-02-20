@@ -2,11 +2,11 @@ const fs = require('fs');
 const WasmParser = require('./wasmParse');
 
 async function main() {
-    const input = fs.readFileSync("web/sources/integrationBig2.sol", 'utf-8')
+    const input = fs.readFileSync("web/sources/parserbuilding.sol", 'utf-8')
     const parser = new WasmParser(input);
 
     let elapsed = -performance.now()
-    await parser.parse(input)
+    await parser.parseJSONBackend(input)
     elapsed += performance.now();
     const lines = input.split('\n').length;
     const linesPerSeconds = lines / (elapsed / 1000);

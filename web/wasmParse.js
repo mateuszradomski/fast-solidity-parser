@@ -1,10 +1,13 @@
 const fs = require('fs');
 const path = require('path');
 
+const SpallProfiler = require('./spall');
+const profiler = new SpallProfiler();
+
 class WasmParser {
     constructor() { }
 
-    async parse(input) {
+    async parseJSONBackend(input) {
         const wasmPath = path.join(__dirname, "./parser.wasm");
         const wasmBuffer = fs.readFileSync(wasmPath);
         const { instance } = await WebAssembly.instantiate(wasmBuffer, {
@@ -14,20 +17,72 @@ class WasmParser {
 
         const jsArray = new TextEncoder().encode(input);
 
+        profiler.trace_begin("Copying");
         const cArrayPointer = instance.exports.malloc(jsArray.length);
-        let memory_buffer = instance.exports.memory.buffer;
-        this.cArray = new Uint8Array(memory_buffer, cArrayPointer, jsArray.length);
+        let memoryBuffer = instance.exports.memory.buffer;
+        this.cArray = new Uint8Array(memoryBuffer, cArrayPointer, jsArray.length);
         this.cArray.set(jsArray);
+        profiler.trace_end();
 
+        profiler.trace_begin("WASM");
         const string_struct_pointer = instance.exports.entry_point(cArrayPointer, jsArray.length);
+        profiler.trace_end();
 
-        memory_buffer = instance.exports.memory.buffer;
-        return JSON.parse(struct_string_by_pointer(memory_buffer, string_struct_pointer));
+        memoryBuffer = instance.exports.memory.buffer;
+
+        profiler.trace_begin("StringDecode");
+        const string = struct_string_by_pointer(memoryBuffer, string_struct_pointer)
+        profiler.trace_end();
+        profiler.trace_begin("JSONParse");
+        const parsed = JSON.parse(string);
+        profiler.trace_end();
+
+        const spallBytes = profiler.serialize();
+        fs.writeFileSync("data.spall", spallBytes);
+
+        return parsed;
+    }
+
+    async parseBinaryBackend(input) {
+        const wasmPath = path.join(__dirname, "./parser.wasm");
+        const wasmBuffer = fs.readFileSync(wasmPath);
+        const { instance } = await WebAssembly.instantiate(wasmBuffer, {
+            env: makeEnv(this)
+        });
+        this.instance = instance;
+
+        const jsArray = new TextEncoder().encode(input);
+
+        profiler.trace_begin("Copying");
+        const cArrayPointer = instance.exports.malloc(jsArray.length);
+        let memoryBuffer = instance.exports.memory.buffer;
+        this.cArray = new Uint8Array(memoryBuffer, cArrayPointer, jsArray.length);
+        this.cArray.set(jsArray);
+        profiler.trace_end();
+
+        profiler.trace_begin("WASM");
+        const resultPointer = instance.exports.entry_point(cArrayPointer, jsArray.length);
+        profiler.trace_end();
+
+        memoryBuffer = instance.exports.memory.buffer;
+
+        profiler.trace_begin("parseBinary");
+        const object = parseBinary(memoryBuffer, resultPointer);
+        profiler.trace_end();
+
+        const spallBytes = profiler.serialize();
+        fs.writeFileSync("data.spall", spallBytes);
+
+        return object;
+    }
+
+    parseBinary(memoryBuffer, resultPointer) {
+        return {}
     }
 
     javascriptPrintStringPtr(pointer) {
-        const memory_buffer = this.instance.exports.memory.buffer;
-        const json_string = struct_string_by_pointer(memory_buffer, pointer);
+        const memoryBuffer = this.instance.exports.memory.buffer;
+        const json_string = struct_string_by_pointer(memoryBuffer, pointer);
         console.log(json_string);
     }
 
