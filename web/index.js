@@ -2,7 +2,7 @@ const fs = require('fs');
 const WasmParser = require('./wasmParse');
 
 async function runJSONInterface(input) {
-    const parser = new WasmParser(input);
+    const parser = new WasmParser();
 
     let elapsed = -performance.now()
     await parser.parseJSONInterface(input)
@@ -13,7 +13,7 @@ async function runJSONInterface(input) {
 }
 
 async function runBinaryInterface(input) {
-    const parser = new WasmParser(input);
+    const parser = new WasmParser();
 
     let elapsed = -performance.now()
     await parser.parseBinaryInterface(input)

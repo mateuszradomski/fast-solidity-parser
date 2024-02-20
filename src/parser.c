@@ -1,11 +1,13 @@
 static String result = { 0 };
 
-typedef enum ASTNodeType {
+typedef enum ASTNodeType_Enum {
     ASTNodeType_None,
     ASTNodeType_SourceUnit,
     ASTNodeType_Import,
     ASTNodeType_Count,
-} ASTNodeType;
+} ASTNodeType_Enum;
+
+typedef u32 ASTNodeType;
 
 typedef struct ASTNodeLink ASTNodeLink;
 
