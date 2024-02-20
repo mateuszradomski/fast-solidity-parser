@@ -10,7 +10,7 @@ async function main() {
     const antlrAST = JSON.stringify(antlrASTObj, null, 2)
 
     const wasmParser = new WasmParser();
-    const myASTObj = await wasmParser.parseJSONBackend(input)
+    const myASTObj = await wasmParser.parseJSONInterface(input)
     const myAST = JSON.stringify(myASTObj, null, 2)
 
     if(antlrAST !== myAST) {

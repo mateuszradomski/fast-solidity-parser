@@ -7,7 +7,7 @@ const profiler = new SpallProfiler();
 class WasmParser {
     constructor() { }
 
-    async parseJSONBackend(input) {
+    async parseJSONInterface(input) {
         const wasmPath = path.join(__dirname, "./parser.wasm");
         const wasmBuffer = fs.readFileSync(wasmPath);
         const { instance } = await WebAssembly.instantiate(wasmBuffer, {
@@ -24,8 +24,8 @@ class WasmParser {
         this.cArray.set(jsArray);
         profiler.trace_end();
 
-        profiler.trace_begin("WASM");
-        const string_struct_pointer = instance.exports.entry_point(cArrayPointer, jsArray.length);
+        profiler.trace_begin("WASM JSON Interface");
+        const string_struct_pointer = instance.exports.entryPointJSONInterface(cArrayPointer, jsArray.length);
         profiler.trace_end();
 
         memoryBuffer = instance.exports.memory.buffer;
@@ -43,7 +43,7 @@ class WasmParser {
         return parsed;
     }
 
-    async parseBinaryBackend(input) {
+    async parseBinaryInterface(input) {
         const wasmPath = path.join(__dirname, "./parser.wasm");
         const wasmBuffer = fs.readFileSync(wasmPath);
         const { instance } = await WebAssembly.instantiate(wasmBuffer, {
@@ -60,14 +60,14 @@ class WasmParser {
         this.cArray.set(jsArray);
         profiler.trace_end();
 
-        profiler.trace_begin("WASM");
-        const resultPointer = instance.exports.entry_point(cArrayPointer, jsArray.length);
+        profiler.trace_begin("WASM Binary Interface");
+        const resultPointer = instance.exports.entryPointBinaryInterface(cArrayPointer, jsArray.length);
         profiler.trace_end();
 
         memoryBuffer = instance.exports.memory.buffer;
 
         profiler.trace_begin("parseBinary");
-        const object = parseBinary(memoryBuffer, resultPointer);
+        const object = this.parseBinary(memoryBuffer, resultPointer);
         profiler.trace_end();
 
         const spallBytes = profiler.serialize();

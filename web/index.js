@@ -1,16 +1,33 @@
 const fs = require('fs');
 const WasmParser = require('./wasmParse');
 
-async function main() {
-    const input = fs.readFileSync("web/sources/parserbuilding.sol", 'utf-8')
+async function runJSONInterface(input) {
     const parser = new WasmParser(input);
 
     let elapsed = -performance.now()
-    await parser.parseJSONBackend(input)
+    await parser.parseJSONInterface(input)
     elapsed += performance.now();
     const lines = input.split('\n').length;
     const linesPerSeconds = lines / (elapsed / 1000);
     console.error("Lines per second:", formatSI(linesPerSeconds, "LPS"));
+}
+
+async function runBinaryInterface(input) {
+    const parser = new WasmParser(input);
+
+    let elapsed = -performance.now()
+    await parser.parseBinaryInterface(input)
+    elapsed += performance.now();
+    const lines = input.split('\n').length;
+    const linesPerSeconds = lines / (elapsed / 1000);
+    console.error("Lines per second:", formatSI(linesPerSeconds, "LPS"));
+}
+
+async function main() {
+    const input = fs.readFileSync("web/sources/parserbuilding.sol", 'utf-8')
+
+    await runJSONInterface(input)
+    await runBinaryInterface(input)
 }
 
 main()

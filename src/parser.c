@@ -1,6 +1,3 @@
-#include "./src/utils.c"
-#include "./src/tokenize.c"
-
 static String result = { 0 };
 
 typedef enum ASTNodeType {
@@ -180,16 +177,4 @@ parseSourceUnit(Parser *parser, Arena *arena) {
     }
 
     return node;
-}
-
-String *
-entry_point(const char *string, int len) {
-    Arena arena = arenaCreate(64 * Megabyte, 32 * Kilobyte, 64);
-    String input = { .data = (u8 *)string, .size = len };
-    TokenizeResult tokens = tokenize(input, &arena);
-    Parser parser = createParser(tokens);
-    ASTNode node = parseSourceUnit(&parser, &arena);
-    result = astNodeToString(tokens, node, &arena);
-
-    return &result;
 }
