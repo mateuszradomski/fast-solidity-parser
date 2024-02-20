@@ -36,7 +36,8 @@ typedef struct ASTNodeLink {
     struct ASTNodeLink *next;
 } ASTNodeLink;
 
-#include "./src/astprint.c"
+#include "./src/jsonIface.c"
+#include "./src/binaryIface.c"
 
 typedef struct Parser {
     Token *tokens;

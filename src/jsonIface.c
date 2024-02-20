@@ -129,7 +129,7 @@ pushASTNode(TokenizeResult tokens, char **head, ASTNode node) {
 };
 
 static u32
-pushSourceUnit(TokenizeResult tokens, char **head, ASTNode node) {
+pushSourceUnitJSON(TokenizeResult tokens, char **head, ASTNode node) {
     u32 part1 = pushString(head, LIT_TO_STR("{")) +
         pushString(head, LIT_TO_STR("\"type\":\"SourceUnit\",")) +
         pushString(head, LIT_TO_STR("\"children\":["));
@@ -148,18 +148,18 @@ pushSourceUnit(TokenizeResult tokens, char **head, ASTNode node) {
 }
 
 static u32
-calculateResultingSize(TokenizeResult tokens, ASTNode node) {
-    u32 result = pushSourceUnit(tokens, 0x0, node);
+calculateResultingSizeJSON(TokenizeResult tokens, ASTNode node) {
+    u32 result = pushSourceUnitJSON(tokens, 0x0, node);
     return result;
 }
 
 static String
 astNodeToString(TokenizeResult tokens, ASTNode node, Arena *arena) {
-    u32 size = calculateResultingSize(tokens, node);
+    u32 size = calculateResultingSizeJSON(tokens, node);
     u8 *data = arrayPush(arena, u8, size);
     String result = { .data = data, .size = size };
 
-    pushSourceUnit(tokens, (char **)&data, node);
+    pushSourceUnitJSON(tokens, (char **)&data, node);
 
     return result;
 }

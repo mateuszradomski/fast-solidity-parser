@@ -21,7 +21,7 @@ entryPointBinaryInterface(const char *string, int len) {
     TokenizeResult tokens = tokenize(input, &arena);
     Parser parser = createParser(tokens);
     ASTNode node = parseSourceUnit(&parser, &arena);
-    result = LIT_TO_STR("Not implemented");
+    result = astNodeToBinary(tokens, node, &arena);
 
     return &result;
 }
