@@ -85,6 +85,25 @@ pushEnumDefinition(Serializer *s, ASTNode node) {
 }
 
 static u32
+pushStruct(Serializer *s, ASTNode node) {
+    u32 l = 0;
+
+    l += pushU32(s, node.type);
+    l += pushTokenStringById(s, node.structNode.nameTokenId);
+
+    assert(node.structNode.memberTypes.count == node.structNode.memberNames.count);
+    l += pushU32(s, node.structNode.memberTypes.count);
+    for(u32 i = 0; i < node.structNode.memberTypes.count; i++) {
+        TokenId type = listGetTokenId(&node.structNode.memberTypes, i);
+        TokenId name = listGetTokenId(&node.structNode.memberNames, i);
+        l += pushTokenStringById(s, type);
+        l += pushTokenStringById(s, name);
+    }
+
+    return l;
+}
+
+static u32
 pushASTNode(Serializer *s, ASTNode node) {
     u32 l = 0;
 
@@ -94,6 +113,9 @@ pushASTNode(Serializer *s, ASTNode node) {
         } break;
         case ASTNodeType_EnumDefinition: {
             l = pushEnumDefinition(s, node);
+        } break;
+        case ASTNodeType_Struct: {
+            l = pushStruct(s, node);
         } break;
         default: {
             assert(0);

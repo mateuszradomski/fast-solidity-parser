@@ -5,6 +5,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_SourceUnit,
     ASTNodeType_Import,
     ASTNodeType_EnumDefinition,
+    ASTNodeType_Struct,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -17,6 +18,12 @@ typedef struct ASTNodeList {
     ASTNodeLink *last;
     u32 count;
 } ASTNodeList;
+
+typedef struct ASTNodeStruct {
+    TokenId nameTokenId;
+    TokenIdList memberTypes;
+    TokenIdList memberNames;
+} ASTNodeStruct;
 
 typedef struct ASTNode {
     ASTNodeType type;
@@ -31,10 +38,11 @@ typedef struct ASTNode {
             TokenIdList symbols;
             TokenIdList symbolAliases;
         };
-        struct { // ASTNodeType_Enum
+        struct { // ASTNodeType_EnumDefinition
             TokenId nameTokenId;
             TokenIdList values;
         };
+        ASTNodeStruct structNode;
     };
 } ASTNode;
 
@@ -109,6 +117,11 @@ parseIdentifier(Parser *parser) {
     return peekLastTokenId(parser);
 }
 
+static TokenId
+parseType(Parser *parser) {
+    return parseIdentifier(parser);
+}
+
 static bool
 parseImport(Parser *parser, Arena *arena, ASTNode *node) {
     if(acceptToken(parser, TokenType_StringLit)) {
@@ -178,6 +191,31 @@ parseEnum(Parser *parser, Arena *arena, ASTNode *node) {
     return true;
 }
 
+static bool
+parseStruct(Parser *parser, Arena *arena, ASTNode *baseNode) {
+    baseNode->type = ASTNodeType_Struct;
+    ASTNodeStruct *node = &baseNode->structNode;
+
+    TokenId nameTokenId = parseIdentifier(parser);
+    assert(nameTokenId > 0);
+    node->nameTokenId = nameTokenId;
+    expectToken(parser, TokenType_LBrace);
+
+    while(!acceptToken(parser, TokenType_RBrace)) {
+        TokenId type = parseType(parser);
+        assert(type > 0);
+        listPushTokenId(&node->memberTypes, type, arena);
+
+        TokenId name = parseIdentifier(parser);
+        assert(name > 0);
+        listPushTokenId(&node->memberNames, name, arena);
+
+        expectToken(parser, TokenType_Semicolon);
+    }
+
+    return true;
+}
+
 static ASTNode
 parseSourceUnit(Parser *parser, Arena *arena) {
     ASTNode node = { .type = ASTNodeType_SourceUnit };
@@ -193,6 +231,8 @@ parseSourceUnit(Parser *parser, Arena *arena) {
             assert(parseImport(parser, arena, &child->node));
         } else if(acceptToken(parser, TokenType_Enum)) {
             assert(parseEnum(parser, arena, &child->node));
+        } else if(acceptToken(parser, TokenType_Struct)) {
+            assert(parseStruct(parser, arena, &child->node));
         } else if(acceptToken(parser, TokenType_EOF)) {
             break;
         } else if(acceptToken(parser, TokenType_Comment)) {

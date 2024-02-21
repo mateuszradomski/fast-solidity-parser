@@ -7,6 +7,7 @@ const profiler = new SpallProfiler();
 const ASTNodeType_SourceUnit = 1
 const ASTNodeType_Import = 2
 const ASTNodeType_EnumDefinition = 3
+const ASTNodeType_StructDefinition = 4
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -114,6 +115,55 @@ class Deserializer {
         }
     }
 
+    popStructDefinition() {
+        const name = this.popString();
+        const membersCount = this.popU32();
+        const members = []
+        for(let i = 0; i < membersCount; i++) {
+            const memberType = this.popString();
+            const memberName = this.popString();
+            members.push({
+                type: "VariableDeclaration",
+                typeName: {
+                    type: "ElementaryTypeName",
+                    name: memberType,
+                    stateMutability: null
+                },
+                name: memberName,
+                identifier: stringToIdentifier(memberName),
+                storageLocation: null,
+                isStateVar: false,
+                isIndexed: false,
+                expression: null,
+            });
+        }
+
+        // {
+        //     "type": "VariableDeclaration",
+        //         "typeName": {
+        //             "type": "ElementaryTypeName",
+        //             "name": "int256",
+        //             "stateMutability": null
+        //         },
+        //         "name": "value",
+        //         "identifier": {
+        //             "type": "Identifier",
+        //             "name": "value"
+        //         },
+        //         "storageLocation": null,
+        //         "isStateVar": false,
+        //         "isIndexed": false,
+        //         "expression": null
+        // }
+
+        
+        return {
+            type: "StructDefinition",
+            name,
+            members,
+        }
+    }
+
     popASTNode() {
         const type = this.popU32();
 
@@ -123,6 +173,8 @@ class Deserializer {
             return this.popImport();
         } else if(type === ASTNodeType_EnumDefinition) {
             return this.popEnumDefinition();
+        } else if(type === ASTNodeType_StructDefinition) {
+            return this.popStructDefinition();
         }
     }
 
