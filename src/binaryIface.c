@@ -69,12 +69,31 @@ pushImportDirective(Serializer *s, ASTNode node) {
 }
 
 static u32
+pushEnumDefinition(Serializer *s, ASTNode node) {
+    u32 l = 0;
+
+    l += pushU32(s, node.type);
+    l += pushTokenStringById(s, node.nameTokenId);
+
+    l += pushU32(s, node.values.count);
+    for(u32 i = 0; i < node.values.count; i++) {
+        TokenId value = listGetTokenId(&node.values, i);
+        l += pushTokenStringById(s, value);
+    }
+
+    return l;
+}
+
+static u32
 pushASTNode(Serializer *s, ASTNode node) {
     u32 l = 0;
 
     switch(node.type) {
         case ASTNodeType_Import: {
             l = pushImportDirective(s, node);
+        } break;
+        case ASTNodeType_EnumDefinition: {
+            l = pushEnumDefinition(s, node);
         } break;
         default: {
             assert(0);

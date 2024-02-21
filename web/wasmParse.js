@@ -6,6 +6,7 @@ const profiler = new SpallProfiler();
 
 const ASTNodeType_SourceUnit = 1
 const ASTNodeType_Import = 2
+const ASTNodeType_EnumDefinition = 3
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -27,6 +28,17 @@ function stringToIdentifier(str) {
 
     return {
         type: "Identifier",
+        name: str,
+    }
+}
+
+function stringToEnumValue(str) {
+    if(str === null) {
+        return null
+    }
+
+    return {
+        type: "EnumValue",
         name: str,
     }
 }
@@ -86,6 +98,22 @@ class Deserializer {
         }
     }
 
+    popEnumDefinition() {
+        const name = this.popString();
+
+        const membersCount = this.popU32();
+        const members = []
+        for(let i = 0; i < membersCount; i++) {
+            members.push(stringToEnumValue(this.popString()));
+        }
+
+        return {
+            type: "EnumDefinition",
+            name,
+            members,
+        }
+    }
+
     popASTNode() {
         const type = this.popU32();
 
@@ -93,6 +121,8 @@ class Deserializer {
             return this.popSourceUnit();
         } else if(type === ASTNodeType_Import) {
             return this.popImport();
+        } else if(type === ASTNodeType_EnumDefinition) {
+            return this.popEnumDefinition();
         }
     }
 
