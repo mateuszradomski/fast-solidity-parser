@@ -1,6 +1,7 @@
 const WasmParser = require('./wasmParse')
 const parser = require('@solidity-parser/parser')
 const fs = require('fs')
+const Diff = require('diff')
 
 async function main() {
     const args = process.argv.slice(2)
@@ -16,11 +17,12 @@ async function main() {
 
     if(antlrAST !== myAST) {
         console.log("ASTs are different")
-        console.log("ANTLR AST:", antlrAST)
-        console.log("WASM AST:", myAST)
     } else {
         console.log("ASTs are the same")
     }
+
+    fs.writeFileSync('antlrAST.json', antlrAST)
+    fs.writeFileSync('myAST.json', myAST)
 }
 
 main()

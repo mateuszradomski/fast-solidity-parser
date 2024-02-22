@@ -40,6 +40,8 @@ unsigned int bumpPointer = (unsigned int)(&__heap_base);
 
 extern void javascriptPrintStringPtr(void *s);
 extern void javascriptPrintNumber(u32 n);
+extern void traceBegin(u32 n);
+extern void traceEnd();
 
 #define WASM_PAGE_SIZE 65536
 

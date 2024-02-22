@@ -45,6 +45,39 @@ pushTokenStringById(Serializer *s, TokenId token) {
 }
 
 static u32
+pushType(Serializer *s, ASTNode node) {
+    u32 l = 0;
+
+    switch(node.type) {
+        case ASTNodeType_BaseType: {
+            l += pushU32(s, node.type);
+            l += pushTokenStringById(s, node.baseTypeNode.typeName);
+            l += pushU32(s, node.baseTypeNode.payable);
+        } break;
+        case ASTNodeType_IdentifierPath: {
+            l += pushU32(s, node.type);
+            l += pushU32(s, node.identifierPathNode.identifiers.count);
+            for(u32 i = 0; i < node.identifierPathNode.identifiers.count; i++) {
+                TokenId part = listGetTokenId(&node.identifierPathNode.identifiers, i);
+                l += pushTokenStringById(s, part);
+            }
+        } break;
+        case ASTNodeType_MappingType: {
+            l += pushU32(s, node.type);
+            l += pushType(s, *node.mappingNode.keyType);
+            l += pushTokenStringById(s, node.mappingNode.keyIdentifier);
+            l += pushType(s, *node.mappingNode.valueType);
+            l += pushTokenStringById(s, node.mappingNode.valueIdentifier);
+        } break;
+        default: {
+            assert(0);
+        }
+    }
+
+    return l;
+}
+
+static u32
 pushImportDirective(Serializer *s, ASTNode node) {
     u32 l = 0;
 
@@ -93,10 +126,11 @@ pushStruct(Serializer *s, ASTNode node) {
 
     assert(node.structNode.memberTypes.count == node.structNode.memberNames.count);
     l += pushU32(s, node.structNode.memberTypes.count);
-    for(u32 i = 0; i < node.structNode.memberTypes.count; i++) {
-        TokenId type = listGetTokenId(&node.structNode.memberTypes, i);
+
+    ASTNodeLink *typeLink = node.structNode.memberTypes.head;
+    for(u32 i = 0; i < node.structNode.memberTypes.count; i++, typeLink = typeLink->next) {
         TokenId name = listGetTokenId(&node.structNode.memberNames, i);
-        l += pushTokenStringById(s, type);
+        l += pushType(s, typeLink->node);
         l += pushTokenStringById(s, name);
     }
 

@@ -6,11 +6,17 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_Import,
     ASTNodeType_EnumDefinition,
     ASTNodeType_Struct,
+    ASTNodeType_BaseType,
+    ASTNodeType_FunctionType,
+    ASTNodeType_MappingType,
+    ASTNodeType_IdentifierPath,
+    ASTNodeType_ArrayType,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
 typedef u32 ASTNodeType;
 
+typedef struct ASTNode ASTNode;
 typedef struct ASTNodeLink ASTNodeLink;
 
 typedef struct ASTNodeList {
@@ -21,9 +27,25 @@ typedef struct ASTNodeList {
 
 typedef struct ASTNodeStruct {
     TokenId nameTokenId;
-    TokenIdList memberTypes;
+    ASTNodeList memberTypes;
     TokenIdList memberNames;
 } ASTNodeStruct;
+
+typedef struct ASTNodeBaseType {
+    TokenId typeName;
+    u32 payable;
+} ASTNodeBaseType;
+
+typedef struct ASTNodeIdentifierPath {
+    TokenIdList identifiers;
+} ASTNodeIdentifierPath;
+
+typedef struct ASTNodeMapping {
+    ASTNode *keyType;
+    TokenId keyIdentifier;
+    ASTNode *valueType;
+    TokenId valueIdentifier;
+} ASTNodeMapping;
 
 typedef struct ASTNode {
     ASTNodeType type;
@@ -43,6 +65,9 @@ typedef struct ASTNode {
             TokenIdList values;
         };
         ASTNodeStruct structNode;
+        ASTNodeBaseType baseTypeNode;
+        ASTNodeIdentifierPath identifierPathNode;
+        ASTNodeMapping mappingNode;
     };
 } ASTNode;
 
@@ -117,9 +142,170 @@ parseIdentifier(Parser *parser) {
     return peekLastTokenId(parser);
 }
 
-static TokenId
-parseType(Parser *parser) {
-    return parseIdentifier(parser);
+// TODO(radomski): This is obviously stupid
+static bool
+isBaseTypeName(String string) {
+    static String elementaryTypeNames[] = {
+        LIT_TO_STR("address"),
+        LIT_TO_STR("bool"),
+        LIT_TO_STR("string"),
+        LIT_TO_STR("bytes"),
+        LIT_TO_STR("int"),
+        LIT_TO_STR("int8"),
+        LIT_TO_STR("int16"),
+        LIT_TO_STR("int24"),
+        LIT_TO_STR("int32"),
+        LIT_TO_STR("int40"),
+        LIT_TO_STR("int48"),
+        LIT_TO_STR("int56"),
+        LIT_TO_STR("int64"),
+        LIT_TO_STR("int72"),
+        LIT_TO_STR("int80"),
+        LIT_TO_STR("int88"),
+        LIT_TO_STR("int96"),
+        LIT_TO_STR("int104"),
+        LIT_TO_STR("int112"),
+        LIT_TO_STR("int120"),
+        LIT_TO_STR("int128"),
+        LIT_TO_STR("int136"),
+        LIT_TO_STR("int144"),
+        LIT_TO_STR("int152"),
+        LIT_TO_STR("int160"),
+        LIT_TO_STR("int168"),
+        LIT_TO_STR("int176"),
+        LIT_TO_STR("int184"),
+        LIT_TO_STR("int192"),
+        LIT_TO_STR("int200"),
+        LIT_TO_STR("int208"),
+        LIT_TO_STR("int216"),
+        LIT_TO_STR("int224"),
+        LIT_TO_STR("int232"),
+        LIT_TO_STR("int240"),
+        LIT_TO_STR("int248"),
+        LIT_TO_STR("int256"),
+        LIT_TO_STR("uint"),
+        LIT_TO_STR("uint8"),
+        LIT_TO_STR("uint16"),
+        LIT_TO_STR("uint24"),
+        LIT_TO_STR("uint32"),
+        LIT_TO_STR("uint40"),
+        LIT_TO_STR("uint48"),
+        LIT_TO_STR("uint56"),
+        LIT_TO_STR("uint64"),
+        LIT_TO_STR("uint72"),
+        LIT_TO_STR("uint80"),
+        LIT_TO_STR("uint88"),
+        LIT_TO_STR("uint96"),
+        LIT_TO_STR("uint104"),
+        LIT_TO_STR("uint112"),
+        LIT_TO_STR("uint120"),
+        LIT_TO_STR("uint128"),
+        LIT_TO_STR("uint136"),
+        LIT_TO_STR("uint144"),
+        LIT_TO_STR("uint152"),
+        LIT_TO_STR("uint160"),
+        LIT_TO_STR("uint168"),
+        LIT_TO_STR("uint176"),
+        LIT_TO_STR("uint184"),
+        LIT_TO_STR("uint192"),
+        LIT_TO_STR("uint200"),
+        LIT_TO_STR("uint208"),
+        LIT_TO_STR("uint216"),
+        LIT_TO_STR("uint224"),
+        LIT_TO_STR("uint232"),
+        LIT_TO_STR("uint240"),
+        LIT_TO_STR("uint248"),
+        LIT_TO_STR("uint256"),
+        LIT_TO_STR("bytes1"),
+        LIT_TO_STR("bytes2"),
+        LIT_TO_STR("bytes3"),
+        LIT_TO_STR("bytes4"),
+        LIT_TO_STR("bytes5"),
+        LIT_TO_STR("bytes6"),
+        LIT_TO_STR("bytes7"),
+        LIT_TO_STR("bytes8"),
+        LIT_TO_STR("bytes9"),
+        LIT_TO_STR("bytes10"),
+        LIT_TO_STR("bytes11"),
+        LIT_TO_STR("bytes12"),
+        LIT_TO_STR("bytes13"),
+        LIT_TO_STR("bytes14"),
+        LIT_TO_STR("bytes15"),
+        LIT_TO_STR("bytes16"),
+        LIT_TO_STR("bytes17"),
+        LIT_TO_STR("bytes18"),
+        LIT_TO_STR("bytes19"),
+        LIT_TO_STR("bytes20"),
+        LIT_TO_STR("bytes21"),
+        LIT_TO_STR("bytes22"),
+        LIT_TO_STR("bytes23"),
+        LIT_TO_STR("bytes24"),
+        LIT_TO_STR("bytes25"),
+        LIT_TO_STR("bytes26"),
+        LIT_TO_STR("bytes27"),
+        LIT_TO_STR("bytes28"),
+        LIT_TO_STR("bytes29"),
+        LIT_TO_STR("bytes30"),
+        LIT_TO_STR("bytes31"),
+        LIT_TO_STR("bytes32"),
+        LIT_TO_STR("fixed"),
+        LIT_TO_STR("ufixed"),
+    };
+
+    for(u32 i = 0; i < ARRAY_LENGTH(elementaryTypeNames); i++) {
+        if(stringMatch(string, elementaryTypeNames[i])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static void
+parseType(Parser *parser, ASTNode *node, Arena *arena) {
+    TokenId identifier = INVALID_TOKEN_ID;
+
+    if(acceptToken(parser, TokenType_Mapping)) {
+        node->type = ASTNodeType_MappingType;
+        ASTNodeMapping *mapping = &node->mappingNode;
+
+        expectToken(parser, TokenType_LParen);
+        mapping->keyType = structPush(arena, ASTNode);
+        parseType(parser, mapping->keyType, arena);
+        assert(mapping->keyType->type == ASTNodeType_BaseType ||
+               mapping->keyType->type == ASTNodeType_IdentifierPath);
+        mapping->keyIdentifier = parseIdentifier(parser);
+
+        expectToken(parser, TokenType_Equal);
+        expectToken(parser, TokenType_RTick);
+
+        mapping->valueType = structPush(arena, ASTNode);
+        parseType(parser, mapping->valueType, arena);
+        mapping->valueIdentifier = parseIdentifier(parser);
+        expectToken(parser, TokenType_RParen);
+    } else if(acceptToken(parser, TokenType_Function)) {
+        assert(0);
+    } else if((identifier = parseIdentifier(parser)) != INVALID_TOKEN_ID) {
+        if(isBaseTypeName(parser->tokens[identifier].string)) {
+            node->type = ASTNodeType_BaseType;
+            node->baseTypeNode.typeName = identifier;
+
+            if(acceptToken(parser, TokenType_Payable)) {
+                assert(stringMatch(parser->tokens[identifier].string, LIT_TO_STR("address")));
+                node->baseTypeNode.payable = 1;
+            }
+        } else {
+            node->type = ASTNodeType_IdentifierPath;
+            listPushTokenId(&node->identifierPathNode.identifiers, identifier, arena);
+            while(acceptToken(parser, TokenType_Dot)) {
+                TokenId nextIdentifier = parseIdentifier(parser);
+                assert(nextIdentifier > 0);
+                listPushTokenId(&node->identifierPathNode.identifiers, nextIdentifier, arena);
+            }
+        }
+    } else {
+        assert(0);
+    }
 }
 
 static bool
@@ -202,9 +388,10 @@ parseStruct(Parser *parser, Arena *arena, ASTNode *baseNode) {
     expectToken(parser, TokenType_LBrace);
 
     while(!acceptToken(parser, TokenType_RBrace)) {
-        TokenId type = parseType(parser);
-        assert(type > 0);
-        listPushTokenId(&node->memberTypes, type, arena);
+        ASTNodeLink *typeLink = structPush(arena, ASTNodeLink);
+        parseType(parser, &typeLink->node, arena);
+        SLL_QUEUE_PUSH(node->memberTypes.head, node->memberTypes.last, typeLink);
+        node->memberTypes.count += 1;
 
         TokenId name = parseIdentifier(parser);
         assert(name > 0);

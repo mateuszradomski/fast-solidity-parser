@@ -8,6 +8,11 @@ const ASTNodeType_SourceUnit = 1
 const ASTNodeType_Import = 2
 const ASTNodeType_EnumDefinition = 3
 const ASTNodeType_StructDefinition = 4
+const ASTNodeType_BaseType = 5
+const ASTNodeType_FunctionType = 6
+const ASTNodeType_MappingType = 7
+const ASTNodeType_IdentifierPath = 8
+const ASTNodeType_ArrayType = 9
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -68,6 +73,47 @@ class Deserializer {
         }
     }
 
+    popType() {
+        const kind = this.popU32();
+
+        if(kind === ASTNodeType_BaseType) {
+            const name = this.popString();
+            const payable = this.popU32();
+            return {
+                type: "ElementaryTypeName",
+                name,
+                stateMutability: payable === 0 ? null : "payable"
+            }
+        } else if(kind === ASTNodeType_IdentifierPath) {
+            const identifiersCount = this.popU32();
+            let path = ""
+            for(let i = 0; i < identifiersCount; i++) {
+                path += this.popString();
+                if(i < identifiersCount - 1) {
+                    path += ".";
+                }
+            }
+            return {
+                type: "UserDefinedTypeName",
+                namePath: path,
+            }
+        } else if(kind === ASTNodeType_MappingType) {
+            const keyType = this.popType();
+            const keyIdentifier = this.popString();
+            const valueType = this.popType();
+            const valueIdentifier = this.popString();
+            return {
+                type: "Mapping",
+                keyType,
+                keyName: keyIdentifier,
+                valueType,
+                valueName: valueIdentifier,
+            }
+        } else {
+            throw new Error(`Unknown/Unsupported type kind: ${kind}`);
+        }
+    }
+
     popImport() {
         const path = this.popString();
         const unitAlias = this.popString();
@@ -120,15 +166,11 @@ class Deserializer {
         const membersCount = this.popU32();
         const members = []
         for(let i = 0; i < membersCount; i++) {
-            const memberType = this.popString();
+            const typeName = this.popType();
             const memberName = this.popString();
             members.push({
                 type: "VariableDeclaration",
-                typeName: {
-                    type: "ElementaryTypeName",
-                    name: memberType,
-                    stateMutability: null
-                },
+                typeName,
                 name: memberName,
                 identifier: stringToIdentifier(memberName),
                 storageLocation: null,
@@ -138,25 +180,6 @@ class Deserializer {
             });
         }
 
-        // {
-        //     "type": "VariableDeclaration",
-        //         "typeName": {
-        //             "type": "ElementaryTypeName",
-        //             "name": "int256",
-        //             "stateMutability": null
-        //         },
-        //         "name": "value",
-        //         "identifier": {
-        //             "type": "Identifier",
-        //             "name": "value"
-        //         },
-        //         "storageLocation": null,
-        //         "isStateVar": false,
-        //         "isIndexed": false,
-        //         "expression": null
-        // }
-
-        
         return {
             type: "StructDefinition",
             name,
@@ -289,6 +312,14 @@ class WasmParser {
 
     javascriptPrintNumber(number) {
         console.log(number);
+    }
+
+    traceBegin(number) {
+        profiler.trace_begin(`${number}`);
+    }
+
+    traceEnd() {
+        profiler.trace_end();
     }
 }
 
