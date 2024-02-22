@@ -1,7 +1,6 @@
 const WasmParser = require('./wasmParse')
 const parser = require('@solidity-parser/parser')
 const fs = require('fs')
-const Diff = require('diff')
 
 async function main() {
     const args = process.argv.slice(2)

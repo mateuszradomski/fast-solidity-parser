@@ -132,4 +132,16 @@ struct KeyValuePair {
     MyContract.MyStruct1.MyStruct2 a105;
     mapping(address => uint) a106;
     mapping(address => mapping(address => uint)) a107;
+
+    mapping(uint=>x) a108;
+    mapping(address => bytes32) a109;
+    mapping(bytes32 => test_struct) a110;
+    mapping (uint64 => mapping (bytes32 => uint)) a111;
+    mapping (address a => bool b) a112;
+    mapping(address=>bytes32) a113;
+    mapping(address=>bytes32) a114;
+    mapping (Foo => uint) a115;
+    mapping (address => bool) a116;
+    mapping (address a => bool) a117;
+    mapping (address => bool b) a118;
 }

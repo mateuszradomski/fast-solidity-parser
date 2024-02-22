@@ -105,9 +105,9 @@ class Deserializer {
             return {
                 type: "Mapping",
                 keyType,
-                keyName: keyIdentifier,
+                keyName: stringToIdentifier(keyIdentifier),
                 valueType,
-                valueName: valueIdentifier,
+                valueName: stringToIdentifier(valueIdentifier),
             }
         } else {
             throw new Error(`Unknown/Unsupported type kind: ${kind}`);
