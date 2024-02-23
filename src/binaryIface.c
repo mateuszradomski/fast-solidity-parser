@@ -89,6 +89,7 @@ pushExpression(Serializer *s, ASTNode node) {
     switch(node.type){
         case ASTNodeType_NumberLitExpression: {
             l += pushTokenStringById(s, node.numberLitExpressionNode.value);
+            l += pushTokenStringById(s, node.numberLitExpressionNode.subdenomination);
         } break;
         case ASTNodeType_StringLitExpression: {
             l += pushTokenStringById(s, node.stringLitExpressionNode.value);

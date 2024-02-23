@@ -102,6 +102,7 @@ typedef struct ASTNodeConstVariable {
 
 typedef struct ASTNodeNumberLitExpression {
     TokenId value;
+    TokenId subdenomination;
 } ASTNodeNumberLitExpression;
 
 typedef struct ASTNodeStringLitExpression {
@@ -210,6 +211,23 @@ parseIdentifier(Parser *parser) {
     }
 
     return peekLastTokenId(parser);
+}
+
+static TokenId
+parseSubdenomination(Parser *parser) {
+    if(acceptToken(parser, TokenType_Wei) ||
+       acceptToken(parser, TokenType_Gwei) ||
+       acceptToken(parser, TokenType_Ether) ||
+       acceptToken(parser, TokenType_Seconds) ||
+       acceptToken(parser, TokenType_Minutes) ||
+       acceptToken(parser, TokenType_Hours) ||
+       acceptToken(parser, TokenType_Days) ||
+       acceptToken(parser, TokenType_Weeks) ||
+       acceptToken(parser, TokenType_Years)) {
+        return peekLastTokenId(parser);
+    } else {
+        return INVALID_TOKEN_ID;
+    }
 }
 
 // TODO(radomski): This is obviously stupid
@@ -639,9 +657,11 @@ parseExpression(Parser *parser, ASTNode *node, Arena *arena) {
     if(acceptToken(parser, TokenType_HexNumberLit)) {
         node->type = ASTNodeType_NumberLitExpression;
         node->numberLitExpressionNode.value = peekLastTokenId(parser);
+        node->numberLitExpressionNode.subdenomination = INVALID_TOKEN_ID;
     } else if(acceptToken(parser, TokenType_NumberLit)) {
         node->type = ASTNodeType_NumberLitExpression;
         node->numberLitExpressionNode.value = peekLastTokenId(parser);
+        node->numberLitExpressionNode.subdenomination = parseSubdenomination(parser);
     } else if(acceptToken(parser, TokenType_StringLit)) {
         node->type = ASTNodeType_StringLitExpression;
         node->stringLitExpressionNode.value = peekLastTokenId(parser);

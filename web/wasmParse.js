@@ -133,11 +133,12 @@ class Deserializer {
 
         if(type === ASTNodeType_NumberLitExpression) {
             const value = this.popString();
+            const subdenomination = this.popString();
 
             return {
                 type: "NumberLiteral",
                 number: value,
-                subdenomination: null
+                subdenomination
             }
         } else if(type === ASTNodeType_StringLitExpression) {
             const value = this.popString();

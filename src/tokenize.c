@@ -54,6 +54,15 @@ static const String PRAGMA_TOKEN = LIT_TO_STR("pragma");
 static const String MAPPING_TOKEN = LIT_TO_STR("mapping");
 static const String STORAGE_TOKEN = LIT_TO_STR("storage");
 static const String CALLDATA_TOKEN = LIT_TO_STR("calldata");
+static const String WEI_TOKEN = LIT_TO_STR("wei");
+static const String GWEI_TOKEN = LIT_TO_STR("gwei");
+static const String ETHER_TOKEN = LIT_TO_STR("ether");
+static const String SECONDS_TOKEN = LIT_TO_STR("seconds");
+static const String MINUTES_TOKEN = LIT_TO_STR("minutes");
+static const String HOURS_TOKEN = LIT_TO_STR("hours");
+static const String DAYS_TOKEN = LIT_TO_STR("days");
+static const String WEEKS_TOKEN = LIT_TO_STR("weeks");
+static const String YEARS_TOKEN = LIT_TO_STR("years");
 
 typedef enum TokenType {
     TokenType_None,
@@ -113,6 +122,15 @@ typedef enum TokenType {
     TokenType_Mapping,
     TokenType_Storage,
     TokenType_Calldata,
+    TokenType_Wei,
+    TokenType_Gwei,
+    TokenType_Ether,
+    TokenType_Seconds,
+    TokenType_Minutes,
+    TokenType_Hours,
+    TokenType_Days,
+    TokenType_Weeks,
+    TokenType_Years,
     TokenType_Exclamation,
     TokenType_Plus,
     TokenType_Minus,
@@ -233,6 +251,15 @@ tokenTypeToString(TokenType tokenType) {
         case TokenType_Mapping: return LIT_TO_STR("Mapping");
         case TokenType_Storage: return LIT_TO_STR("Storage");
         case TokenType_Calldata: return LIT_TO_STR("Calldata");
+        case TokenType_Wei: return LIT_TO_STR("Wei");
+        case TokenType_Gwei: return LIT_TO_STR("Gwei");
+        case TokenType_Ether: return LIT_TO_STR("Ether");
+        case TokenType_Seconds: return LIT_TO_STR("Seconds");
+        case TokenType_Minutes: return LIT_TO_STR("Minutes");
+        case TokenType_Hours: return LIT_TO_STR("Hours");
+        case TokenType_Days: return LIT_TO_STR("Days");
+        case TokenType_Weeks: return LIT_TO_STR("Weeks");
+        case TokenType_Years: return LIT_TO_STR("Years");
         case TokenType_Exclamation: return LIT_TO_STR("Exclamation");
         case TokenType_Plus: return LIT_TO_STR("Plus");
         case TokenType_Minus: return LIT_TO_STR("Minus");
@@ -499,6 +526,24 @@ tokenize(String source, Arena *arena) {
                 pushToken(&result, TokenType_Storage, symbol);
             } else if(stringMatch(symbol, CALLDATA_TOKEN)) {
                 pushToken(&result, TokenType_Calldata, symbol);
+            } else if(stringMatch(symbol, WEI_TOKEN)) {
+                pushToken(&result, TokenType_Wei, symbol);
+            } else if(stringMatch(symbol, GWEI_TOKEN)) {
+                pushToken(&result, TokenType_Gwei, symbol);
+            } else if(stringMatch(symbol, ETHER_TOKEN)) {
+                pushToken(&result, TokenType_Ether, symbol);
+            } else if(stringMatch(symbol, SECONDS_TOKEN)) {
+                pushToken(&result, TokenType_Seconds, symbol);
+            } else if(stringMatch(symbol, MINUTES_TOKEN)) {
+                pushToken(&result, TokenType_Minutes, symbol);
+            } else if(stringMatch(symbol, HOURS_TOKEN)) {
+                pushToken(&result, TokenType_Hours, symbol);
+            } else if(stringMatch(symbol, DAYS_TOKEN)) {
+                pushToken(&result, TokenType_Days, symbol);
+            } else if(stringMatch(symbol, WEEKS_TOKEN)) {
+                pushToken(&result, TokenType_Weeks, symbol);
+            } else if(stringMatch(symbol, YEARS_TOKEN)) {
+                pushToken(&result, TokenType_Years, symbol);
             } else {
                 pushToken(&result, TokenType_Symbol, symbol);
             }
