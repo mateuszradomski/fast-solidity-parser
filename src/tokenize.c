@@ -52,6 +52,8 @@ static const String REVERT_TOKEN = LIT_TO_STR("revert");
 static const String ASSEMBLY_TOKEN = LIT_TO_STR("assembly");
 static const String PRAGMA_TOKEN = LIT_TO_STR("pragma");
 static const String MAPPING_TOKEN = LIT_TO_STR("mapping");
+static const String STORAGE_TOKEN = LIT_TO_STR("storage");
+static const String CALLDATA_TOKEN = LIT_TO_STR("calldata");
 
 typedef enum TokenType {
     TokenType_None,
@@ -109,6 +111,8 @@ typedef enum TokenType {
     TokenType_Assembly,
     TokenType_Pragma,
     TokenType_Mapping,
+    TokenType_Storage,
+    TokenType_Calldata,
     TokenType_Exclamation,
     TokenType_Plus,
     TokenType_Minus,
@@ -227,6 +231,8 @@ tokenTypeToString(TokenType tokenType) {
         case TokenType_Assembly: return LIT_TO_STR("Assembly");
         case TokenType_Pragma: return LIT_TO_STR("Pragma");
         case TokenType_Mapping: return LIT_TO_STR("Mapping");
+        case TokenType_Storage: return LIT_TO_STR("Storage");
+        case TokenType_Calldata: return LIT_TO_STR("Calldata");
         case TokenType_Exclamation: return LIT_TO_STR("Exclamation");
         case TokenType_Plus: return LIT_TO_STR("Plus");
         case TokenType_Minus: return LIT_TO_STR("Minus");
@@ -489,6 +495,10 @@ tokenize(String source, Arena *arena) {
                 pushToken(&result, TokenType_Pragma, symbol);
             } else if(stringMatch(symbol, MAPPING_TOKEN)) {
                 pushToken(&result, TokenType_Mapping, symbol);
+            } else if(stringMatch(symbol, STORAGE_TOKEN)) {
+                pushToken(&result, TokenType_Storage, symbol);
+            } else if(stringMatch(symbol, CALLDATA_TOKEN)) {
+                pushToken(&result, TokenType_Calldata, symbol);
             } else {
                 pushToken(&result, TokenType_Symbol, symbol);
             }

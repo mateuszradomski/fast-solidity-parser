@@ -19,6 +19,19 @@ typedef u32 ASTNodeType;
 typedef struct ASTNode ASTNode;
 typedef struct ASTNodeLink ASTNodeLink;
 
+typedef struct FunctionParameter {
+    ASTNode *type;
+    u32 dataLocation;
+    TokenId identifier;
+    struct FunctionParameter *next;
+} FunctionParameter;
+
+typedef struct FunctionParameterList {
+    FunctionParameter *head;
+    FunctionParameter *last;
+    u32 count;
+} FunctionParameterList;
+
 typedef struct ASTNodeList {
     ASTNodeLink *head;
     ASTNodeLink *last;
@@ -47,6 +60,17 @@ typedef struct ASTNodeMapping {
     TokenId valueIdentifier;
 } ASTNodeMapping;
 
+typedef struct ASTNodeFunctionType {
+    FunctionParameterList parameters;
+    u16 visibility;
+    u16 stateMutability;
+    FunctionParameterList returnParameters;
+} ASTNodeFunctionType;
+
+typedef struct ASTNodeArrayType {
+    ASTNode *elementType;
+} ASTNodeArrayType;
+
 typedef struct ASTNode {
     ASTNodeType type;
 
@@ -68,6 +92,8 @@ typedef struct ASTNode {
         ASTNodeBaseType baseTypeNode;
         ASTNodeIdentifierPath identifierPathNode;
         ASTNodeMapping mappingNode;
+        ASTNodeFunctionType functionTypeNode;
+        ASTNodeArrayType arrayTypeNode;
     };
 } ASTNode;
 
@@ -284,7 +310,81 @@ parseType(Parser *parser, ASTNode *node, Arena *arena) {
         mapping->valueIdentifier = parseIdentifier(parser);
         expectToken(parser, TokenType_RParen);
     } else if(acceptToken(parser, TokenType_Function)) {
-        assert(0);
+        node->type = ASTNodeType_FunctionType;
+        ASTNodeFunctionType *function = &node->functionTypeNode;
+        expectToken(parser, TokenType_LParen);
+
+        if(!acceptToken(parser, TokenType_RParen)) {
+            do {
+                FunctionParameter *parameter = structPush(arena, FunctionParameter);
+                parameter->type = structPush(arena, ASTNode);
+                parseType(parser, parameter->type, arena);
+                if(acceptToken(parser, TokenType_Payable)) {
+                    parameter->dataLocation = 1;
+                } else if(acceptToken(parser, TokenType_Storage)) {
+                    parameter->dataLocation = 2;
+                } else if(acceptToken(parser, TokenType_Calldata)) {
+                    parameter->dataLocation = 3;
+                } else {
+                    assert(0);
+                }
+
+                parameter->identifier = parseIdentifier(parser);
+
+                SLL_QUEUE_PUSH(function->parameters.head, function->parameters.last, parameter);
+                function->parameters.count += 1;
+            } while(acceptToken(parser, TokenType_Comma));
+        }
+
+        expectToken(parser, TokenType_RParen);
+        
+        if(acceptToken(parser, TokenType_Internal)) {
+            function->visibility = 1;
+        } else if(acceptToken(parser, TokenType_External)) {
+            function->visibility = 2;
+        } else if(acceptToken(parser, TokenType_Private)) {
+            function->visibility = 3;
+        } else if(acceptToken(parser, TokenType_Public)) {
+            function->visibility = 4;
+        } else {
+            assert(0);
+        }
+
+        if(acceptToken(parser, TokenType_Pure)) {
+            function->stateMutability = 1;
+        } else if(acceptToken(parser, TokenType_View)) {
+            function->stateMutability = 2;
+        } else if(acceptToken(parser, TokenType_Payable)) {
+            function->stateMutability = 3;
+        } else {
+            function->stateMutability = 0;
+        }
+
+        expectToken(parser, TokenType_Returns);
+        expectToken(parser, TokenType_LParen);
+
+        if(!acceptToken(parser, TokenType_RParen)) {
+            do {
+                FunctionParameter *parameter = structPush(arena, FunctionParameter);
+                parameter->type = structPush(arena, ASTNode);
+                parseType(parser, parameter->type, arena);
+                if(acceptToken(parser, TokenType_Payable)) {
+                    parameter->dataLocation = 1;
+                } else if(acceptToken(parser, TokenType_Storage)) {
+                    parameter->dataLocation = 2;
+                } else if(acceptToken(parser, TokenType_Calldata)) {
+                    parameter->dataLocation = 3;
+                } else {
+                    assert(0);
+                }
+
+                parameter->identifier = parseIdentifier(parser);
+
+                SLL_QUEUE_PUSH(function->parameters.head, function->parameters.last, parameter);
+                function->parameters.count += 1;
+            } while(acceptToken(parser, TokenType_Comma));
+        }
+        expectToken(parser, TokenType_RParen);
     } else if((identifier = parseIdentifier(parser)) != INVALID_TOKEN_ID) {
         if(isBaseTypeName(parser->tokens[identifier].string)) {
             node->type = ASTNodeType_BaseType;
@@ -305,6 +405,14 @@ parseType(Parser *parser, ASTNode *node, Arena *arena) {
         }
     } else {
         assert(0);
+    }
+
+    while(acceptToken(parser, TokenType_LBracket)) {
+        ASTNode *copy = structPush(arena, ASTNode);
+        *copy = *node;
+        node->type = ASTNodeType_ArrayType;
+        node->arrayTypeNode.elementType = copy;
+        expectToken(parser, TokenType_RBracket);
     }
 }
 

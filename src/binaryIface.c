@@ -69,6 +69,10 @@ pushType(Serializer *s, ASTNode node) {
             l += pushType(s, *node.mappingNode.valueType);
             l += pushTokenStringById(s, node.mappingNode.valueIdentifier);
         } break;
+        case ASTNodeType_ArrayType: {
+            l += pushU32(s, node.type);
+            l += pushType(s, *node.arrayTypeNode.elementType);
+        } break;
         default: {
             assert(0);
         }

@@ -109,6 +109,13 @@ class Deserializer {
                 valueType,
                 valueName: stringToIdentifier(valueIdentifier),
             }
+        } else if(kind === ASTNodeType_ArrayType) {
+            const baseType = this.popType();
+            return {
+                type: "ArrayTypeName",
+                baseTypeName: baseType,
+                length: null,
+            }
         } else {
             throw new Error(`Unknown/Unsupported type kind: ${kind}`);
         }

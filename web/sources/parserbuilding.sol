@@ -144,4 +144,11 @@ struct KeyValuePair {
     mapping (address => bool) a116;
     mapping (address a => bool) a117;
     mapping (address => bool b) a118;
+
+    uint[] a119;
+    uint[][] a120;
+    uint[][][] a121;
+    KeyValuePair[] a122;
+    Locations a123;
+    mapping(uint=>x)[] a124;
 }
