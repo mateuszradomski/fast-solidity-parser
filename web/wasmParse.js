@@ -19,6 +19,7 @@ const ASTNodeType_Typedef = 12
 const ASTNodeType_ConstVariable = 13
 const ASTNodeType_NumberLitExpression = 14
 const ASTNodeType_StringLitExpression = 15
+const ASTNodeType_BoolLitExpression = 16
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -146,6 +147,13 @@ class Deserializer {
                 value,
                 parts: [value],
                 isUnicode: [false]
+            }
+        } else if(type === ASTNodeType_BoolLitExpression) {
+            const value = this.popString();
+
+            return {
+                type: "BooleanLiteral",
+                value: value === "true"
             }
         } else {
             throw new Error(`Unknown/Unsupported expression type: ${type}`);

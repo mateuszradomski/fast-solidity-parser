@@ -93,6 +93,9 @@ pushExpression(Serializer *s, ASTNode node) {
         case ASTNodeType_StringLitExpression: {
             l += pushTokenStringById(s, node.stringLitExpressionNode.value);
         } break;
+        case ASTNodeType_BoolLitExpression: {
+            l += pushTokenStringById(s, node.boolLitExpressionNode.value);
+        } break;
         default: {
             assert(0);
         }

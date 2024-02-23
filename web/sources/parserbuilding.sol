@@ -3051,3 +3051,5 @@ uint8 constant L2MessageType_unsignedContractTx = 1;
 uint8 constant L2MessageType_unsignedEOATx = 0;
 uint8 constant L2_MSG = 3;
 uint8 constant ROLLUP_PROTOCOL_EVENT_TYPE = 8;
+bool constant IS_TRUE = true;
+bool constant IS_FALSE = false;
