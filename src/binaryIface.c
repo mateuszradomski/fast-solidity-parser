@@ -82,6 +82,26 @@ pushType(Serializer *s, ASTNode node) {
 }
 
 static u32
+pushExpression(Serializer *s, ASTNode node) {
+    u32 l = 0;
+
+    l += pushU32(s, node.type);
+    switch(node.type){
+        case ASTNodeType_NumberLitExpression: {
+            l += pushTokenStringById(s, node.numberLitExpressionNode.value);
+        } break;
+        case ASTNodeType_StringLitExpression: {
+            l += pushTokenStringById(s, node.stringLitExpressionNode.value);
+        } break;
+        default: {
+            assert(0);
+        }
+    }
+
+    return l;
+}
+
+static u32
 pushImportDirective(Serializer *s, ASTNode node) {
     u32 l = 0;
 
@@ -192,6 +212,19 @@ pushTypedef(Serializer *s, ASTNode node) {
 }
 
 static u32
+pushConstVariable(Serializer *s, ASTNode node) {
+    u32 l = 0;
+
+    l += pushU32(s, node.type);
+    ASTNodeConstVariable *constNode = &node.constVariableNode;
+    l += pushTokenStringById(s, constNode->identifier);
+    l += pushType(s, *constNode->type);
+    l += pushExpression(s, *constNode->expression);
+
+    return l;
+}
+
+static u32
 pushASTNode(Serializer *s, ASTNode node) {
     u32 l = 0;
 
@@ -213,6 +246,9 @@ pushASTNode(Serializer *s, ASTNode node) {
         } break;
         case ASTNodeType_Typedef: {
             l = pushTypedef(s, node);
+        } break;
+        case ASTNodeType_ConstVariable: {
+            l = pushConstVariable(s, node);
         } break;
         default: {
             assert(0);

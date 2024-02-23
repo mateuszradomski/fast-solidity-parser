@@ -16,6 +16,9 @@ const ASTNodeType_ArrayType = 9
 const ASTNodeType_Error = 10
 const ASTNodeType_Event = 11
 const ASTNodeType_Typedef = 12
+const ASTNodeType_ConstVariable = 13
+const ASTNodeType_NumberLitExpression = 14
+const ASTNodeType_StringLitExpression = 15
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -121,6 +124,31 @@ class Deserializer {
             }
         } else {
             throw new Error(`Unknown/Unsupported type kind: ${kind}`);
+        }
+    }
+
+    popExpression() {
+        const type = this.popU32();
+
+        if(type === ASTNodeType_NumberLitExpression) {
+            const value = this.popString();
+
+            return {
+                type: "NumberLiteral",
+                number: value,
+                subdenomination: null
+            }
+        } else if(type === ASTNodeType_StringLitExpression) {
+            const value = this.popString();
+
+            return {
+                type: "StringLiteral",
+                value,
+                parts: [value],
+                isUnicode: [false]
+            }
+        } else {
+            throw new Error(`Unknown/Unsupported expression type: ${type}`);
         }
     }
 
@@ -265,6 +293,21 @@ class Deserializer {
         }
     }
 
+    popConstVariable() {
+        const name = this.popString();
+        const typeName = this.popType();
+        const initialValue = this.popExpression();
+
+        return {
+            type: "FileLevelConstant",
+            typeName,
+            name,
+            initialValue,
+            isDeclaredConst: true,
+            isImmutable: false,
+        }
+    }
+
     popASTNode() {
         const type = this.popU32();
 
@@ -282,6 +325,8 @@ class Deserializer {
             return this.popEvent();
         } else if(type === ASTNodeType_Typedef) {
             return this.popTypedef();
+        } else if(type === ASTNodeType_ConstVariable) {
+            return this.popConstVariable();
         }
     }
 

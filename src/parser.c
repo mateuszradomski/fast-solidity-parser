@@ -14,6 +14,9 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_Error,
     ASTNodeType_Event,
     ASTNodeType_Typedef,
+    ASTNodeType_ConstVariable,
+    ASTNodeType_NumberLitExpression,
+    ASTNodeType_StringLitExpression,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -90,6 +93,20 @@ typedef struct ASTNodeTypedef {
     ASTNode *type;
 } ASTNodeTypedef;
 
+typedef struct ASTNodeConstVariable {
+    TokenId identifier;
+    ASTNode *type;
+    ASTNode *expression;
+} ASTNodeConstVariable;
+
+typedef struct ASTNodeNumberLitExpression {
+    TokenId value;
+} ASTNodeNumberLitExpression;
+
+typedef struct ASTNodeStringLitExpression {
+    TokenId value;
+} ASTNodeStringLitExpression;
+
 typedef struct ASTNode {
     ASTNodeType type;
 
@@ -116,6 +133,9 @@ typedef struct ASTNode {
         ASTNodeError errorNode;
         ASTNodeEvent eventNode;
         ASTNodeTypedef typedefNode;
+        ASTNodeConstVariable constVariableNode;
+        ASTNodeNumberLitExpression numberLitExpressionNode;
+        ASTNodeStringLitExpression stringLitExpressionNode;
     };
 } ASTNode;
 
@@ -612,6 +632,41 @@ parseTypedef(Parser *parser, Arena *arena, ASTNode *node) {
     return true;
 }
 
+static bool
+parseExpression(Parser *parser, ASTNode *node, Arena *arena) {
+    if(acceptToken(parser, TokenType_HexNumberLit)) {
+        node->type = ASTNodeType_NumberLitExpression;
+        node->numberLitExpressionNode.value = peekLastTokenId(parser);
+    } else if(acceptToken(parser, TokenType_NumberLit)) {
+        node->type = ASTNodeType_NumberLitExpression;
+        node->numberLitExpressionNode.value = peekLastTokenId(parser);
+    } else if(acceptToken(parser, TokenType_StringLit)) {
+        node->type = ASTNodeType_StringLitExpression;
+        node->stringLitExpressionNode.value = peekLastTokenId(parser);
+    } else {
+        assert(false);
+    }
+    return true;
+}
+
+static bool
+parseConstVariable(Parser *parser, Arena *arena, ASTNode *node, ASTNode *type) {
+    node->type = ASTNodeType_ConstVariable;
+    ASTNodeConstVariable *constVariable = &node->constVariableNode;
+
+    constVariable->type = type;
+    constVariable->identifier = parseIdentifier(parser);
+    assert(constVariable->identifier > 0);
+
+    expectToken(parser, TokenType_Equal);
+
+    constVariable->expression = structPush(arena, ASTNode);
+    parseExpression(parser, constVariable->expression, arena);
+
+    expectToken(parser, TokenType_Semicolon);
+    return true;
+}
+
 static ASTNode
 parseSourceUnit(Parser *parser, Arena *arena) {
     ASTNode node = { .type = ASTNodeType_SourceUnit };
@@ -640,7 +695,11 @@ parseSourceUnit(Parser *parser, Arena *arena) {
         } else if(acceptToken(parser, TokenType_Comment)) {
             continue;
         } else {
-            assert(false);
+            ASTNode *type = structPush(arena, ASTNode);
+            parseType(parser, type, arena);
+            if(acceptToken(parser, TokenType_Constant)) {
+                parseConstVariable(parser, arena, &child->node, type);
+            }
         }
 
         SLL_QUEUE_PUSH(node.children.head, node.children.last, child);
