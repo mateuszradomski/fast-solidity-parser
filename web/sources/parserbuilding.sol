@@ -152,3 +152,7 @@ struct KeyValuePair {
     Locations a123;
     mapping(uint=>x)[] a124;
 }
+
+error TopLevelCustomError();
+error TopLevelCustomErrorWithArg(uint x);
+error TopLevelCustomErrorArgWithoutName(string);

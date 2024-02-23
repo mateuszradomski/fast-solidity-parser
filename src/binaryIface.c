@@ -142,6 +142,24 @@ pushStruct(Serializer *s, ASTNode node) {
 }
 
 static u32
+pushError(Serializer *s, ASTNode node) {
+    u32 l = 0;
+
+    l += pushU32(s, node.type);
+    ASTNodeError *error = &node.errorNode;
+    l += pushTokenStringById(s, error->identifier);
+
+    FunctionParameter *param = error->parameters.head;
+    l += pushU32(s, error->parameters.count);
+    for(u32 i = 0; i < error->parameters.count; i++, param = param->next) {
+        l += pushType(s, *param->type);
+        l += pushTokenStringById(s, param->identifier);
+    }
+
+    return l;
+}
+
+static u32
 pushASTNode(Serializer *s, ASTNode node) {
     u32 l = 0;
 
@@ -154,6 +172,9 @@ pushASTNode(Serializer *s, ASTNode node) {
         } break;
         case ASTNodeType_Struct: {
             l = pushStruct(s, node);
+        } break;
+        case ASTNodeType_Error: {
+            l = pushError(s, node);
         } break;
         default: {
             assert(0);

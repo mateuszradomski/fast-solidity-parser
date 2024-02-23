@@ -11,6 +11,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_MappingType,
     ASTNodeType_IdentifierPath,
     ASTNodeType_ArrayType,
+    ASTNodeType_Error,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -71,6 +72,11 @@ typedef struct ASTNodeArrayType {
     ASTNode *elementType;
 } ASTNodeArrayType;
 
+typedef struct ASTNodeError {
+    TokenId identifier;
+    FunctionParameterList parameters;
+} ASTNodeError;
+
 typedef struct ASTNode {
     ASTNodeType type;
 
@@ -94,6 +100,7 @@ typedef struct ASTNode {
         ASTNodeMapping mappingNode;
         ASTNodeFunctionType functionTypeNode;
         ASTNodeArrayType arrayTypeNode;
+        ASTNodeError errorNode;
     };
 } ASTNode;
 
@@ -511,6 +518,32 @@ parseStruct(Parser *parser, Arena *arena, ASTNode *baseNode) {
     return true;
 }
 
+static bool
+parseError(Parser *parser, Arena *arena, ASTNode *node) {
+    node->type = ASTNodeType_Error;
+    ASTNodeError *error = &node->errorNode;
+    error->identifier = parseIdentifier(parser);
+    assert(error->identifier > 0);
+
+    expectToken(parser, TokenType_LParen);
+
+    if(!acceptToken(parser, TokenType_RParen)) {
+        do {
+            FunctionParameter *parameter = structPush(arena, FunctionParameter);
+            parameter->type = structPush(arena, ASTNode);
+            parseType(parser, parameter->type, arena);
+            parameter->identifier = parseIdentifier(parser);
+
+            SLL_QUEUE_PUSH(error->parameters.head, error->parameters.last, parameter);
+            error->parameters.count += 1;
+        } while(acceptToken(parser, TokenType_Comma));
+        expectToken(parser, TokenType_RParen);
+    }
+
+    expectToken(parser, TokenType_Semicolon);
+    return true;
+}
+
 static ASTNode
 parseSourceUnit(Parser *parser, Arena *arena) {
     ASTNode node = { .type = ASTNodeType_SourceUnit };
@@ -528,6 +561,8 @@ parseSourceUnit(Parser *parser, Arena *arena) {
             assert(parseEnum(parser, arena, &child->node));
         } else if(acceptToken(parser, TokenType_Struct)) {
             assert(parseStruct(parser, arena, &child->node));
+        } else if(acceptToken(parser, TokenType_Error)) {
+            assert(parseError(parser, arena, &child->node));
         } else if(acceptToken(parser, TokenType_EOF)) {
             break;
         } else if(acceptToken(parser, TokenType_Comment)) {

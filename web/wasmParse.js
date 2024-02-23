@@ -13,6 +13,7 @@ const ASTNodeType_FunctionType = 6
 const ASTNodeType_MappingType = 7
 const ASTNodeType_IdentifierPath = 8
 const ASTNodeType_ArrayType = 9
+const ASTNodeType_Error = 10
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -194,6 +195,32 @@ class Deserializer {
         }
     }
 
+    popError() {
+        const name = this.popString();
+        const paramCount = this.popU32();
+        const params = []
+        for(let i = 0; i < paramCount; i++) {
+            const typeName = this.popType();
+            const paramName = this.popString();
+            params.push({
+                        type: "VariableDeclaration",
+                        typeName,
+                        name: paramName,
+                        identifier: stringToIdentifier(paramName),
+                        storageLocation: null,
+                        isStateVar: false,
+                        isIndexed: false,
+                        expression: null
+            });
+        }
+
+        return {
+            type: "CustomErrorDefinition",
+            name,
+            parameters: params
+        }
+    }
+
     popASTNode() {
         const type = this.popU32();
 
@@ -205,6 +232,8 @@ class Deserializer {
             return this.popEnumDefinition();
         } else if(type === ASTNodeType_StructDefinition) {
             return this.popStructDefinition();
+        } else if(type === ASTNodeType_Error) {
+            return this.popError();
         }
     }
 
