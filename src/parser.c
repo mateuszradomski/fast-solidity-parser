@@ -18,6 +18,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_NumberLitExpression,
     ASTNodeType_StringLitExpression,
     ASTNodeType_BoolLitExpression,
+    ASTNodeType_IdentifierExpression,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -139,6 +140,7 @@ typedef struct ASTNode {
         ASTNodeNumberLitExpression numberLitExpressionNode;
         ASTNodeStringLitExpression stringLitExpressionNode;
         ASTNodeStringLitExpression boolLitExpressionNode;
+        ASTNodeStringLitExpression identifierExpressionNode;
     };
 } ASTNode;
 
@@ -668,6 +670,9 @@ parseExpression(Parser *parser, ASTNode *node, Arena *arena) {
     } else if(acceptToken(parser, TokenType_True) || acceptToken(parser, TokenType_False)) {
         node->type = ASTNodeType_BoolLitExpression;
         node->boolLitExpressionNode.value = peekLastTokenId(parser);
+    } else if(parseIdentifier(parser) != INVALID_TOKEN_ID) {
+        node->type = ASTNodeType_IdentifierExpression;
+        node->identifierExpressionNode.value = peekLastTokenId(parser);
     } else {
         assert(false);
     }
