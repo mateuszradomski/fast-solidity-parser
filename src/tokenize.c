@@ -644,14 +644,39 @@ tokenize(String source, Arena *arena) {
             } else {
                 String symbol = { .data = c.head - 1, .size = 1 };
 
+                if(peekByte(&c) == '.') {
+                    symbol.size += 1;
+                    consumeByte(&c);
+                }
+
                 while(consumerGood(&c)) {
                     u8 nextByte = peekByte(&c);
-                    if(!isDigit(nextByte)) {
+                    if(!(isDigit(nextByte) || nextByte == '_')) {
                         break;
                     }
 
                     symbol.size += 1;
                     consumeByte(&c);
+                }
+
+                if(peekByte(&c) == 'e' || peekByte(&c) == 'E') {
+                    symbol.size += 1;
+                    consumeByte(&c);
+
+                    if(peekByte(&c) == '-') {
+                        symbol.size += 1;
+                        consumeByte(&c);
+                    }
+
+                    while(consumerGood(&c)) {
+                        u8 nextByte = peekByte(&c);
+                        if(isDigit(nextByte) || nextByte == '_') {
+                            symbol.size += 1;
+                            consumeByte(&c);
+                        } else {
+                            break;
+                        }
+                    }
                 }
 
                 pushToken(&result, TokenType_NumberLit, symbol);
