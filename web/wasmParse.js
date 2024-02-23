@@ -15,6 +15,7 @@ const ASTNodeType_IdentifierPath = 8
 const ASTNodeType_ArrayType = 9
 const ASTNodeType_Error = 10
 const ASTNodeType_Event = 11
+const ASTNodeType_Typedef = 12
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -253,6 +254,17 @@ class Deserializer {
 
     }
 
+    popTypedef() {
+        const name = this.popString();
+        const type = this.popType();
+
+        return {
+            type: "TypeDefinition",
+            name,
+            definition: type
+        }
+    }
+
     popASTNode() {
         const type = this.popU32();
 
@@ -268,6 +280,8 @@ class Deserializer {
             return this.popError();
         } else if(type === ASTNodeType_Event) {
             return this.popEvent();
+        } else if(type === ASTNodeType_Typedef) {
+            return this.popTypedef();
         }
     }
 

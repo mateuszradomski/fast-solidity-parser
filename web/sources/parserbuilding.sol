@@ -1583,3 +1583,12 @@ error WhitelistingDisabled();
 error WithdrawEthFail(address destination);
 error ZeroAddress();
 error ZeroAmount();
+
+type MemoryPointer is uint256;
+type ShortString is bytes32;
+type TUint256Slot is bytes32;
+type Fixed18 is int256;
+type Price is uint128;
+type Quantity is uint128;
+type UFixed is uint256;
+type Id is uint8;

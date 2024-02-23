@@ -180,6 +180,18 @@ pushEvent(Serializer *s, ASTNode node) {
 }
 
 static u32
+pushTypedef(Serializer *s, ASTNode node) {
+    u32 l = 0;
+
+    l += pushU32(s, node.type);
+    ASTNodeTypedef *typedefNode = &node.typedefNode;
+    l += pushTokenStringById(s, typedefNode->identifier);
+    l += pushType(s, *typedefNode->type);
+
+    return l;
+}
+
+static u32
 pushASTNode(Serializer *s, ASTNode node) {
     u32 l = 0;
 
@@ -198,6 +210,9 @@ pushASTNode(Serializer *s, ASTNode node) {
         } break;
         case ASTNodeType_Event: {
             l = pushEvent(s, node);
+        } break;
+        case ASTNodeType_Typedef: {
+            l = pushTypedef(s, node);
         } break;
         default: {
             assert(0);

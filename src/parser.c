@@ -13,6 +13,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_ArrayType,
     ASTNodeType_Error,
     ASTNodeType_Event,
+    ASTNodeType_Typedef,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -84,6 +85,11 @@ typedef struct ASTNodeEvent {
     u32 anonymous;
 } ASTNodeEvent;
 
+typedef struct ASTNodeTypedef {
+    TokenId identifier;
+    ASTNode *type;
+} ASTNodeTypedef;
+
 typedef struct ASTNode {
     ASTNodeType type;
 
@@ -109,6 +115,7 @@ typedef struct ASTNode {
         ASTNodeArrayType arrayTypeNode;
         ASTNodeError errorNode;
         ASTNodeEvent eventNode;
+        ASTNodeTypedef typedefNode;
     };
 } ASTNode;
 
@@ -587,6 +594,24 @@ parseEvent(Parser *parser, Arena *arena, ASTNode *node) {
     return true;
 }
 
+static bool
+parseTypedef(Parser *parser, Arena *arena, ASTNode *node) {
+    node->type = ASTNodeType_Typedef;
+    ASTNodeTypedef *typedefNode = &node->typedefNode;
+
+    typedefNode->identifier = parseIdentifier(parser);
+    assert(typedefNode->identifier > 0);
+
+    expectToken(parser, TokenType_Is);
+
+    typedefNode->type = structPush(arena, ASTNode);
+    parseType(parser, typedefNode->type, arena);
+    assert(typedefNode->type->type == ASTNodeType_BaseType);
+
+    expectToken(parser, TokenType_Semicolon);
+    return true;
+}
+
 static ASTNode
 parseSourceUnit(Parser *parser, Arena *arena) {
     ASTNode node = { .type = ASTNodeType_SourceUnit };
@@ -608,6 +633,8 @@ parseSourceUnit(Parser *parser, Arena *arena) {
             assert(parseError(parser, arena, &child->node));
         } else if(acceptToken(parser, TokenType_Event)) {
             assert(parseEvent(parser, arena, &child->node));
+        } else if(acceptToken(parser, TokenType_Type)) {
+            assert(parseTypedef(parser, arena, &child->node));
         } else if(acceptToken(parser, TokenType_EOF)) {
             break;
         } else if(acceptToken(parser, TokenType_Comment)) {
