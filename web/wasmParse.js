@@ -14,6 +14,7 @@ const ASTNodeType_MappingType = 7
 const ASTNodeType_IdentifierPath = 8
 const ASTNodeType_ArrayType = 9
 const ASTNodeType_Error = 10
+const ASTNodeType_Event = 11
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -221,6 +222,37 @@ class Deserializer {
         }
     }
 
+    popEvent() {
+        const name = this.popString();
+        const isAnonymous = this.popU32() === 1;
+        const paramCount = this.popU32();
+        const params = []
+        for(let i = 0; i < paramCount; i++) {
+            const typeName = this.popType();
+            const paramName = this.popString();
+            const indexed = this.popU32();
+            params.push({
+                        type: "VariableDeclaration",
+                        typeName,
+                        name: paramName,
+                        identifier: stringToIdentifier(paramName),
+                        isStateVar: false,
+                        isIndexed: indexed === 1,
+                        storageLocation: null,
+                        expression: null
+            });
+        }
+
+
+        return {
+            type: "EventDefinition",
+            name,
+            parameters: params,
+            isAnonymous
+        }
+
+    }
+
     popASTNode() {
         const type = this.popU32();
 
@@ -234,6 +266,8 @@ class Deserializer {
             return this.popStructDefinition();
         } else if(type === ASTNodeType_Error) {
             return this.popError();
+        } else if(type === ASTNodeType_Event) {
+            return this.popEvent();
         }
     }
 

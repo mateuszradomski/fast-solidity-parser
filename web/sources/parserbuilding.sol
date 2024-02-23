@@ -156,3 +156,9 @@ struct KeyValuePair {
 error TopLevelCustomError();
 error TopLevelCustomErrorWithArg(uint x);
 error TopLevelCustomErrorArgWithoutName(string);
+
+event e1();
+event e2(uint[] a, bytes7[] indexed b, c[] x);
+event e3() anonymous;
+event e4(uint a, bytes32 s);
+event e5(uint a, bytes32 indexed s, bool indexed b);

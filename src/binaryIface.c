@@ -160,6 +160,26 @@ pushError(Serializer *s, ASTNode node) {
 }
 
 static u32
+pushEvent(Serializer *s, ASTNode node) {
+    u32 l = 0;
+
+    l += pushU32(s, node.type);
+    ASTNodeEvent *event = &node.eventNode;
+    l += pushTokenStringById(s, event->identifier);
+    l += pushU32(s, event->anonymous);
+
+    FunctionParameter *param = event->parameters.head;
+    l += pushU32(s, node.eventNode.parameters.count);
+    for(u32 i = 0; i < event->parameters.count; i++, param = param->next) {
+        l += pushType(s, *param->type);
+        l += pushTokenStringById(s, param->identifier);
+        l += pushU32(s, param->dataLocation);
+    }
+
+    return l;
+}
+
+static u32
 pushASTNode(Serializer *s, ASTNode node) {
     u32 l = 0;
 
@@ -175,6 +195,9 @@ pushASTNode(Serializer *s, ASTNode node) {
         } break;
         case ASTNodeType_Error: {
             l = pushError(s, node);
+        } break;
+        case ASTNodeType_Event: {
+            l = pushEvent(s, node);
         } break;
         default: {
             assert(0);
