@@ -137,6 +137,7 @@ typedef enum TokenType {
     TokenType_Percent,
     TokenType_Divide,
     TokenType_Star,
+    TokenType_StarStar,
     TokenType_Ampersand,
     TokenType_Pipe,
     TokenType_Carrot,
@@ -266,6 +267,7 @@ tokenTypeToString(TokenType tokenType) {
         case TokenType_Percent: return LIT_TO_STR("Percent");
         case TokenType_Divide: return LIT_TO_STR("Divide");
         case TokenType_Star: return LIT_TO_STR("Star");
+        case TokenType_StarStar: return LIT_TO_STR("StarStar");
         case TokenType_Ampersand: return LIT_TO_STR("Ampersand");
         case TokenType_Pipe: return LIT_TO_STR("Pipe");
         case TokenType_Carrot: return LIT_TO_STR("Carrot");
@@ -714,7 +716,13 @@ tokenize(String source, Arena *arena) {
         } else if(byte == '%') {
             pushToken(&result, TokenType_Percent, (String){ .data = c.head - 1, .size = 1 });
         } else if(byte == '*') {
-            pushToken(&result, TokenType_Star, (String){ .data = c.head - 1, .size = 1 });
+            u8 nextByte = peekByte(&c);
+            if(nextByte == '*') {
+                consumeByte(&c);
+                pushToken(&result, TokenType_StarStar, (String){ .data = c.head - 2, .size = 2 });
+            } else {
+                pushToken(&result, TokenType_Star, (String){ .data = c.head - 1, .size = 1 });
+            }
         } else if(byte == '&') {
             pushToken(&result, TokenType_Ampersand, (String){ .data = c.head - 1, .size = 1 });
         } else if(byte == '|') {

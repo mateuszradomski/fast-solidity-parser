@@ -665,6 +665,7 @@ parseTypedef(Parser *parser, Arena *arena, ASTNode *node) {
 static bool
 isOperator(TokenType type) {
     switch(type) {
+        case TokenType_StarStar:
         case TokenType_Star:
         case TokenType_Divide:
         case TokenType_Percent:
@@ -680,6 +681,7 @@ isOperator(TokenType type) {
 static u32
 getOperatorPrecedence(TokenType type) {
     switch(type) {
+        case TokenType_StarStar: return -3;
         case TokenType_Star:
         case TokenType_Divide:
         case TokenType_Percent: return -4;
