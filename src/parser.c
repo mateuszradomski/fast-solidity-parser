@@ -19,6 +19,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_StringLitExpression,
     ASTNodeType_BoolLitExpression,
     ASTNodeType_IdentifierExpression,
+    ASTNodeType_BinaryExpression,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -110,6 +111,12 @@ typedef struct ASTNodeStringLitExpression {
     TokenId value;
 } ASTNodeStringLitExpression;
 
+typedef struct ASTNodeBinaryExpression {
+    ASTNode *left;
+    ASTNode *right;
+    u32 operator;
+} ASTNodeBinaryExpression;
+
 typedef struct ASTNode {
     ASTNodeType type;
 
@@ -141,6 +148,7 @@ typedef struct ASTNode {
         ASTNodeStringLitExpression stringLitExpressionNode;
         ASTNodeStringLitExpression boolLitExpressionNode;
         ASTNodeStringLitExpression identifierExpressionNode;
+        ASTNodeBinaryExpression binaryExpressionNode;
     };
 } ASTNode;
 
@@ -655,7 +663,39 @@ parseTypedef(Parser *parser, Arena *arena, ASTNode *node) {
 }
 
 static bool
-parseExpression(Parser *parser, ASTNode *node, Arena *arena) {
+isOperator(TokenType type) {
+    switch(type) {
+        case TokenType_Star:
+        case TokenType_Divide:
+        case TokenType_Percent:
+        case TokenType_Plus:
+        case TokenType_Minus:
+        case TokenType_Ampersand:
+        case TokenType_Carrot:
+        case TokenType_Pipe: return true;
+        default: return false;
+    }
+}
+
+static u32
+getOperatorPrecedence(TokenType type) {
+    switch(type) {
+        case TokenType_Star:
+        case TokenType_Divide:
+        case TokenType_Percent: return -4;
+        case TokenType_Plus:
+        case TokenType_Minus: return -5;
+        case TokenType_Ampersand: return -7;
+        case TokenType_Carrot: return -8;
+        case TokenType_Pipe: return -9;
+        default: assert(0);
+    }
+
+    return 0;
+}
+
+static ASTNode *
+parseExpressionImpl(Parser *parser, ASTNode *node, Arena *arena, u32 previousPrecedence) {
     if(acceptToken(parser, TokenType_HexNumberLit)) {
         node->type = ASTNodeType_NumberLitExpression;
         node->numberLitExpressionNode.value = peekLastTokenId(parser);
@@ -676,7 +716,36 @@ parseExpression(Parser *parser, ASTNode *node, Arena *arena) {
     } else {
         assert(false);
     }
-    return true;
+
+    while(true) {
+        TokenType type = peekToken(parser).type;
+        if(!isOperator(type)) {
+            break;
+        }
+
+        u32 precedence = getOperatorPrecedence(type);
+        if(precedence <= previousPrecedence) {
+            break;
+        }
+        advanceToken(parser);
+
+        ASTNode *left = structPush(arena, ASTNode);
+        *left = *node;
+
+        node->type = ASTNodeType_BinaryExpression;
+        node->binaryExpressionNode.left = left;
+        node->binaryExpressionNode.right = structPush(arena, ASTNode);
+        node->binaryExpressionNode.operator = type;
+
+        parseExpressionImpl(parser, node->binaryExpressionNode.right, arena, precedence);
+    }
+
+    return node;
+}
+
+static bool
+parseExpression(Parser *parser, ASTNode *node, Arena *arena) {
+    return parseExpressionImpl(parser, node, arena, 0) != 0x0;
 }
 
 static bool

@@ -26,7 +26,7 @@ async function main() {
     const input = fs.readFileSync("web/sources/parserbuilding.sol", 'utf-8')
 
     await runBinaryInterface(input)
-    await runAntlrParser(input)
+    // await runAntlrParser(input)
 }
 
 main()

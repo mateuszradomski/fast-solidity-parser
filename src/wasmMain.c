@@ -16,17 +16,20 @@ entryPointJSONInterface(const char *string, int len) {
 
 String *
 entryPointBinaryInterface(const char *string, int len) {
+    traceBegin(1);
     Arena arena = arenaCreate(64 * Megabyte, 32 * Kilobyte, 64);
     String input = { .data = (u8 *)string, .size = len };
-    traceBegin(1);
+    traceEnd();
+
+    traceBegin(2);
     TokenizeResult tokens = tokenize(input, &arena);
     traceEnd();
-    traceBegin(2);
+    traceBegin(3);
     Parser parser = createParser(tokens);
     ASTNode node = parseSourceUnit(&parser, &arena);
     traceEnd();
 
-    traceBegin(3);
+    traceBegin(4);
     Serializer s = createSerializer(&arena, string, tokens);
     result = astNodeToBinary(&s, node);
     traceEnd();

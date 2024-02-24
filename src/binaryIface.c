@@ -100,6 +100,11 @@ pushExpression(Serializer *s, ASTNode node) {
         case ASTNodeType_IdentifierExpression: {
             l += pushTokenStringById(s, node.identifierExpressionNode.value);
         } break;
+        case ASTNodeType_BinaryExpression: {
+            l += pushU32(s, node.binaryExpressionNode.operator);
+            l += pushExpression(s, *node.binaryExpressionNode.left);
+            l += pushExpression(s, *node.binaryExpressionNode.right);
+        } break;
         default: {
             assert(0);
         }

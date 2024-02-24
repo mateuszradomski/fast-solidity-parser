@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { PerformanceObserver } = require('perf_hooks');
 
 const SpallProfiler = require('./spall');
 const profiler = new SpallProfiler();
@@ -21,6 +22,7 @@ const ASTNodeType_NumberLitExpression = 14
 const ASTNodeType_StringLitExpression = 15
 const ASTNodeType_BoolLitExpression = 16
 const ASTNodeType_LiteralExpression = 17
+const ASTNodeType_BinaryExpression = 18
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -62,6 +64,17 @@ class Deserializer {
         this.inputString = inputString;
         this.dataView = dataView;
         this.offset = 0;
+
+        this.operatorStrings = {
+            67: "+",
+            68: "-",
+            69: "%",
+            70: "/",
+            71: "*",
+            72: "&",
+            73: "|",
+            74: "^",
+        }
     }
 
     popU32() {
@@ -163,6 +176,19 @@ class Deserializer {
             return {
                 type: "Identifier",
                 name
+            }
+        } else if(type === ASTNodeType_BinaryExpression) {
+            const operatorId = this.popU32();
+            const lhs = this.popExpression();
+            const rhs = this.popExpression();
+
+            const operator = this.operatorStrings[operatorId];
+
+            return {
+                type: "BinaryOperation",
+                operator,
+                left: lhs,
+                right: rhs
             }
         } else {
             throw new Error(`Unknown/Unsupported expression type: ${type}`);
@@ -345,6 +371,7 @@ class Deserializer {
         } else if(type === ASTNodeType_ConstVariable) {
             return this.popConstVariable();
         }
+        
     }
 
     popSourceUnit() {
@@ -368,7 +395,15 @@ class Deserializer {
 }
 
 class WasmParser {
-    constructor() { }
+    constructor() { 
+        this.obs = new PerformanceObserver(list => {
+            const entry = list.getEntries()[0];
+            console.log(entry);
+        });
+
+        /// this.obs.observe({ entryTypes: ['function'], buffered: true });
+        this.obs.observe({ entryTypes: ['gc'], buffered: true });
+    }
 
     async parseJSONInterface(input) {
         const wasmPath = path.join(__dirname, "./parser.wasm");
@@ -435,6 +470,8 @@ class WasmParser {
 
         const spallBytes = profiler.serialize();
         fs.writeFileSync("data.spall", spallBytes);
+
+        this.obs.disconnect();
 
         return object;
     }
