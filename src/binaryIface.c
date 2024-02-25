@@ -126,6 +126,11 @@ pushExpression(Serializer *s, ASTNode node) {
         case ASTNodeType_BaseType: {
             l += pushType(s, node);
         } break;
+        case ASTNodeType_MemberAccessExpression: {
+            ASTNodeMemberAccessExpression *member = &node.memberAccessExpressionNode;
+            l += pushExpression(s, *member->expression);
+            l += pushTokenStringById(s, member->memberName);
+        } break;
         default: {
             assert(0);
         }
