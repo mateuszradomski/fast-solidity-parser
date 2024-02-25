@@ -24,6 +24,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_UnaryExpression,
     ASTNodeType_FunctionCallExpression,
     ASTNodeType_MemberAccessExpression,
+    ASTNodeType_ArrayAccessExpression,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -140,6 +141,11 @@ typedef struct ASTNodeMemberAccessExpression {
     TokenId memberName;
 } ASTNodeMemberAccessExpression;
 
+typedef struct ASTNodeArrayAccessExpression {
+    ASTNode *expression;
+    ASTNode *indexExpression;
+} ASTNodeArrayAccessExpression;
+
 typedef struct ASTNode {
     ASTNodeType type;
 
@@ -176,6 +182,7 @@ typedef struct ASTNode {
         ASTNodeUnaryExpression unaryExpressionNode;
         ASTNodeFunctionCallExpression functionCallExpressionNode;
         ASTNodeMemberAccessExpression memberAccessExpressionNode;
+        ASTNodeArrayAccessExpression arrayAccessExpressionNode;
     };
 } ASTNode;
 
@@ -700,6 +707,7 @@ isOperator(TokenType type) {
     switch(type) {
         case TokenType_Dot:
         case TokenType_LParen:
+        case TokenType_LBracket:
         case TokenType_StarStar:
         case TokenType_Star:
         case TokenType_Divide:
@@ -720,7 +728,8 @@ static u32
 getOperatorPrecedence(TokenType type) {
     switch(type) {
         case TokenType_Dot:
-        case TokenType_LParen: return -1;
+        case TokenType_LParen:
+        case TokenType_LBracket: return -1;
         case TokenType_StarStar: return -3;
         case TokenType_Star:
         case TokenType_Divide:
@@ -854,6 +863,19 @@ parseExpressionImpl(Parser *parser, ASTNode *node, Arena *arena, u32 previousPre
 
         if(type == TokenType_LParen) {
             parseFunctionCallExpression(parser, node, arena);
+            continue;
+        } else if(type == TokenType_LBracket) {
+            ASTNode *expression = structPush(arena, ASTNode);
+            *expression = *node;
+
+            ASTNode *indexExpression = structPush(arena, ASTNode);
+            parseExpressionImpl(parser, indexExpression, arena, 0);
+            expectToken(parser, TokenType_RBracket);
+
+            node->type = ASTNodeType_ArrayAccessExpression;
+            node->arrayAccessExpressionNode.expression = expression;
+            node->arrayAccessExpressionNode.indexExpression = indexExpression;
+
             continue;
         } else if(type == TokenType_Dot) {
             ASTNode *expression = structPush(arena, ASTNode);

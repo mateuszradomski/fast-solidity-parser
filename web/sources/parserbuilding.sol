@@ -1593,7 +1593,6 @@ type Quantity is uint128;
 type UFixed is uint256;
 type Id is uint8;
 
-
 IMulticall3 constant multicall = IMulticall3(0xcA11bde05977b3631167028862bE2a173976CA11);
 KromaPortal constant portal = KromaPortal(payable ((0x713C2BEd44eB45D490afB8D4d1aA6F12290B829a)));
 Vm constant vm = Vm(VM_ADDRESS);
@@ -2429,6 +2428,8 @@ uint256 constant METADATA_OFFSET_TASK_PROGRAM_HASH = 1;
 uint256 constant METADATA_OFFSET_TREE_PAIR_N_NODES = 1;
 uint256 constant METADATA_OFFSET_TREE_PAIR_N_PAGES = 0;
 uint256 constant METADATA_TASKS_OFFSET = 1;
+uint256 constant METADATA_TASKS_OFFSET = array[2 +4];
+uint256 constant METADATA_TASKS_OFFSET = array[arrayIndex ** 2 + fnCall(1,2,3)];
 uint256 constant METADATA_TASK_HEADER_SIZE = 3;
 uint256 constant MINTABLE_ASSET_ID_FLAG = 1<<250;
 uint256 constant MINT_NFT_BYTES = 5 * CHUNK_BYTES;

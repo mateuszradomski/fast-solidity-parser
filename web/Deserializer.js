@@ -20,6 +20,7 @@ const ASTNodeType_TupleExpression = 19
 const ASTNodeType_UnaryExpression = 20
 const ASTNodeType_FunctionCallExpression = 21
 const ASTNodeType_MemberAccessExpression = 22
+const ASTNodeType_ArrayAccessExpression = 23
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -238,6 +239,15 @@ class Deserializer {
                 type: "MemberAccess",
                 expression,
                 memberName,
+            }
+        } else if(type === ASTNodeType_ArrayAccessExpression) {
+            const base = this.popExpression();
+            const index = this.popExpression();
+
+            return {
+                type: "IndexAccess",
+                base,
+                index,
             }
         } else {
             throw new Error(`Unknown/Unsupported expression type: ${type}`);
