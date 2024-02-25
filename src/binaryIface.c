@@ -108,6 +108,10 @@ pushExpression(Serializer *s, ASTNode node) {
         case ASTNodeType_TupleExpression: {
             l += pushExpression(s, *node.tupleExpressionNode.element);
         } break;
+        case ASTNodeType_UnaryExpression: {
+            l += pushU32(s, node.unaryExpressionNode.operator);
+            l += pushExpression(s, *node.unaryExpressionNode.subExpression);
+        } break;
         default: {
             assert(0);
         }

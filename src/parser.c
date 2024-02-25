@@ -21,6 +21,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_IdentifierExpression,
     ASTNodeType_BinaryExpression,
     ASTNodeType_TupleExpression,
+    ASTNodeType_UnaryExpression,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -122,6 +123,11 @@ typedef struct ASTNodeTupleExpression {
     ASTNode *element;
 } ASTNodeTupleExpression;
 
+typedef struct ASTNodeUnaryExpression {
+    u32 operator;
+    ASTNode *subExpression;
+} ASTNodeUnaryExpression;
+
 typedef struct ASTNode {
     ASTNodeType type;
 
@@ -155,6 +161,7 @@ typedef struct ASTNode {
         ASTNodeStringLitExpression identifierExpressionNode;
         ASTNodeBinaryExpression binaryExpressionNode;
         ASTNodeTupleExpression tupleExpressionNode;
+        ASTNodeUnaryExpression unaryExpressionNode;
     };
 } ASTNode;
 
@@ -727,9 +734,16 @@ parseExpressionImpl(Parser *parser, ASTNode *node, Arena *arena, u32 previousPre
     } else if(acceptToken(parser, TokenType_LParen)) {
         node->type = ASTNodeType_TupleExpression;
         node->tupleExpressionNode.element = structPush(arena, ASTNode);
-
         parseExpressionImpl(parser, node->tupleExpressionNode.element, arena, previousPrecedence);
         expectToken(parser, TokenType_RParen);
+    } else if(acceptToken(parser, TokenType_Exclamation) ||
+              acceptToken(parser, TokenType_Minus) ||
+              acceptToken(parser, TokenType_Tylde)) {
+        node->type = ASTNodeType_UnaryExpression;
+        // TODO(radomski): Not nice, we should handle looking back with some function
+        node->unaryExpressionNode.operator = parser->tokens[peekLastTokenId(parser)].type;
+        node->unaryExpressionNode.subExpression = structPush(arena, ASTNode);
+        parseExpressionImpl(parser, node->unaryExpressionNode.subExpression, arena, -1);
     } else if(parseIdentifier(parser) != INVALID_TOKEN_ID) {
         node->type = ASTNodeType_IdentifierExpression;
         node->identifierExpressionNode.value = peekLastTokenId(parser);
