@@ -105,6 +105,9 @@ pushExpression(Serializer *s, ASTNode node) {
             l += pushExpression(s, *node.binaryExpressionNode.left);
             l += pushExpression(s, *node.binaryExpressionNode.right);
         } break;
+        case ASTNodeType_TupleExpression: {
+            l += pushExpression(s, *node.tupleExpressionNode.element);
+        } break;
         default: {
             assert(0);
         }

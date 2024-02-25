@@ -23,6 +23,7 @@ const ASTNodeType_StringLitExpression = 15
 const ASTNodeType_BoolLitExpression = 16
 const ASTNodeType_LiteralExpression = 17
 const ASTNodeType_BinaryExpression = 18
+const ASTNodeType_TupleExpression = 19
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -75,6 +76,9 @@ class Deserializer {
             73: "&",
             74: "|",
             75: "^",
+            76: "<<",
+            77: ">>",
+            78: ">>>",
         }
     }
 
@@ -190,6 +194,14 @@ class Deserializer {
                 operator,
                 left: lhs,
                 right: rhs
+            }
+        } else if(type === ASTNodeType_TupleExpression) {
+            const element = this.popExpression();
+
+            return {
+                type: "TupleExpression",
+                components: [element],
+                isArray: false
             }
         } else {
             throw new Error(`Unknown/Unsupported expression type: ${type}`);

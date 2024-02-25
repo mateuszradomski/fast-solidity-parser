@@ -141,6 +141,9 @@ typedef enum TokenType {
     TokenType_Ampersand,
     TokenType_Pipe,
     TokenType_Carrot,
+    TokenType_LeftShift,
+    TokenType_RightShift,
+    TokenType_RightShiftZero,
     TokenType_Tylde,
     TokenType_QuestionMark,
     TokenType_Equal,
@@ -271,6 +274,9 @@ tokenTypeToString(TokenType tokenType) {
         case TokenType_Ampersand: return LIT_TO_STR("Ampersand");
         case TokenType_Pipe: return LIT_TO_STR("Pipe");
         case TokenType_Carrot: return LIT_TO_STR("Carrot");
+        case TokenType_LeftShift: return LIT_TO_STR("LeftShift");
+        case TokenType_RightShift: return LIT_TO_STR("RightShift");
+        case TokenType_RightShiftZero: return LIT_TO_STR("RightShiftZero");
         case TokenType_Tylde: return LIT_TO_STR("Tylde");
         case TokenType_QuestionMark: return LIT_TO_STR("QuestionMark");
         case TokenType_Equal: return LIT_TO_STR("Equal");
@@ -696,9 +702,27 @@ tokenize(String source, Arena *arena) {
         } else if(byte == ')') {
             pushToken(&result, TokenType_RParen, (String){ .data = c.head - 1, .size = 1 });
         } else if(byte == '<') {
-            pushToken(&result, TokenType_LTick, (String){ .data = c.head - 1, .size = 1 });
+            u8 nextByte = peekByte(&c);
+            if(nextByte == '<') {
+                consumeByte(&c);
+                pushToken(&result, TokenType_LeftShift, (String){ .data = c.head - 1, .size = 1 });
+            } else {
+                pushToken(&result, TokenType_LTick, (String){ .data = c.head - 1, .size = 1 });
+            }
         } else if(byte == '>') {
-            pushToken(&result, TokenType_RTick, (String){ .data = c.head - 1, .size = 1 });
+            u8 nextByte = peekByte(&c);
+            if(nextByte == '>') {
+                consumeByte(&c);
+                nextByte = peekByte(&c);
+                if(nextByte == '>') {
+                    consumeByte(&c);
+                    pushToken(&result, TokenType_RightShiftZero, (String){ .data = c.head - 2, .size = 2 });
+                } else {
+                    pushToken(&result, TokenType_RightShift, (String){ .data = c.head - 1, .size = 1 });
+                }
+            } else {
+                pushToken(&result, TokenType_RTick, (String){ .data = c.head - 1, .size = 1 });
+            }
         } else if(byte == ':') {
             pushToken(&result, TokenType_Colon, (String){ .data = c.head - 1, .size = 1 });
         } else if(byte == ';') {

@@ -20,6 +20,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_BoolLitExpression,
     ASTNodeType_IdentifierExpression,
     ASTNodeType_BinaryExpression,
+    ASTNodeType_TupleExpression,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -117,6 +118,10 @@ typedef struct ASTNodeBinaryExpression {
     u32 operator;
 } ASTNodeBinaryExpression;
 
+typedef struct ASTNodeTupleExpression {
+    ASTNode *element;
+} ASTNodeTupleExpression;
+
 typedef struct ASTNode {
     ASTNodeType type;
 
@@ -149,6 +154,7 @@ typedef struct ASTNode {
         ASTNodeStringLitExpression boolLitExpressionNode;
         ASTNodeStringLitExpression identifierExpressionNode;
         ASTNodeBinaryExpression binaryExpressionNode;
+        ASTNodeTupleExpression tupleExpressionNode;
     };
 } ASTNode;
 
@@ -673,7 +679,10 @@ isOperator(TokenType type) {
         case TokenType_Minus:
         case TokenType_Ampersand:
         case TokenType_Carrot:
-        case TokenType_Pipe: return true;
+        case TokenType_Pipe:
+        case TokenType_LeftShift:
+        case TokenType_RightShift:
+        case TokenType_RightShiftZero: return true;
         default: return false;
     }
 }
@@ -687,6 +696,9 @@ getOperatorPrecedence(TokenType type) {
         case TokenType_Percent: return -4;
         case TokenType_Plus:
         case TokenType_Minus: return -5;
+        case TokenType_LeftShift:
+        case TokenType_RightShift:
+        case TokenType_RightShiftZero: return -6;
         case TokenType_Ampersand: return -7;
         case TokenType_Carrot: return -8;
         case TokenType_Pipe: return -9;
@@ -712,6 +724,12 @@ parseExpressionImpl(Parser *parser, ASTNode *node, Arena *arena, u32 previousPre
     } else if(acceptToken(parser, TokenType_True) || acceptToken(parser, TokenType_False)) {
         node->type = ASTNodeType_BoolLitExpression;
         node->boolLitExpressionNode.value = peekLastTokenId(parser);
+    } else if(acceptToken(parser, TokenType_LParen)) {
+        node->type = ASTNodeType_TupleExpression;
+        node->tupleExpressionNode.element = structPush(arena, ASTNode);
+
+        parseExpressionImpl(parser, node->tupleExpressionNode.element, arena, previousPrecedence);
+        expectToken(parser, TokenType_RParen);
     } else if(parseIdentifier(parser) != INVALID_TOKEN_ID) {
         node->type = ASTNodeType_IdentifierExpression;
         node->identifierExpressionNode.value = peekLastTokenId(parser);
