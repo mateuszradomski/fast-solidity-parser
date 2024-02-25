@@ -145,6 +145,8 @@ typedef enum TokenType {
     TokenType_RightShift,
     TokenType_RightShiftZero,
     TokenType_Tylde,
+    TokenType_PlusPlus,
+    TokenType_MinusMinus,
     TokenType_QuestionMark,
     TokenType_Equal,
     TokenType_LBracket,
@@ -278,6 +280,8 @@ tokenTypeToString(TokenType tokenType) {
         case TokenType_RightShift: return LIT_TO_STR("RightShift");
         case TokenType_RightShiftZero: return LIT_TO_STR("RightShiftZero");
         case TokenType_Tylde: return LIT_TO_STR("Tylde");
+        case TokenType_PlusPlus: return LIT_TO_STR("PlusPlus");
+        case TokenType_MinusMinus: return LIT_TO_STR("MinusMinus");
         case TokenType_QuestionMark: return LIT_TO_STR("QuestionMark");
         case TokenType_Equal: return LIT_TO_STR("Equal");
         case TokenType_LBracket: return LIT_TO_STR("LBracket");
@@ -705,7 +709,7 @@ tokenize(String source, Arena *arena) {
             u8 nextByte = peekByte(&c);
             if(nextByte == '<') {
                 consumeByte(&c);
-                pushToken(&result, TokenType_LeftShift, (String){ .data = c.head - 1, .size = 1 });
+                pushToken(&result, TokenType_LeftShift, (String){ .data = c.head - 2, .size = 2 });
             } else {
                 pushToken(&result, TokenType_LTick, (String){ .data = c.head - 1, .size = 1 });
             }
@@ -716,9 +720,9 @@ tokenize(String source, Arena *arena) {
                 nextByte = peekByte(&c);
                 if(nextByte == '>') {
                     consumeByte(&c);
-                    pushToken(&result, TokenType_RightShiftZero, (String){ .data = c.head - 2, .size = 2 });
+                    pushToken(&result, TokenType_RightShiftZero, (String){ .data = c.head - 3, .size = 3 });
                 } else {
-                    pushToken(&result, TokenType_RightShift, (String){ .data = c.head - 1, .size = 1 });
+                    pushToken(&result, TokenType_RightShift, (String){ .data = c.head - 2, .size = 2 });
                 }
             } else {
                 pushToken(&result, TokenType_RTick, (String){ .data = c.head - 1, .size = 1 });
@@ -734,9 +738,21 @@ tokenize(String source, Arena *arena) {
         } else if(byte == '!') {
             pushToken(&result, TokenType_Exclamation, (String){ .data = c.head - 1, .size = 1 });
         } else if(byte == '+') {
-            pushToken(&result, TokenType_Plus, (String){ .data = c.head - 1, .size = 1 });
+            u8 nextByte = peekByte(&c);
+            if(nextByte == '+') {
+                consumeByte(&c);
+                pushToken(&result, TokenType_PlusPlus, (String){ .data = c.head - 2, .size = 2 });
+            } else {
+                pushToken(&result, TokenType_Plus, (String){ .data = c.head - 1, .size = 1 });
+            }
         } else if(byte == '-') {
-            pushToken(&result, TokenType_Minus, (String){ .data = c.head - 1, .size = 1 });
+            u8 nextByte = peekByte(&c);
+            if(nextByte == '-') {
+                consumeByte(&c);
+                pushToken(&result, TokenType_MinusMinus, (String){ .data = c.head - 2, .size = 2 });
+            } else {
+                pushToken(&result, TokenType_Minus, (String){ .data = c.head - 1, .size = 1 });
+            }
         } else if(byte == '%') {
             pushToken(&result, TokenType_Percent, (String){ .data = c.head - 1, .size = 1 });
         } else if(byte == '*') {

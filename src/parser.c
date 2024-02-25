@@ -715,6 +715,34 @@ getOperatorPrecedence(TokenType type) {
     return 0;
 }
 
+static bool
+isUnaryOperator(TokenType type) {
+    switch(type) {
+        case TokenType_Exclamation:
+        case TokenType_Minus:
+        case TokenType_Tylde:
+        case TokenType_PlusPlus:
+        case TokenType_MinusMinus:
+        case TokenType_Delete: return true;
+        default: return false;
+    }
+}
+
+static u32
+getUnaryOperatorPrecedence(TokenType type) {
+    switch(type) {
+        case TokenType_Exclamation:
+        case TokenType_Minus:
+        case TokenType_Tylde:
+        case TokenType_PlusPlus:
+        case TokenType_MinusMinus:
+        case TokenType_Delete: return -2;
+        default: assert(0);
+    }
+
+    return 0;
+}
+
 static ASTNode *
 parseExpressionImpl(Parser *parser, ASTNode *node, Arena *arena, u32 previousPrecedence) {
     if(acceptToken(parser, TokenType_HexNumberLit)) {
@@ -736,13 +764,12 @@ parseExpressionImpl(Parser *parser, ASTNode *node, Arena *arena, u32 previousPre
         node->tupleExpressionNode.element = structPush(arena, ASTNode);
         parseExpressionImpl(parser, node->tupleExpressionNode.element, arena, previousPrecedence);
         expectToken(parser, TokenType_RParen);
-    } else if(acceptToken(parser, TokenType_Exclamation) ||
-              acceptToken(parser, TokenType_Minus) ||
-              acceptToken(parser, TokenType_Tylde)) {
+    } else if(isUnaryOperator(peekToken(parser).type)) {
         node->type = ASTNodeType_UnaryExpression;
-        // TODO(radomski): Not nice, we should handle looking back with some function
-        node->unaryExpressionNode.operator = parser->tokens[peekLastTokenId(parser)].type;
+        node->unaryExpressionNode.operator = peekToken(parser).type;
         node->unaryExpressionNode.subExpression = structPush(arena, ASTNode);
+        advanceToken(parser);
+
         parseExpressionImpl(parser, node->unaryExpressionNode.subExpression, arena, -1);
     } else if(parseIdentifier(parser) != INVALID_TOKEN_ID) {
         node->type = ASTNodeType_IdentifierExpression;
