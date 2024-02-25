@@ -160,6 +160,9 @@ pushStatement(Serializer *s, ASTNode *node) {
         case ASTNodeType_ReturnStatement: {
             l += pushExpression(s, *node->returnStatementNode.expression);
         } break;
+        case ASTNodeType_ExpressionStatement: {
+            l += pushExpression(s, *node->expressionStatementNode.expression);
+        } break;
         default: {
             assert(0);
         }

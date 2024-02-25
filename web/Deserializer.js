@@ -24,6 +24,7 @@ const ASTNodeType_ArrayAccessExpression = 23
 const ASTNodeType_FunctionDefinition = 24
 const ASTNodeType_BlockStatement = 25
 const ASTNodeType_ReturnStatement = 26
+const ASTNodeType_ExpressionStatement = 27
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -83,6 +84,12 @@ class Deserializer {
             79: "~",
             80: "++",
             81: "--",
+            82: "<",
+            83: ">",
+            84: "==",
+            85: "!=",
+            86: "&&",
+            87: "||",
         }
 
         this.visibilityString = [
@@ -295,6 +302,11 @@ class Deserializer {
         } else if(type === ASTNodeType_ReturnStatement) {
             return {
                 type: "ReturnStatement",
+                expression: this.popExpression()
+            }
+        } else if(type === ASTNodeType_ExpressionStatement) {
+            return {
+                type: "ExpressionStatement",
                 expression: this.popExpression()
             }
         } else {

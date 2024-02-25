@@ -147,6 +147,12 @@ typedef enum TokenType {
     TokenType_Tylde,
     TokenType_PlusPlus,
     TokenType_MinusMinus,
+    TokenType_LTick,
+    TokenType_RTick,
+    TokenType_EqualEqual,
+    TokenType_NotEqual,
+    TokenType_LogicalAnd,
+    TokenType_LogicalOr,
     TokenType_QuestionMark,
     TokenType_Equal,
     TokenType_LBracket,
@@ -155,8 +161,6 @@ typedef enum TokenType {
     TokenType_RBrace,
     TokenType_LParen,
     TokenType_RParen,
-    TokenType_LTick,
-    TokenType_RTick,
     TokenType_Colon,
     TokenType_Semicolon,
     TokenType_Comma,
@@ -284,6 +288,10 @@ tokenTypeToString(TokenType tokenType) {
         case TokenType_MinusMinus: return LIT_TO_STR("MinusMinus");
         case TokenType_QuestionMark: return LIT_TO_STR("QuestionMark");
         case TokenType_Equal: return LIT_TO_STR("Equal");
+        case TokenType_EqualEqual: return LIT_TO_STR("EqualEqual");
+        case TokenType_NotEqual: return LIT_TO_STR("NotEqual");
+        case TokenType_LogicalAnd: return LIT_TO_STR("LogicalAnd");
+        case TokenType_LogicalOr: return LIT_TO_STR("LogicalOr");
         case TokenType_LBracket: return LIT_TO_STR("LBracket");
         case TokenType_RBracket: return LIT_TO_STR("RBracket");
         case TokenType_LBrace: return LIT_TO_STR("LBrace");
@@ -736,7 +744,13 @@ tokenize(String source, Arena *arena) {
         } else if(byte == '.') {
             pushToken(&result, TokenType_Dot, (String){ .data = c.head - 1, .size = 1 });
         } else if(byte == '!') {
-            pushToken(&result, TokenType_Exclamation, (String){ .data = c.head - 1, .size = 1 });
+            u8 nextByte = peekByte(&c);
+            if(nextByte == '=') {
+                consumeByte(&c);
+                pushToken(&result, TokenType_NotEqual, (String){ .data = c.head - 2, .size = 2 });
+            } else {
+                pushToken(&result, TokenType_Exclamation, (String){ .data = c.head - 1, .size = 1 });
+            }
         } else if(byte == '+') {
             u8 nextByte = peekByte(&c);
             if(nextByte == '+') {
@@ -764,15 +778,33 @@ tokenize(String source, Arena *arena) {
                 pushToken(&result, TokenType_Star, (String){ .data = c.head - 1, .size = 1 });
             }
         } else if(byte == '&') {
-            pushToken(&result, TokenType_Ampersand, (String){ .data = c.head - 1, .size = 1 });
+            u8 nextByte = peekByte(&c);
+            if(nextByte == '&') {
+                consumeByte(&c);
+                pushToken(&result, TokenType_LogicalAnd, (String){ .data = c.head - 2, .size = 2 });
+            } else {
+                pushToken(&result, TokenType_Ampersand, (String){ .data = c.head - 1, .size = 1 });
+            }
         } else if(byte == '|') {
-            pushToken(&result, TokenType_Pipe, (String){ .data = c.head - 1, .size = 1 });
+            u8 nextByte = peekByte(&c);
+            if(nextByte == '|') {
+                consumeByte(&c);
+                pushToken(&result, TokenType_LogicalOr, (String){ .data = c.head - 2, .size = 2 });
+            } else {
+                pushToken(&result, TokenType_Pipe, (String){ .data = c.head - 1, .size = 1 });
+            }
         } else if(byte == '^') {
             pushToken(&result, TokenType_Carrot, (String){ .data = c.head - 1, .size = 1 });
         } else if(byte == '~') {
             pushToken(&result, TokenType_Tylde, (String){ .data = c.head - 1, .size = 1 });
         } else if(byte == '=') {
-            pushToken(&result, TokenType_Equal, (String){ .data = c.head - 1, .size = 1 });
+            u8 nextByte = peekByte(&c);
+            if(nextByte == '=') {
+                consumeByte(&c);
+                pushToken(&result, TokenType_EqualEqual, (String){ .data = c.head - 2, .size = 2 });
+            } else {
+                pushToken(&result, TokenType_Equal, (String){ .data = c.head - 1, .size = 1 });
+            }
         } else if(byte == '?') {
             pushToken(&result, TokenType_QuestionMark, (String){ .data = c.head - 1, .size = 1 });
         } else {

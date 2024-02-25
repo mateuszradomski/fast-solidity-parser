@@ -28,6 +28,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_FunctionDefinition,
     ASTNodeType_BlockStatement,
     ASTNodeType_ReturnStatement,
+    ASTNodeType_ExpressionStatement,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -206,6 +207,7 @@ typedef struct ASTNode {
         ASTNodeFunctionDefinition functionDefinitionNode;
         ASTNodeBlockStatement blockStatementNode;
         ASTNodeReturnStatement returnStatementNode;
+        ASTNodeReturnStatement expressionStatementNode;
     };
 } ASTNode;
 
@@ -742,7 +744,13 @@ isOperator(TokenType type) {
         case TokenType_Pipe:
         case TokenType_LeftShift:
         case TokenType_RightShift:
-        case TokenType_RightShiftZero: return true;
+        case TokenType_RightShiftZero:
+        case TokenType_LTick:
+        case TokenType_RTick:
+        case TokenType_EqualEqual:
+        case TokenType_NotEqual:
+        case TokenType_LogicalAnd:
+        case TokenType_LogicalOr: return true;
         default: return false;
     }
 }
@@ -765,6 +773,12 @@ getOperatorPrecedence(TokenType type) {
         case TokenType_Ampersand: return -7;
         case TokenType_Carrot: return -8;
         case TokenType_Pipe: return -9;
+        case TokenType_LTick:
+        case TokenType_RTick: return -10;
+        case TokenType_EqualEqual:
+        case TokenType_NotEqual: return -11;
+        case TokenType_LogicalAnd: return -12;
+        case TokenType_LogicalOr: return -13;
         default: assert(0);
     }
 
@@ -934,21 +948,29 @@ parseBlock(Parser *parser, ASTNode *node, Arena *arena) {
     node->type = ASTNodeType_BlockStatement;
 
     expectToken(parser, TokenType_LBrace);
-    if(acceptToken(parser, TokenType_Return)) {
+    while(!acceptToken(parser, TokenType_RBrace)) {
         ASTNodeLink *statement = structPush(arena, ASTNodeLink);
-        ASTNode *returnStatement = &statement->node;
-        returnStatement->type = ASTNodeType_ReturnStatement;
-        returnStatement->returnStatementNode.expression = structPush(arena, ASTNode);
 
-        parseExpression(parser, returnStatement->returnStatementNode.expression, arena);
+        if(acceptToken(parser, TokenType_Return)) {
+            ASTNode *returnStatement = &statement->node;
+            returnStatement->type = ASTNodeType_ReturnStatement;
+            returnStatement->returnStatementNode.expression = structPush(arena, ASTNode);
+
+            parseExpression(parser, returnStatement->returnStatementNode.expression, arena);
+        } else if(acceptToken(parser, TokenType_Comment)) {
+            continue;
+        } else {
+            ASTNode *expressionStatement = &statement->node;
+            expressionStatement->type = ASTNodeType_ExpressionStatement;
+            expressionStatement->expressionStatementNode.expression = structPush(arena, ASTNode);
+
+            parseExpression(parser, expressionStatement->expressionStatementNode.expression, arena);
+        }
+
         expectToken(parser, TokenType_Semicolon);
-
         SLL_QUEUE_PUSH(node->blockStatementNode.statements.head, node->blockStatementNode.statements.last, statement);
         node->blockStatementNode.statements.count += 1;
-    } else {
-        assert(0);
     }
-    expectToken(parser, TokenType_RBrace);
 
     return true;
 }
@@ -1038,7 +1060,7 @@ parseFunction(Parser *parser, Arena *arena, ASTNode *node) {
             FunctionParameter *parameter = structPush(arena, FunctionParameter);
             parameter->type = structPush(arena, ASTNode);
             parseType(parser, parameter->type, arena);
-            if(acceptToken(parser, TokenType_Payable)) {
+            if(acceptToken(parser, TokenType_Memory)) {
                 parameter->dataLocation = 1;
             } else if(acceptToken(parser, TokenType_Storage)) {
                 parameter->dataLocation = 2;
