@@ -22,6 +22,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_BinaryExpression,
     ASTNodeType_TupleExpression,
     ASTNodeType_UnaryExpression,
+    ASTNodeType_FunctionCallExpression,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -128,6 +129,11 @@ typedef struct ASTNodeUnaryExpression {
     ASTNode *subExpression;
 } ASTNodeUnaryExpression;
 
+typedef struct ASTNodeFunctionCallExpression {
+    ASTNode *expression;
+    ASTNodeList arguments;
+} ASTNodeFunctionCallExpression;
+
 typedef struct ASTNode {
     ASTNodeType type;
 
@@ -162,6 +168,7 @@ typedef struct ASTNode {
         ASTNodeBinaryExpression binaryExpressionNode;
         ASTNodeTupleExpression tupleExpressionNode;
         ASTNodeUnaryExpression unaryExpressionNode;
+        ASTNodeFunctionCallExpression functionCallExpressionNode;
     };
 } ASTNode;
 
@@ -198,6 +205,12 @@ static u32
 peekLastTokenId(Parser *parser) {
     assert(parser->current > 0);
     return parser->current - 1;
+}
+
+static Token
+peekLastToken(Parser *parser) {
+    assert(parser->current > 0);
+    return parser->tokens[parser->current - 1];
 }
 
 static Token
@@ -678,6 +691,7 @@ parseTypedef(Parser *parser, Arena *arena, ASTNode *node) {
 static bool
 isOperator(TokenType type) {
     switch(type) {
+        case TokenType_LParen:
         case TokenType_StarStar:
         case TokenType_Star:
         case TokenType_Divide:
@@ -697,6 +711,7 @@ isOperator(TokenType type) {
 static u32
 getOperatorPrecedence(TokenType type) {
     switch(type) {
+        case TokenType_LParen: return -1;
         case TokenType_StarStar: return -3;
         case TokenType_Star:
         case TokenType_Divide:
@@ -772,8 +787,15 @@ parseExpressionImpl(Parser *parser, ASTNode *node, Arena *arena, u32 previousPre
 
         parseExpressionImpl(parser, node->unaryExpressionNode.subExpression, arena, -1);
     } else if(parseIdentifier(parser) != INVALID_TOKEN_ID) {
-        node->type = ASTNodeType_IdentifierExpression;
-        node->identifierExpressionNode.value = peekLastTokenId(parser);
+        const Token ident = peekLastToken(parser);
+        if(isBaseTypeName(ident.string)) {
+            node->type = ASTNodeType_BaseType;
+            node->baseTypeNode.typeName = peekLastTokenId(parser);
+            node->baseTypeNode.payable = 0;
+        } else {
+            node->type = ASTNodeType_IdentifierExpression;
+            node->identifierExpressionNode.value = peekLastTokenId(parser);
+        }
     } else {
         assert(false);
     }
@@ -789,6 +811,24 @@ parseExpressionImpl(Parser *parser, ASTNode *node, Arena *arena, u32 previousPre
             break;
         }
         advanceToken(parser);
+
+        if(type == TokenType_LParen) {
+            ASTNode *expression = structPush(arena, ASTNode);
+            *expression = *node;
+
+            node->type = ASTNodeType_FunctionCallExpression;
+            node->functionCallExpressionNode.expression = expression;
+            if(!acceptToken(parser, TokenType_RParen)) {
+                do {
+                    ASTNodeLink *argument = structPush(arena, ASTNodeLink);
+                    parseExpressionImpl(parser, &argument->node, arena, 0);
+                    SLL_QUEUE_PUSH(node->functionCallExpressionNode.arguments.head, node->functionCallExpressionNode.arguments.last, argument);
+                    node->functionCallExpressionNode.arguments.count += 1;
+                } while(acceptToken(parser, TokenType_Comma));
+                expectToken(parser, TokenType_RParen);
+            }
+            continue;
+        } 
 
         ASTNode *left = structPush(arena, ASTNode);
         *left = *node;

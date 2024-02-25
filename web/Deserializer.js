@@ -18,6 +18,7 @@ const ASTNodeType_LiteralExpression = 17
 const ASTNodeType_BinaryExpression = 18
 const ASTNodeType_TupleExpression = 19
 const ASTNodeType_UnaryExpression = 20
+const ASTNodeType_FunctionCallExpression = 21
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -211,6 +212,23 @@ class Deserializer {
                 subExpression,
                 isPrefix: true
             }
+        } else if(type === ASTNodeType_FunctionCallExpression) {
+            const expression = this.popExpression();
+            const argumentCount = this.popU32();
+            const args = []
+            for(let i = 0; i < argumentCount; i++) {
+                args.push(this.popExpression());
+            }
+
+            return {
+                type: "FunctionCall",
+                expression,
+                arguments: args,
+                names: [],
+                identifiers: [],
+            }
+        } else if(type === ASTNodeType_BaseType) {
+            return this.popType()
         } else {
             throw new Error(`Unknown/Unsupported expression type: ${type}`);
         }

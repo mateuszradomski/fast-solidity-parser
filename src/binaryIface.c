@@ -112,6 +112,20 @@ pushExpression(Serializer *s, ASTNode node) {
             l += pushU32(s, node.unaryExpressionNode.operator);
             l += pushExpression(s, *node.unaryExpressionNode.subExpression);
         } break;
+        case ASTNodeType_FunctionCallExpression: {
+            ASTNodeFunctionCallExpression *function = &node.functionCallExpressionNode;
+
+            l += pushExpression(s, *function->expression);
+            l += pushU32(s, function->arguments.count);
+
+            ASTNodeLink *argument = function->arguments.head;
+            for(u32 i = 0; i < function->arguments.count; i++, argument = argument->next) {
+                l += pushExpression(s, argument->node);
+            }
+        } break;
+        case ASTNodeType_BaseType: {
+            l += pushType(s, node);
+        } break;
         default: {
             assert(0);
         }
