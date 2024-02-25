@@ -3048,3 +3048,32 @@ uint8 constant L2_MSG = 3;
 uint8 constant ROLLUP_PROTOCOL_EVENT_TYPE = 8;
 bool constant IS_TRUE = true;
 bool constant IS_FALSE = false;
+
+function helper(uint x) pure returns (uint) {
+    return x * 2;
+}
+
+/**
+ * @notice Reads an RLP bytes value into bytes.
+ *
+ * @param _in RLP bytes value.
+ *
+ * @return Decoded bytes.
+ */
+// function readBytes(bytes memory _in) internal pure returns (bytes memory) {
+//     return readBytes(toRLPItem(_in));
+// }
+
+/**
+ * @notice Reads the raw bytes of an RLP item.
+ *
+ * @param _in RLP item to read.
+ *
+ * @return Raw RLP bytes.
+ */
+//function readRawBytes(RLPItem memory _in) internal pure returns (bytes memory) {
+//    return _copy(_in.ptr, 0, _in.length);
+//}
+function readRawBytes(RLPItem memory _in) internal pure {
+    return _copy(_in.ptr, 0, _in.length);
+}

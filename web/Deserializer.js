@@ -21,6 +21,9 @@ const ASTNodeType_UnaryExpression = 20
 const ASTNodeType_FunctionCallExpression = 21
 const ASTNodeType_MemberAccessExpression = 22
 const ASTNodeType_ArrayAccessExpression = 23
+const ASTNodeType_FunctionDefinition = 24
+const ASTNodeType_BlockStatement = 25
+const ASTNodeType_ReturnStatement = 26
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -81,6 +84,28 @@ class Deserializer {
             80: "++",
             81: "--",
         }
+
+        this.visibilityString = [
+            "default",
+            "internal",
+            "external",
+            "private",
+            "public"
+        ]
+
+        this.stateMutabilityString = [
+            "default",
+            "pure" ,
+            "view",
+            "payable",
+        ]
+
+        this.storageLocationString = [
+            null,
+            "memory",
+            "storage",
+            "calldata",
+        ]
     }
 
     popU32() {
@@ -254,6 +279,28 @@ class Deserializer {
         }
     }
 
+    popStatement() {
+        const type = this.popU32();
+
+        if(type === ASTNodeType_BlockStatement) {
+            const count = this.popU32();
+            const statements = []
+            for(let i = 0; i < count; i++) {
+                statements.push(this.popStatement())
+            }
+            return {
+                type: "Block",
+                statements,
+            }
+        } else if(type === ASTNodeType_ReturnStatement) {
+            return {
+                type: "ReturnStatement",
+                expression: this.popExpression()
+            }
+        } else {
+        }
+    }
+
     popImport() {
         const path = this.popString();
         const unitAlias = this.popString();
@@ -327,6 +374,30 @@ class Deserializer {
         }
     }
 
+    popFunctionParameters() {
+        const paramCount = this.popU32();
+        if(paramCount === 0) {
+            return null
+        }
+        const params = []
+        for(let i = 0; i < paramCount; i++) {
+            const typeName = this.popType();
+            const paramName = this.popString();
+            const dataLocation = this.popU32();
+            params.push({
+                        type: "VariableDeclaration",
+                        typeName,
+                        name: paramName,
+                        identifier: stringToIdentifier(paramName),
+                        storageLocation: this.storageLocationString[dataLocation],
+                        isStateVar: false,
+                        isIndexed: false,
+                        expression: null
+            });
+        }
+        return params;
+    }
+
     popError() {
         const name = this.popString();
         const paramCount = this.popU32();
@@ -334,12 +405,13 @@ class Deserializer {
         for(let i = 0; i < paramCount; i++) {
             const typeName = this.popType();
             const paramName = this.popString();
+            const dataLocation = this.popU32();
             params.push({
                         type: "VariableDeclaration",
                         typeName,
                         name: paramName,
                         identifier: stringToIdentifier(paramName),
-                        storageLocation: null,
+                        storageLocation: this.storageLocationString[dataLocation],
                         isStateVar: false,
                         isIndexed: false,
                         expression: null
@@ -410,6 +482,31 @@ class Deserializer {
         }
     }
 
+    popFunctionDefinition() {
+        const name = this.popString();
+        const parameters = this.popFunctionParameters();
+        const visibility = this.popU32();
+        const stateMutability = this.popU32();
+        const returnParameters = this.popFunctionParameters();
+        const body = this.popStatement();
+
+        return {
+            type: "FunctionDefinition",
+            name,
+            parameters,
+            returnParameters,
+            body,
+            visibility: this.visibilityString[visibility],
+            modifiers: [],
+            override: null,
+            isConstructor: false,
+            isReceiveEther: false,
+            isFallback: false,
+            isVirtual: false,
+            stateMutability: this.stateMutabilityString[stateMutability]
+        }
+    }
+
     popASTNode() {
         const type = this.popU32();
 
@@ -429,6 +526,8 @@ class Deserializer {
             return this.popTypedef();
         } else if(type === ASTNodeType_ConstVariable) {
             return this.popConstVariable();
+        } else if(type === ASTNodeType_FunctionDefinition) {
+            return this.popFunctionDefinition();
         }
         
     }

@@ -48,3 +48,7 @@
     "names": [],
     "identifiers": []
   ```
+
+# Stuff that @solidity-parser/parser is inconsistent about
+
+Errors will have parameters `[]` if empty, functions have `null` if empty.

@@ -145,6 +145,45 @@ pushExpression(Serializer *s, ASTNode node) {
 }
 
 static u32
+pushStatement(Serializer *s, ASTNode *node) {
+    u32 l = pushU32(s, node->type);
+
+    switch(node->type) {
+        case ASTNodeType_BlockStatement: {
+            ASTNodeBlockStatement *block = &node->blockStatementNode;
+            l += pushU32(s, block->statements.count);
+            ASTNodeLink *statement = block->statements.head;
+            for(u32 i = 0; i < block->statements.count; i++, statement = statement->next) {
+                l += pushStatement(s, &statement->node);
+            }
+        } break;
+        case ASTNodeType_ReturnStatement: {
+            l += pushExpression(s, *node->returnStatementNode.expression);
+        } break;
+        default: {
+            assert(0);
+        }
+    }
+
+    return l;
+}
+
+static u32
+pushFunctionParameters(Serializer *s, FunctionParameterList *parameters) {
+    u32 l = 0;
+
+    FunctionParameter *param = parameters->head;
+    l += pushU32(s, parameters->count);
+    for(u32 i = 0; i < parameters->count; i++, param = param->next) {
+        l += pushType(s, *param->type);
+        l += pushTokenStringById(s, param->identifier);
+        l += pushU32(s, param->dataLocation);
+    }
+
+    return l;
+}
+
+static u32
 pushImportDirective(Serializer *s, ASTNode node) {
     u32 l = 0;
 
@@ -211,13 +250,7 @@ pushError(Serializer *s, ASTNode node) {
     l += pushU32(s, node.type);
     ASTNodeError *error = &node.errorNode;
     l += pushTokenStringById(s, error->identifier);
-
-    FunctionParameter *param = error->parameters.head;
-    l += pushU32(s, error->parameters.count);
-    for(u32 i = 0; i < error->parameters.count; i++, param = param->next) {
-        l += pushType(s, *param->type);
-        l += pushTokenStringById(s, param->identifier);
-    }
+    l += pushFunctionParameters(s, &error->parameters);
 
     return l;
 }
@@ -268,6 +301,22 @@ pushConstVariable(Serializer *s, ASTNode node) {
 }
 
 static u32
+pushFunctionDefinition(Serializer *s, ASTNode node) {
+    u32 l = pushU32(s, node.type);
+
+    ASTNodeFunctionDefinition *function = &node.functionDefinitionNode;
+    l += pushTokenStringById(s, function->name);
+
+    l += pushFunctionParameters(s, &function->parameters);
+    l += pushU32(s, function->visibility);
+    l += pushU32(s, function->stateMutability);
+    l += pushFunctionParameters(s, &function->returnParameters);
+    l += pushStatement(s, function->body);
+
+    return l;
+}
+
+static u32
 pushASTNode(Serializer *s, ASTNode node) {
     u32 l = 0;
 
@@ -292,6 +341,9 @@ pushASTNode(Serializer *s, ASTNode node) {
         } break;
         case ASTNodeType_ConstVariable: {
             l = pushConstVariable(s, node);
+        } break;
+        case ASTNodeType_FunctionDefinition: {
+            l = pushFunctionDefinition(s, node);
         } break;
         default: {
             assert(0);
