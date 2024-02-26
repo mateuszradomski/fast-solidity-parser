@@ -2,6 +2,8 @@
 #include "./src/tokenize.c"
 #include "./src/parser.c"
 
+static String result = { 0 };
+
 String *
 entryPointJSONInterface(const char *string, int len) {
     Arena arena = arenaCreate(64 * Megabyte, 32 * Kilobyte, 64);

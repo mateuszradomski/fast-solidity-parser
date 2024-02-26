@@ -1,5 +1,3 @@
-static String result = { 0 };
-
 typedef enum ASTNodeType_Enum {
     ASTNodeType_None,
     ASTNodeType_SourceUnit,
