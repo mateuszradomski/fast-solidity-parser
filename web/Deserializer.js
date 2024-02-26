@@ -188,9 +188,6 @@ class Deserializer {
     }
 
     popVariableDeclaration() {
-        // TODO(radomski): Useless?
-        const kind = this.popU32();
-
         const typeName = this.popType();
         const name = this.popString();
         const dataLocation = this.popU32();

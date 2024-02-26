@@ -83,7 +83,7 @@ pushType(Serializer *s, ASTNode node) {
 
 static u32
 pushVariableDeclaration(Serializer *s, ASTNode node) {
-    u32 l = pushU32(s, node.type);
+    u32 l = 0;
 
     ASTNodeVariableDeclaration *decl = &node.variableDeclarationNode;
     l += pushType(s, *decl->type);
