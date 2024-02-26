@@ -307,13 +307,20 @@ setCurrentParserPosition(Parser *parser, u32 newPosition) {
 
 static TokenId
 parseIdentifier(Parser *parser) {
-    if(acceptToken(parser, TokenType_Symbol)) {
-    } else if(acceptToken(parser, TokenType_From)) {
-    } else if(acceptToken(parser, TokenType_Receive)) {
-    } else if(acceptToken(parser, TokenType_Revert)) {
-    } else if(acceptToken(parser, TokenType_Error)) {
-    } else if(acceptToken(parser, TokenType_Global)) {
-    } else if(acceptToken(parser, TokenType_Payable)) {
+    Token token = peekToken(parser);
+
+    u32 isIdent =
+        token.type == TokenType_Symbol |
+        token.type == TokenType_From |
+        token.type == TokenType_Receive |
+        token.type == TokenType_Revert |
+        token.type == TokenType_Error |
+        token.type == TokenType_Global |
+        token.type == TokenType_Payable;
+
+    if(isIdent) {
+        acceptToken(parser, token.type);
+        return peekLastTokenId(parser);
     } else {
         return INVALID_TOKEN_ID;
     }
@@ -323,15 +330,21 @@ parseIdentifier(Parser *parser) {
 
 static TokenId
 parseSubdenomination(Parser *parser) {
-    if(acceptToken(parser, TokenType_Wei) ||
-       acceptToken(parser, TokenType_Gwei) ||
-       acceptToken(parser, TokenType_Ether) ||
-       acceptToken(parser, TokenType_Seconds) ||
-       acceptToken(parser, TokenType_Minutes) ||
-       acceptToken(parser, TokenType_Hours) ||
-       acceptToken(parser, TokenType_Days) ||
-       acceptToken(parser, TokenType_Weeks) ||
-       acceptToken(parser, TokenType_Years)) {
+    Token token = peekToken(parser);
+
+    u32 isSubdenomination =
+        token.type == TokenType_Wei |
+        token.type == TokenType_Gwei |
+        token.type == TokenType_Ether |
+        token.type == TokenType_Seconds |
+        token.type == TokenType_Minutes |
+        token.type == TokenType_Hours |
+        token.type == TokenType_Days |
+        token.type == TokenType_Weeks |
+        token.type == TokenType_Years;
+
+    if(isSubdenomination) {
+        acceptToken(parser, token.type);
         return peekLastTokenId(parser);
     } else {
         return INVALID_TOKEN_ID;
