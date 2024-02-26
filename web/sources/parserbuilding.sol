@@ -3053,6 +3053,16 @@ function helper(uint x) pure returns (uint) {
     return x * 2;
 }
 
+function ifElsees(uint x) pure returns (uint) {
+    if (prefix <= 0x7f) {
+        return 2;
+    } else if(x==2){
+        return 3;
+    } else {
+        return 4;
+    }
+}
+
 /**
  * Custom pointer type to avoid confusion between pointers and uint256s.
  */
@@ -3251,113 +3261,113 @@ returns (
     //     prefix := byte(0, mload(ptr))
     // }
 
-    // if (prefix <= 0x7f) {
-    //     // Single byte.
-    //     return (0, 1, RLPItemType.DATA_ITEM);
-    // } else if (prefix <= 0xb7) {
-    //     // Short string.
+    if (prefix <= 0x7f) {
+        // Single byte.
+        // return (0, 1, RLPItemType.DATA_ITEM);
+    } else if (prefix <= 0xb7) {
+        // Short string.
 
-    //     // slither-disable-next-line variable-scope
-    //     uint256 strLen = prefix - 0x80;
+        // slither-disable-next-line variable-scope
+        // uint256 strLen = prefix - 0x80;
 
-    //     require(
-    //         _in.length > strLen,
-    //         "RLPReader: length of content must be greater than string length (short string)"
-    //     );
+        require(
+            _in.length > strLen,
+            "RLPReader: length of content must be greater than string length (short string)"
+        );
 
-    //     bytes1 firstByteOfContent;
-    //     assembly {
-    //         firstByteOfContent := and(mload(add(ptr, 1)), shl(248, 0xff))
-    //     }
+        // bytes1 firstByteOfContent;
+        // assembly {
+        //     firstByteOfContent := and(mload(add(ptr, 1)), shl(248, 0xff))
+        // }
 
-    //     require(
-    //         strLen != 1 || firstByteOfContent >= 0x80,
-    //         "RLPReader: invalid prefix, single byte < 0x80 are not prefixed (short string)"
-    //     );
+        require(
+            strLen != 1 || firstByteOfContent >= 0x80,
+            "RLPReader: invalid prefix, single byte < 0x80 are not prefixed (short string)"
+        );
 
-    //     return (1, strLen, RLPItemType.DATA_ITEM);
-    // } else if (prefix <= 0xbf) {
-    //     // Long string.
-    //     uint256 lenOfStrLen = prefix - 0xb7;
+        // return (1, strLen, RLPItemType.DATA_ITEM);
+    } else if (prefix <= 0xbf) {
+        // Long string.
+        // uint256 lenOfStrLen = prefix - 0xb7;
 
-    //     require(
-    //         _in.length > lenOfStrLen,
-    //         "RLPReader: length of content must be > than length of string length (long string)"
-    //     );
+        require(
+            _in.length > lenOfStrLen,
+            "RLPReader: length of content must be > than length of string length (long string)"
+        );
 
-    //     bytes1 firstByteOfContent;
-    //     assembly {
-    //         firstByteOfContent := and(mload(add(ptr, 1)), shl(248, 0xff))
-    //     }
+        // // bytes1 firstByteOfContent;
+        // // assembly {
+        // //     firstByteOfContent := and(mload(add(ptr, 1)), shl(248, 0xff))
+        // // }
 
-    //     require(
-    //         firstByteOfContent != 0x00,
-    //         "RLPReader: length of content must not have any leading zeros (long string)"
-    //     );
+        require(
+            firstByteOfContent != 0x00,
+            "RLPReader: length of content must not have any leading zeros (long string)"
+        );
 
-    //     uint256 strLen;
-    //     assembly {
-    //         strLen := shr(sub(256, mul(8, lenOfStrLen)), mload(add(ptr, 1)))
-    //     }
+        // // uint256 strLen;
+        // // assembly {
+        // //     strLen := shr(sub(256, mul(8, lenOfStrLen)), mload(add(ptr, 1)))
+        // // }
 
-    //     require(
-    //         strLen > 55,
-    //         "RLPReader: length of content must be greater than 55 bytes (long string)"
-    //     );
+        require(
+            strLen > 55,
+            "RLPReader: length of content must be greater than 55 bytes (long string)"
+        );
 
-    //     require(
-    //         _in.length > lenOfStrLen + strLen,
-    //         "RLPReader: length of content must be greater than total length (long string)"
-    //     );
+        require(
+            _in.length > lenOfStrLen + strLen,
+            "RLPReader: length of content must be greater than total length (long string)"
+        );
 
-    //     return (1 + lenOfStrLen, strLen, RLPItemType.DATA_ITEM);
-    // } else if (prefix <= 0xf7) {
-    //     // Short list.
-    //     // slither-disable-next-line variable-scope
-    //     uint256 listLen = prefix - 0xc0;
+        // return (1 + lenOfStrLen, strLen, RLPItemType.DATA_ITEM);
+    } else if (prefix <= 0xf7) {
+        // Short list.
+        // slither-disable-next-line variable-scope
+        // uint256 listLen = prefix - 0xc0;
 
-    //     require(
-    //         _in.length > listLen,
-    //         "RLPReader: length of content must be greater than list length (short list)"
-    //     );
+        require(
+            _in.length > listLen,
+            "RLPReader: length of content must be greater than list length (short list)"
+        );
 
-    //     return (1, listLen, RLPItemType.LIST_ITEM);
-    // } else {
-    //     // Long list.
-    //     uint256 lenOfListLen = prefix - 0xf7;
+        // return (1, listLen, RLPItemType.LIST_ITEM);
+    } else {
+        // Long list.
+        // uint256 lenOfListLen = prefix - 0xf7;
 
-    //     require(
-    //         _in.length > lenOfListLen,
-    //         "RLPReader: length of content must be > than length of list length (long list)"
-    //     );
+        require(
+            _in.length > lenOfListLen,
+            "RLPReader: length of content must be > than length of list length (long list)"
+        );
 
-    //     bytes1 firstByteOfContent;
-    //     assembly {
-    //         firstByteOfContent := and(mload(add(ptr, 1)), shl(248, 0xff))
-    //     }
+        // bytes1 firstByteOfContent;
+        // assembly {
+        //     firstByteOfContent := and(mload(add(ptr, 1)), shl(248, 0xff))
+        // }
 
-    //     require(
-    //         firstByteOfContent != 0x00,
-    //         "RLPReader: length of content must not have any leading zeros (long list)"
-    //     );
+        require(
+            firstByteOfContent != 0x00,
+            "RLPReader: length of content must not have any leading zeros (long list)"
+        );
 
-    //     uint256 listLen;
-    //     assembly {
-    //         listLen := shr(sub(256, mul(8, lenOfListLen)), mload(add(ptr, 1)))
-    //     }
+        // uint256 listLen;
+        // assembly {
+        //     listLen := shr(sub(256, mul(8, lenOfListLen)), mload(add(ptr, 1)))
+        // }
 
-    //     require(
-    //         listLen > 55,
-    //         "RLPReader: length of content must be greater than 55 bytes (long list)"
-    //     );
+        require(
+            listLen > 55,
+            "RLPReader: length of content must be greater than 55 bytes (long list)"
+        );
 
-    //     require(
-    //         _in.length > lenOfListLen + listLen,
-    //         "RLPReader: length of content must be greater than total length (long list)"
-    //     );
+        require(
+            _in.length > lenOfListLen + listLen,
+            "RLPReader: length of content must be greater than total length (long list)"
+        );
 
-    //     return (1 + lenOfListLen, listLen, RLPItemType.LIST_ITEM);
-    // }
+        // return (1 + lenOfListLen, listLen, RLPItemType.LIST_ITEM);
+    }
 }
 
 /**
@@ -3375,13 +3385,13 @@ function _copy(
                uint256 _length
 ) private pure returns (bytes memory) {
     //bytes memory out = new bytes(_length);
-    //if (_length == 0) {
-    //    return out;
-    //}
+    if (_length == 0) {
+        return out;
+    }
 
-    //// Mostly based on Solidity's copy_memory_to_memory:
-    //// solhint-disable max-line-length
-    //// https://github.com/ethereum/solidity/blob/34dd30d71b4da730488be72ff6af7083cf2a91f6/libsolidity/codegen/YulUtilFunctions.cpp#L102-L114
+    // Mostly based on Solidity's copy_memory_to_memory:
+    // solhint-disable max-line-length
+    // https://github.com/ethereum/solidity/blob/34dd30d71b4da730488be72ff6af7083cf2a91f6/libsolidity/codegen/YulUtilFunctions.cpp#L102-L114
     //uint256 src = MemoryPointer.unwrap(_src) + _offset;
     //assembly {
     //    let dest := add(out, 32)

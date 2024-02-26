@@ -163,6 +163,16 @@ pushStatement(Serializer *s, ASTNode *node) {
         case ASTNodeType_ExpressionStatement: {
             l += pushExpression(s, *node->expressionStatementNode.expression);
         } break;
+        case ASTNodeType_IfStatement: {
+            l += pushExpression(s, *node->ifStatementNode.conditionExpression);
+            l += pushStatement(s, node->ifStatementNode.trueStatement);
+            if(node->ifStatementNode.falseStatement == 0x0) {
+                l += pushU32(s, 0);
+            } else {
+                l += pushU32(s, 1);
+                l += pushStatement(s, node->ifStatementNode.falseStatement);
+            }
+        } break;
         default: {
             assert(0);
         }

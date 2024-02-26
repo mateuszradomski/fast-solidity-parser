@@ -149,12 +149,24 @@ typedef enum TokenType {
     TokenType_MinusMinus,
     TokenType_LTick,
     TokenType_RTick,
+    TokenType_LeftEqual,
+    TokenType_RightEqual,
     TokenType_EqualEqual,
     TokenType_NotEqual,
     TokenType_LogicalAnd,
     TokenType_LogicalOr,
     TokenType_QuestionMark,
     TokenType_Equal,
+    TokenType_OrEqual,
+    TokenType_XorEqual,
+    TokenType_AndEqual,
+    TokenType_LeftShiftEqual,
+    TokenType_RightShiftEqual,
+    TokenType_PlusEqual,
+    TokenType_MinusEqual,
+    TokenType_StarEqual,
+    TokenType_DivideEqual,
+    TokenType_PercentEqual,
     TokenType_LBracket,
     TokenType_RBracket,
     TokenType_LBrace,
@@ -287,7 +299,19 @@ tokenTypeToString(TokenType tokenType) {
         case TokenType_PlusPlus: return LIT_TO_STR("PlusPlus");
         case TokenType_MinusMinus: return LIT_TO_STR("MinusMinus");
         case TokenType_QuestionMark: return LIT_TO_STR("QuestionMark");
+        case TokenType_LeftEqual: return LIT_TO_STR("LeftEqual");
+        case TokenType_RightEqual: return LIT_TO_STR("RightEqual");
         case TokenType_Equal: return LIT_TO_STR("Equal");
+        case TokenType_OrEqual: return LIT_TO_STR("OrEqual");
+        case TokenType_XorEqual: return LIT_TO_STR("XorEqual");
+        case TokenType_AndEqual: return LIT_TO_STR("AndEqual");
+        case TokenType_LeftShiftEqual: return LIT_TO_STR("LeftShiftEqual");
+        case TokenType_RightShiftEqual: return LIT_TO_STR("RightShiftEqual");
+        case TokenType_PlusEqual: return LIT_TO_STR("PlusEqual");
+        case TokenType_MinusEqual: return LIT_TO_STR("MinusEqual");
+        case TokenType_StarEqual: return LIT_TO_STR("StarEqual");
+        case TokenType_DivideEqual: return LIT_TO_STR("DivideEqual");
+        case TokenType_PercentEqual: return LIT_TO_STR("PercentEqual");
         case TokenType_EqualEqual: return LIT_TO_STR("EqualEqual");
         case TokenType_NotEqual: return LIT_TO_STR("NotEqual");
         case TokenType_LogicalAnd: return LIT_TO_STR("LogicalAnd");
@@ -399,12 +423,12 @@ static void
 pushToken(TokenizeResult *result, TokenType tokenType, String string) {
     assert(result->count < result->capacity);
 
-    //printToken(tokenType, string);
-
     result->tokens[result->count++] = (Token){
         .type = tokenType,
         .string = string
     };
+
+    // printToken(result->tokens[result->count - 1]);
 }
 
 static TokenizeResult
@@ -718,6 +742,9 @@ tokenize(String source, Arena *arena) {
             if(nextByte == '<') {
                 consumeByte(&c);
                 pushToken(&result, TokenType_LeftShift, (String){ .data = c.head - 2, .size = 2 });
+            } else if(nextByte == '=') {
+                consumeByte(&c);
+                pushToken(&result, TokenType_LeftEqual, (String){ .data = c.head - 2, .size = 2 });
             } else {
                 pushToken(&result, TokenType_LTick, (String){ .data = c.head - 1, .size = 1 });
             }
@@ -732,6 +759,9 @@ tokenize(String source, Arena *arena) {
                 } else {
                     pushToken(&result, TokenType_RightShift, (String){ .data = c.head - 2, .size = 2 });
                 }
+            } else if(nextByte == '=') {
+                consumeByte(&c);
+                pushToken(&result, TokenType_RightEqual, (String){ .data = c.head - 2, .size = 2 });
             } else {
                 pushToken(&result, TokenType_RTick, (String){ .data = c.head - 1, .size = 1 });
             }
@@ -756,6 +786,9 @@ tokenize(String source, Arena *arena) {
             if(nextByte == '+') {
                 consumeByte(&c);
                 pushToken(&result, TokenType_PlusPlus, (String){ .data = c.head - 2, .size = 2 });
+            } else if(nextByte == '=') {
+                consumeByte(&c);
+                pushToken(&result, TokenType_PlusEqual, (String){ .data = c.head - 2, .size = 2 });
             } else {
                 pushToken(&result, TokenType_Plus, (String){ .data = c.head - 1, .size = 1 });
             }
@@ -764,6 +797,9 @@ tokenize(String source, Arena *arena) {
             if(nextByte == '-') {
                 consumeByte(&c);
                 pushToken(&result, TokenType_MinusMinus, (String){ .data = c.head - 2, .size = 2 });
+            } else if(nextByte == '=') {
+                consumeByte(&c);
+                pushToken(&result, TokenType_MinusEqual, (String){ .data = c.head - 2, .size = 2 });
             } else {
                 pushToken(&result, TokenType_Minus, (String){ .data = c.head - 1, .size = 1 });
             }
@@ -774,6 +810,9 @@ tokenize(String source, Arena *arena) {
             if(nextByte == '*') {
                 consumeByte(&c);
                 pushToken(&result, TokenType_StarStar, (String){ .data = c.head - 2, .size = 2 });
+            } else if(nextByte == '=') {
+                consumeByte(&c);
+                pushToken(&result, TokenType_StarEqual, (String){ .data = c.head - 2, .size = 2 });
             } else {
                 pushToken(&result, TokenType_Star, (String){ .data = c.head - 1, .size = 1 });
             }
@@ -782,6 +821,9 @@ tokenize(String source, Arena *arena) {
             if(nextByte == '&') {
                 consumeByte(&c);
                 pushToken(&result, TokenType_LogicalAnd, (String){ .data = c.head - 2, .size = 2 });
+            } else if(nextByte == '=') {
+                consumeByte(&c);
+                pushToken(&result, TokenType_AndEqual, (String){ .data = c.head - 2, .size = 2 });
             } else {
                 pushToken(&result, TokenType_Ampersand, (String){ .data = c.head - 1, .size = 1 });
             }
@@ -790,6 +832,9 @@ tokenize(String source, Arena *arena) {
             if(nextByte == '|') {
                 consumeByte(&c);
                 pushToken(&result, TokenType_LogicalOr, (String){ .data = c.head - 2, .size = 2 });
+            } else if(nextByte == '=') {
+                consumeByte(&c);
+                pushToken(&result, TokenType_OrEqual, (String){ .data = c.head - 2, .size = 2 });
             } else {
                 pushToken(&result, TokenType_Pipe, (String){ .data = c.head - 1, .size = 1 });
             }

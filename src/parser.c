@@ -29,6 +29,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_BlockStatement,
     ASTNodeType_ReturnStatement,
     ASTNodeType_ExpressionStatement,
+    ASTNodeType_IfStatement,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -167,6 +168,12 @@ typedef struct ASTNodeReturnStatement {
     ASTNode *expression;
 } ASTNodeReturnStatement;
 
+typedef struct ASTNodeIfStatement {
+    ASTNode *conditionExpression;
+    ASTNode *trueStatement;
+    ASTNode *falseStatement;
+} ASTNodeIfStatement;
+
 typedef struct ASTNode {
     ASTNodeType type;
 
@@ -208,6 +215,7 @@ typedef struct ASTNode {
         ASTNodeBlockStatement blockStatementNode;
         ASTNodeReturnStatement returnStatementNode;
         ASTNodeReturnStatement expressionStatementNode;
+        ASTNodeIfStatement ifStatementNode;
     };
 } ASTNode;
 
@@ -745,12 +753,24 @@ isOperator(TokenType type) {
         case TokenType_LeftShift:
         case TokenType_RightShift:
         case TokenType_RightShiftZero:
+        case TokenType_LeftEqual:
+        case TokenType_RightEqual:
         case TokenType_LTick:
         case TokenType_RTick:
         case TokenType_EqualEqual:
         case TokenType_NotEqual:
         case TokenType_LogicalAnd:
-        case TokenType_LogicalOr: return true;
+        case TokenType_LogicalOr:
+        case TokenType_OrEqual:
+        case TokenType_XorEqual:
+        case TokenType_AndEqual:
+        case TokenType_LeftShiftEqual:
+        case TokenType_RightShiftEqual:
+        case TokenType_PlusEqual:
+        case TokenType_MinusEqual:
+        case TokenType_StarEqual:
+        case TokenType_DivideEqual:
+        case TokenType_PercentEqual: return true;
         default: return false;
     }
 }
@@ -773,12 +793,24 @@ getOperatorPrecedence(TokenType type) {
         case TokenType_Ampersand: return -7;
         case TokenType_Carrot: return -8;
         case TokenType_Pipe: return -9;
+        case TokenType_LeftEqual:
+        case TokenType_RightEqual:
         case TokenType_LTick:
         case TokenType_RTick: return -10;
         case TokenType_EqualEqual:
         case TokenType_NotEqual: return -11;
         case TokenType_LogicalAnd: return -12;
         case TokenType_LogicalOr: return -13;
+        case TokenType_OrEqual:
+        case TokenType_XorEqual:
+        case TokenType_AndEqual:
+        case TokenType_LeftShiftEqual:
+        case TokenType_RightShiftEqual:
+        case TokenType_PlusEqual:
+        case TokenType_MinusEqual:
+        case TokenType_StarEqual:
+        case TokenType_DivideEqual:
+        case TokenType_PercentEqual: return -14;
         default: assert(0);
     }
 
@@ -944,35 +976,59 @@ parseExpression(Parser *parser, ASTNode *node, Arena *arena) {
 }
 
 static bool
-parseBlock(Parser *parser, ASTNode *node, Arena *arena) {
-    node->type = ASTNodeType_BlockStatement;
+parseStatement(Parser *parser, ASTNode *node, Arena *arena) {
+    if(acceptToken(parser, TokenType_Return)) {
+        ASTNode *returnStatement = node;
+        returnStatement->type = ASTNodeType_ReturnStatement;
+        returnStatement->returnStatementNode.expression = structPush(arena, ASTNode);
 
-    expectToken(parser, TokenType_LBrace);
-    while(!acceptToken(parser, TokenType_RBrace)) {
-        ASTNodeLink *statement = structPush(arena, ASTNodeLink);
-
-        if(acceptToken(parser, TokenType_Return)) {
-            ASTNode *returnStatement = &statement->node;
-            returnStatement->type = ASTNodeType_ReturnStatement;
-            returnStatement->returnStatementNode.expression = structPush(arena, ASTNode);
-
-            parseExpression(parser, returnStatement->returnStatementNode.expression, arena);
-        } else if(acceptToken(parser, TokenType_Comment)) {
-            continue;
-        } else {
-            ASTNode *expressionStatement = &statement->node;
-            expressionStatement->type = ASTNodeType_ExpressionStatement;
-            expressionStatement->expressionStatementNode.expression = structPush(arena, ASTNode);
-
-            parseExpression(parser, expressionStatement->expressionStatementNode.expression, arena);
-        }
-
+        parseExpression(parser, returnStatement->returnStatementNode.expression, arena);
         expectToken(parser, TokenType_Semicolon);
-        SLL_QUEUE_PUSH(node->blockStatementNode.statements.head, node->blockStatementNode.statements.last, statement);
-        node->blockStatementNode.statements.count += 1;
+    } else if(acceptToken(parser, TokenType_If)) {
+        node->type = ASTNodeType_IfStatement;
+        ASTNodeIfStatement *ifStatement = &node->ifStatementNode;
+        ifStatement->conditionExpression = structPush(arena, ASTNode);
+
+        expectToken(parser, TokenType_LParen);
+        parseExpression(parser, ifStatement->conditionExpression, arena);
+        expectToken(parser, TokenType_RParen);
+
+        ifStatement->trueStatement = structPush(arena, ASTNode);
+        parseStatement(parser, ifStatement->trueStatement, arena);
+
+        if(acceptToken(parser, TokenType_Else)) {
+            ifStatement->falseStatement = structPush(arena, ASTNode);
+            parseStatement(parser, ifStatement->falseStatement, arena);
+        }
+    } else if(acceptToken(parser, TokenType_LBrace)) {
+        node->type = ASTNodeType_BlockStatement;
+
+        while(!acceptToken(parser, TokenType_RBrace)) {
+            ASTNodeLink *statement = structPush(arena, ASTNodeLink);
+            if(!parseStatement(parser, &statement->node, arena)) {
+                continue;
+            }
+
+            SLL_QUEUE_PUSH(node->blockStatementNode.statements.head, node->blockStatementNode.statements.last, statement);
+            node->blockStatementNode.statements.count += 1;
+        }
+    } else if(acceptToken(parser, TokenType_Comment)) {
+        return false;
+    } else {
+        ASTNode *expressionStatement = node;
+        expressionStatement->type = ASTNodeType_ExpressionStatement;
+        expressionStatement->expressionStatementNode.expression = structPush(arena, ASTNode);
+
+        parseExpression(parser, expressionStatement->expressionStatementNode.expression, arena);
+        expectToken(parser, TokenType_Semicolon);
     }
 
     return true;
+}
+
+static bool
+parseBlock(Parser *parser, ASTNode *node, Arena *arena) {
+    return parseStatement(parser, node, arena);
 }
 
 static bool
