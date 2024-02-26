@@ -187,8 +187,8 @@ typedef enum TokenType {
     TokenType_Count,
 } TokenType;
 
-#define INVALID_TOKEN_ID (-1)
-typedef s32 TokenId;
+#define INVALID_TOKEN_ID ((u32)(-1))
+typedef u32 TokenId;
 
 typedef struct TokenIdBucket {
     TokenId tokens[16];
