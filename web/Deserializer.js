@@ -26,6 +26,8 @@ const ASTNodeType_BlockStatement = 25
 const ASTNodeType_ReturnStatement = 26
 const ASTNodeType_ExpressionStatement = 27
 const ASTNodeType_IfStatement = 28
+const ASTNodeType_VariableDeclarationStatement = 29
+const ASTNodeType_VariableDeclaration = 30
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -93,6 +95,8 @@ class Deserializer {
             87: "!=",
             88: "&&",
             89: "||",
+            90: "?",
+            91: "=",
         }
 
         this.visibilityString = [
@@ -180,6 +184,26 @@ class Deserializer {
             }
         } else {
             throw new Error(`Unknown/Unsupported type kind: ${kind}`);
+        }
+    }
+
+    popVariableDeclaration() {
+        // TODO(radomski): Useless?
+        const kind = this.popU32();
+
+        const typeName = this.popType();
+        const name = this.popString();
+        const dataLocation = this.popU32();
+
+        return {
+            type: "VariableDeclaration",
+            typeName,
+            name,
+            identifier: stringToIdentifier(name),
+            storageLocation: this.storageLocationString[dataLocation],
+            isStateVar: false,
+            isIndexed: false,
+            expression: null
         }
     }
 
@@ -326,7 +350,21 @@ class Deserializer {
                 trueBody,
                 falseBody,
             }
+        } else if(type === ASTNodeType_VariableDeclarationStatement) {
+            const variable = this.popVariableDeclaration();
+            const noInitialValue = this.popU32();
+            let initialValue = null;
+            if(noInitialValue === 0) {
+                initialValue = this.popExpression();
+            }
+
+            return {
+                type: "VariableDeclarationStatement",
+                variables: [variable],
+                initialValue,
+            }
         } else {
+            throw new Error(`Unknown/Unsupported type: ${type}`);
         }
     }
 

@@ -82,6 +82,18 @@ pushType(Serializer *s, ASTNode node) {
 }
 
 static u32
+pushVariableDeclaration(Serializer *s, ASTNode node) {
+    u32 l = pushU32(s, node.type);
+
+    ASTNodeVariableDeclaration *decl = &node.variableDeclarationNode;
+    l += pushType(s, *decl->type);
+    l += pushTokenStringById(s, decl->name);
+    l += pushU32(s, decl->dataLocation);
+
+    return l;
+}
+
+static u32
 pushExpression(Serializer *s, ASTNode node) {
     u32 l = 0;
 
@@ -171,6 +183,15 @@ pushStatement(Serializer *s, ASTNode *node) {
             } else {
                 l += pushU32(s, 1);
                 l += pushStatement(s, node->ifStatementNode.falseStatement);
+            }
+        } break;
+        case ASTNodeType_VariableDeclarationStatement: {
+            ASTNodeVariableDeclarationStatement *statement = &node->variableDeclarationStatementNode;
+
+            l += pushVariableDeclaration(s, *statement->variableDeclaration);
+            l += pushU32(s, statement->initialValue == 0x0);
+            if(statement->initialValue != 0x0) {
+                l += pushExpression(s, *statement->initialValue);
             }
         } break;
         default: {

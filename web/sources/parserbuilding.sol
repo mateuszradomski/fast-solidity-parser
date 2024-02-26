@@ -3109,7 +3109,7 @@ function toRLPItem(bytes memory _in) internal pure returns (RLPItem memory) {
         "RLPReader: length of an RLP item must be greater than zero to be decodable"
     );
 
-    // MemoryPointer ptr;
+    MemoryPointer ptr;
     // assembly {
     //     ptr := add(_in, 32)
     // }
@@ -3144,8 +3144,8 @@ function readList(RLPItem memory _in) internal pure returns (RLPItem[] memory) {
     // simply set a reasonable maximum list length and decrease the size before we finish.
     // RLPItem[] memory out = new RLPItem[](MAX_LIST_LENGTH);
 
-    // uint256 itemCount = 0;
-    // uint256 offset = listOffset;
+    uint256 itemCount = 0;
+    uint256 offset = listOffset;
     // while (offset < _in.length) {
     //     (uint256 itemOffset, uint256 itemLength, ) = _decodeLength(
     //         RLPItem({
@@ -3268,14 +3268,14 @@ returns (
         // Short string.
 
         // slither-disable-next-line variable-scope
-        // uint256 strLen = prefix - 0x80;
+        uint256 strLen = prefix - 0x80;
 
         require(
             _in.length > strLen,
             "RLPReader: length of content must be greater than string length (short string)"
         );
 
-        // bytes1 firstByteOfContent;
+        bytes1 firstByteOfContent;
         // assembly {
         //     firstByteOfContent := and(mload(add(ptr, 1)), shl(248, 0xff))
         // }
@@ -3288,27 +3288,27 @@ returns (
         // return (1, strLen, RLPItemType.DATA_ITEM);
     } else if (prefix <= 0xbf) {
         // Long string.
-        // uint256 lenOfStrLen = prefix - 0xb7;
+        uint256 lenOfStrLen = prefix - 0xb7;
 
         require(
             _in.length > lenOfStrLen,
             "RLPReader: length of content must be > than length of string length (long string)"
         );
 
-        // // bytes1 firstByteOfContent;
-        // // assembly {
-        // //     firstByteOfContent := and(mload(add(ptr, 1)), shl(248, 0xff))
-        // // }
+        bytes1 firstByteOfContent;
+        // assembly {
+        //     firstByteOfContent := and(mload(add(ptr, 1)), shl(248, 0xff))
+        // }
 
         require(
             firstByteOfContent != 0x00,
             "RLPReader: length of content must not have any leading zeros (long string)"
         );
 
-        // // uint256 strLen;
-        // // assembly {
-        // //     strLen := shr(sub(256, mul(8, lenOfStrLen)), mload(add(ptr, 1)))
-        // // }
+        uint256 strLen;
+        // assembly {
+        //     strLen := shr(sub(256, mul(8, lenOfStrLen)), mload(add(ptr, 1)))
+        // }
 
         require(
             strLen > 55,
@@ -3324,7 +3324,7 @@ returns (
     } else if (prefix <= 0xf7) {
         // Short list.
         // slither-disable-next-line variable-scope
-        // uint256 listLen = prefix - 0xc0;
+        uint256 listLen = prefix - 0xc0;
 
         require(
             _in.length > listLen,
@@ -3334,14 +3334,14 @@ returns (
         // return (1, listLen, RLPItemType.LIST_ITEM);
     } else {
         // Long list.
-        // uint256 lenOfListLen = prefix - 0xf7;
+        uint256 lenOfListLen = prefix - 0xf7;
 
         require(
             _in.length > lenOfListLen,
             "RLPReader: length of content must be > than length of list length (long list)"
         );
 
-        // bytes1 firstByteOfContent;
+        bytes1 firstByteOfContent;
         // assembly {
         //     firstByteOfContent := and(mload(add(ptr, 1)), shl(248, 0xff))
         // }
@@ -3351,7 +3351,7 @@ returns (
             "RLPReader: length of content must not have any leading zeros (long list)"
         );
 
-        // uint256 listLen;
+        uint256 listLen;
         // assembly {
         //     listLen := shr(sub(256, mul(8, lenOfListLen)), mload(add(ptr, 1)))
         // }
@@ -3392,7 +3392,7 @@ function _copy(
     // Mostly based on Solidity's copy_memory_to_memory:
     // solhint-disable max-line-length
     // https://github.com/ethereum/solidity/blob/34dd30d71b4da730488be72ff6af7083cf2a91f6/libsolidity/codegen/YulUtilFunctions.cpp#L102-L114
-    //uint256 src = MemoryPointer.unwrap(_src) + _offset;
+    uint256 src = MemoryPointer.unwrap(_src) + _offset;
     //assembly {
     //    let dest := add(out, 32)
     //    let i := 0

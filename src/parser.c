@@ -30,6 +30,8 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_ReturnStatement,
     ASTNodeType_ExpressionStatement,
     ASTNodeType_IfStatement,
+    ASTNodeType_VariableDeclarationStatement,
+    ASTNodeType_VariableDeclaration,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -174,6 +176,17 @@ typedef struct ASTNodeIfStatement {
     ASTNode *falseStatement;
 } ASTNodeIfStatement;
 
+typedef struct ASTNodeVariableDeclaration {
+    ASTNode *type;
+    u32 name;
+    u32 dataLocation;
+} ASTNodeVariableDeclaration;
+
+typedef struct ASTNodeVariableDeclarationStatement {
+    ASTNode *variableDeclaration;
+    ASTNode *initialValue;
+} ASTNodeVariableDeclarationStatement;
+
 typedef struct ASTNode {
     ASTNodeType type;
 
@@ -216,6 +229,8 @@ typedef struct ASTNode {
         ASTNodeReturnStatement returnStatementNode;
         ASTNodeReturnStatement expressionStatementNode;
         ASTNodeIfStatement ifStatementNode;
+        ASTNodeVariableDeclarationStatement variableDeclarationStatementNode;
+        ASTNodeVariableDeclaration variableDeclarationNode;
     };
 } ASTNode;
 
@@ -278,6 +293,16 @@ acceptToken(Parser *parser, TokenType type) {
 static void
 expectToken(Parser *parser, TokenType type) {
     assert(acceptToken(parser, type));
+}
+
+static u32
+getCurrentParserPosition(Parser *parser) {
+    return parser->current;
+}
+
+static void
+setCurrentParserPosition(Parser *parser, u32 newPosition) {
+    parser->current = newPosition;
 }
 
 static TokenId
@@ -432,7 +457,7 @@ isBaseTypeName(String string) {
     return false;
 }
 
-static void
+static bool
 parseType(Parser *parser, ASTNode *node, Arena *arena) {
     TokenId identifier = INVALID_TOKEN_ID;
 
@@ -549,7 +574,7 @@ parseType(Parser *parser, ASTNode *node, Arena *arena) {
             }
         }
     } else {
-        assert(0);
+        return false;
     }
 
     while(acceptToken(parser, TokenType_LBracket)) {
@@ -559,6 +584,8 @@ parseType(Parser *parser, ASTNode *node, Arena *arena) {
         node->arrayTypeNode.elementType = copy;
         expectToken(parser, TokenType_RBracket);
     }
+
+    return true;
 }
 
 static bool
@@ -761,6 +788,7 @@ isOperator(TokenType type) {
         case TokenType_NotEqual:
         case TokenType_LogicalAnd:
         case TokenType_LogicalOr:
+        case TokenType_Equal:
         case TokenType_OrEqual:
         case TokenType_XorEqual:
         case TokenType_AndEqual:
@@ -801,6 +829,7 @@ getOperatorPrecedence(TokenType type) {
         case TokenType_NotEqual: return -11;
         case TokenType_LogicalAnd: return -12;
         case TokenType_LogicalOr: return -13;
+        case TokenType_Equal:
         case TokenType_OrEqual:
         case TokenType_XorEqual:
         case TokenType_AndEqual:
@@ -976,6 +1005,41 @@ parseExpression(Parser *parser, ASTNode *node, Arena *arena) {
 }
 
 static bool
+tryParseVariableDeclaration(Parser *parser, ASTNode *node, Arena *arena) {
+    u32 startPosition = getCurrentParserPosition(parser);
+    if(!parseType(parser, node, arena)) {
+        setCurrentParserPosition(parser, startPosition);
+        return false;
+    }
+
+    u32 dataLocation = 0;
+    if(acceptToken(parser, TokenType_Memory)) {
+        dataLocation = 1;
+    } else if(acceptToken(parser, TokenType_Storage)) {
+        dataLocation = 2;
+    } else if(acceptToken(parser, TokenType_Calldata)) {
+        dataLocation = 3;
+    }
+
+    TokenId name = parseIdentifier(parser);
+    if(name == INVALID_TOKEN_ID) {
+        setCurrentParserPosition(parser, startPosition);
+        return false;
+    }
+
+    ASTNode *type = structPush(arena, ASTNode);
+    *type = *node;
+
+    node->type = ASTNodeType_VariableDeclaration;
+    ASTNodeVariableDeclaration *decl = &node->variableDeclarationNode;
+    decl->type = type;
+    decl->name = name;
+    decl->dataLocation = dataLocation;
+
+    return true;
+}
+
+static bool
 parseStatement(Parser *parser, ASTNode *node, Arena *arena) {
     if(acceptToken(parser, TokenType_Return)) {
         ASTNode *returnStatement = node;
@@ -1015,12 +1079,29 @@ parseStatement(Parser *parser, ASTNode *node, Arena *arena) {
     } else if(acceptToken(parser, TokenType_Comment)) {
         return false;
     } else {
-        ASTNode *expressionStatement = node;
-        expressionStatement->type = ASTNodeType_ExpressionStatement;
-        expressionStatement->expressionStatementNode.expression = structPush(arena, ASTNode);
+        if(tryParseVariableDeclaration(parser, node, arena)) {
+            ASTNode *varDeclNode = structPush(arena, ASTNode);
+            *varDeclNode = *node;
 
-        parseExpression(parser, expressionStatement->expressionStatementNode.expression, arena);
-        expectToken(parser, TokenType_Semicolon);
+            node->type = ASTNodeType_VariableDeclarationStatement;
+            ASTNodeVariableDeclarationStatement *statement = &node->variableDeclarationStatementNode;
+            statement->variableDeclaration = varDeclNode;
+
+            statement->initialValue = 0x0;
+            if(acceptToken(parser, TokenType_Equal)) {
+                statement->initialValue = structPush(arena, ASTNode);
+                parseExpression(parser, statement->initialValue, arena);
+            }
+
+            expectToken(parser, TokenType_Semicolon);
+        } else {
+            ASTNode *expressionStatement = node;
+            expressionStatement->type = ASTNodeType_ExpressionStatement;
+            expressionStatement->expressionStatementNode.expression = structPush(arena, ASTNode);
+
+            parseExpression(parser, expressionStatement->expressionStatementNode.expression, arena);
+            expectToken(parser, TokenType_Semicolon);
+        }
     }
 
     return true;
