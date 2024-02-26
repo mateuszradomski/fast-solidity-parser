@@ -7,8 +7,8 @@ entryPointJSONInterface(const char *string, int len) {
     Arena arena = arenaCreate(64 * Megabyte, 32 * Kilobyte, 64);
     String input = { .data = (u8 *)string, .size = len };
     TokenizeResult tokens = tokenize(input, &arena);
-    Parser parser = createParser(tokens);
-    ASTNode node = parseSourceUnit(&parser, &arena);
+    Parser parser = createParser(tokens, &arena);
+    ASTNode node = parseSourceUnit(&parser);
     result = astNodeToString(tokens, node, &arena);
 
     return &result;
@@ -25,8 +25,8 @@ entryPointBinaryInterface(const char *string, int len) {
     TokenizeResult tokens = tokenize(input, &arena);
     traceEnd();
     traceBegin(3);
-    Parser parser = createParser(tokens);
-    ASTNode node = parseSourceUnit(&parser, &arena);
+    Parser parser = createParser(tokens, &arena);
+    ASTNode node = parseSourceUnit(&parser);
     traceEnd();
 
     traceBegin(4);
