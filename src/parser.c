@@ -30,6 +30,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_IfStatement,
     ASTNodeType_VariableDeclarationStatement,
     ASTNodeType_VariableDeclaration,
+    ASTNodeType_NewExpression,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -136,6 +137,10 @@ typedef struct ASTNodeUnaryExpression {
     ASTNode *subExpression;
 } ASTNodeUnaryExpression;
 
+typedef struct ASTNodeNewExpression {
+    ASTNode *typeName;
+} ASTNodeNewExpression;
+
 typedef struct ASTNodeFunctionCallExpression {
     ASTNode *expression;
     ASTNodeList arguments;
@@ -219,6 +224,7 @@ typedef struct ASTNode {
         ASTNodeBinaryExpression binaryExpressionNode;
         ASTNodeTupleExpression tupleExpressionNode;
         ASTNodeUnaryExpression unaryExpressionNode;
+        ASTNodeNewExpression newExpressionNode;
         ASTNodeFunctionCallExpression functionCallExpressionNode;
         ASTNodeMemberAccessExpression memberAccessExpressionNode;
         ASTNodeArrayAccessExpression arrayAccessExpressionNode;
@@ -863,6 +869,7 @@ getOperatorPrecedence(TokenType type) {
 static bool
 isUnaryOperator(TokenType type) {
     switch(type) {
+        case TokenType_New:
         case TokenType_Exclamation:
         case TokenType_Minus:
         case TokenType_Tylde:
@@ -876,6 +883,7 @@ isUnaryOperator(TokenType type) {
 static u32
 getUnaryOperatorPrecedence(TokenType type) {
     switch(type) {
+        case TokenType_New: return -1;
         case TokenType_Exclamation:
         case TokenType_Minus:
         case TokenType_Tylde:
@@ -944,13 +952,23 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
             expectToken(parser, TokenType_RParen);
         }
     } else if(isUnaryOperator(peekToken(parser).type)) {
-        node->type = ASTNodeType_UnaryExpression;
-        node->unaryExpressionNode.operator = peekToken(parser).type;
-        node->unaryExpressionNode.subExpression = structPush(parser->arena, ASTNode);
-        advanceToken(parser);
+        u32 operator = peekToken(parser).type;
 
-        u32 precedence = getUnaryOperatorPrecedence(node->unaryExpressionNode.operator);
-        parseExpressionImpl(parser, node->unaryExpressionNode.subExpression, precedence);
+        if(operator == TokenType_New) {
+            node->type = ASTNodeType_NewExpression;
+            node->newExpressionNode.typeName = structPush(parser->arena, ASTNode);
+            advanceToken(parser);
+
+            parseType(parser, node->newExpressionNode.typeName);
+        } else {
+            node->type = ASTNodeType_UnaryExpression;
+            node->unaryExpressionNode.operator = operator;
+            node->unaryExpressionNode.subExpression = structPush(parser->arena, ASTNode);
+            advanceToken(parser);
+
+            u32 precedence = getUnaryOperatorPrecedence(node->unaryExpressionNode.operator);
+            parseExpressionImpl(parser, node->unaryExpressionNode.subExpression, precedence);
+        }
     } else if(parseIdentifier(parser) != INVALID_TOKEN_ID) {
         const Token ident = peekLastToken(parser);
         if(isBaseTypeName(ident.string)) {

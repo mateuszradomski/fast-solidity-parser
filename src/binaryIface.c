@@ -130,6 +130,9 @@ pushExpression(Serializer *s, ASTNode *node) {
             l += pushU32(s, node->unaryExpressionNode.operator);
             l += pushExpression(s, node->unaryExpressionNode.subExpression);
         } break;
+        case ASTNodeType_NewExpression: {
+            l += pushType(s, node->newExpressionNode.typeName);
+        } break;
         case ASTNodeType_FunctionCallExpression: {
             ASTNodeFunctionCallExpression *function = &node->functionCallExpressionNode;
 

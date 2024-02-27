@@ -3142,7 +3142,7 @@ function readList(RLPItem memory _in) internal pure returns (RLPItem[] memory) {
     // writing to the length. Since we can't know the number of RLP items without looping over
     // the entire input, we'd have to loop twice to accurately size this array. It's easier to
     // simply set a reasonable maximum list length and decrease the size before we finish.
-    // RLPItem[] memory out = new RLPItem[](MAX_LIST_LENGTH);
+    RLPItem[] memory out = new RLPItem[](MAX_LIST_LENGTH);
 
     uint256 itemCount = 0;
     uint256 offset = listOffset;
@@ -3384,7 +3384,7 @@ function _copy(
                uint256 _offset,
                uint256 _length
 ) private pure returns (bytes memory) {
-    //bytes memory out = new bytes(_length);
+    bytes memory out = new bytes(_length);
     if (_length == 0) {
         return out;
     }

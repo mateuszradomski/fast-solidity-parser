@@ -28,6 +28,7 @@ const ASTNodeType_ExpressionStatement = 27
 const ASTNodeType_IfStatement = 28
 const ASTNodeType_VariableDeclarationStatement = 29
 const ASTNodeType_VariableDeclaration = 30
+const ASTNodeType_NewExpression = 31
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -273,6 +274,13 @@ class Deserializer {
                 operator: this.operatorStrings[operator],
                 subExpression,
                 isPrefix: true
+            }
+        } else if(type === ASTNodeType_NewExpression) {
+            const typeName = this.popType();
+
+            return {
+                type: "NewExpression",
+                typeName,
             }
         } else if(type === ASTNodeType_FunctionCallExpression) {
             const expression = this.popExpression();
