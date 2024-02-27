@@ -31,6 +31,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_VariableDeclarationStatement,
     ASTNodeType_VariableDeclaration,
     ASTNodeType_NewExpression,
+    ASTNodeType_VariableDeclarationTupleStatement,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -190,6 +191,11 @@ typedef struct ASTNodeVariableDeclarationStatement {
     ASTNode *initialValue;
 } ASTNodeVariableDeclarationStatement;
 
+typedef struct ASTNodeVariableDeclarationTupleStatement {
+    ASTNodeList declarations;
+    ASTNode *initialValue;
+} ASTNodeVariableDeclarationTupleStatement;
+
 typedef struct ASTNode {
     ASTNodeType type;
 
@@ -235,6 +241,7 @@ typedef struct ASTNode {
         ASTNodeIfStatement ifStatementNode;
         ASTNodeVariableDeclarationStatement variableDeclarationStatementNode;
         ASTNodeVariableDeclaration variableDeclarationNode;
+        ASTNodeVariableDeclarationTupleStatement variableDeclarationTupleStatementNode;
     };
 } ASTNode;
 
@@ -1082,6 +1089,41 @@ tryParseVariableDeclaration(Parser *parser, ASTNode *node) {
 }
 
 static bool
+tryParseVariableDeclarationTuple(Parser *parser, ASTNode *node) {
+    u32 startPosition = getCurrentParserPosition(parser);
+    
+    if(!acceptToken(parser, TokenType_LParen)) {
+        setCurrentParserPosition(parser, startPosition);
+        return false;
+    }
+
+    ASTNodeVariableDeclarationTupleStatement *tuple = &node->variableDeclarationTupleStatementNode;
+    do {
+        ASTNodeLink *declaration = structPush(parser->arena, ASTNodeLink);
+        declaration->node.type = ASTNodeType_None;
+
+        if(peekToken(parser).type != TokenType_Comma) {
+            if(!tryParseVariableDeclaration(parser, &declaration->node)) {
+                setCurrentParserPosition(parser, startPosition);
+                return false;
+            }
+        }
+
+        SLL_QUEUE_PUSH(tuple->declarations.head, tuple->declarations.last, declaration);
+        tuple->declarations.count += 1;
+    } while(acceptToken(parser, TokenType_Comma));
+
+    expectToken(parser, TokenType_RParen);
+    expectToken(parser, TokenType_Equal);
+
+    parseExpression(parser, tuple->initialValue);
+
+    node->type = ASTNodeType_VariableDeclarationTupleStatement;
+
+    return true;
+}
+
+static bool
 parseStatement(Parser *parser, ASTNode *node) {
     if(acceptToken(parser, TokenType_Return)) {
         ASTNode *returnStatement = node;
@@ -1135,6 +1177,8 @@ parseStatement(Parser *parser, ASTNode *node) {
                 parseExpression(parser, statement->initialValue);
             }
 
+            expectToken(parser, TokenType_Semicolon);
+        } else if(tryParseVariableDeclarationTuple(parser, node)) {
             expectToken(parser, TokenType_Semicolon);
         } else {
             ASTNode *expressionStatement = node;

@@ -203,6 +203,20 @@ pushStatement(Serializer *s, ASTNode *node) {
                 l += pushExpression(s, statement->initialValue);
             }
         } break;
+        case ASTNodeType_VariableDeclarationTupleStatement: {
+            ASTNodeVariableDeclarationTupleStatement *statement = &node->variableDeclarationTupleStatementNode;
+
+            ASTNodeLink *decl = statement->declarations.head;
+            l += pushU32(s, statement->declarations.count);
+            for(u32 i = 0; i < statement->declarations.count; i++, decl = decl->next) {
+                l += pushU32(s, decl->node.type != ASTNodeType_None);
+                if(decl->node.type != ASTNodeType_None) {
+                    l += pushVariableDeclaration(s, &decl->node);
+                }
+            }
+
+            l += pushExpression(s, statement->initialValue);
+        } break;
         default: {
             assert(0);
         }

@@ -29,6 +29,7 @@ const ASTNodeType_IfStatement = 28
 const ASTNodeType_VariableDeclarationStatement = 29
 const ASTNodeType_VariableDeclaration = 30
 const ASTNodeType_NewExpression = 31
+const ASTNodeType_VariableDeclarationTupleStatement = 32
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -205,6 +206,23 @@ class Deserializer {
         }
     }
 
+    popVariableDeclarationTupleStatementOrder() {
+        const typeName = this.popType();
+        const name = this.popString();
+        const dataLocation = this.popU32();
+
+        return {
+            type: "VariableDeclaration",
+            name,
+            identifier: stringToIdentifier(name),
+            typeName,
+            storageLocation: this.storageLocationString[dataLocation],
+            isStateVar: false,
+            isIndexed: false,
+            expression: null
+        }
+    }
+
     popExpression() {
         const type = this.popU32();
 
@@ -372,8 +390,27 @@ class Deserializer {
                 variables: [variable],
                 initialValue,
             }
-        } else {
-            throw new Error(`Unknown/Unsupported type: ${type}`);
+        } else if(type === ASTNodeType_VariableDeclarationTupleStatement) {
+            const count = this.popU32();
+
+            const array = []
+            for (let i = 0; i < count; i++) {
+                const hasDeclaration = this.popU32();
+                if(hasDeclaration === 1) {
+                    const decl = this.popVariableDeclarationTupleStatementOrder();
+                    array.push(decl)
+                } else {
+                    array.push(null)
+                }
+            }
+
+            const initialValue = this.popExpression();
+
+            return {
+                type: "VariableDeclarationStatement",
+                variables: array,
+                initialValue
+            }
         }
     }
 

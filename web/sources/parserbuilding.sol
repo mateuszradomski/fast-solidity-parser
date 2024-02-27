@@ -3126,7 +3126,7 @@ function toRLPItem(bytes memory _in) internal pure returns (RLPItem memory) {
     * @return Decoded RLP list items.
     */
 function readList(RLPItem memory _in) internal pure returns (RLPItem[] memory) {
-    // (uint256 listOffset, uint256 listLength, RLPItemType itemType) = _decodeLength(_in);
+    (uint256 listOffset, uint256 listLength, RLPItemType itemType) = _decodeLength(_in);
 
     require(
         itemType == RLPItemType.LIST_ITEM,
@@ -3192,7 +3192,7 @@ function readList(bytes memory _in) internal pure returns (RLPItem[] memory) {
     * @return Decoded bytes.
     */
 function readBytes(RLPItem memory _in) internal pure returns (bytes memory) {
-    // (uint256 itemOffset, uint256 itemLength, RLPItemType itemType) = _decodeLength(_in);
+    (uint256 itemOffset, uint256 itemLength, RLPItemType itemType) = _decodeLength(_in);
 
     require(
         itemType == RLPItemType.DATA_ITEM,
