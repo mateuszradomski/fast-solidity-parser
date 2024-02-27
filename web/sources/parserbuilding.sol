@@ -3437,3 +3437,32 @@ contract c {
 function helper(uint x) pure returns (uint) {
     return x * 2;
 }
+
+struct KeyValuePair {
+    string name;
+    int256 value;
+}
+
+struct GlobalBaseStruct {
+    KeyValuePair[] pairs;
+    Locations location;
+}
+
+/*
+ * Constants
+ */
+
+uint constant topLevelConstantVariable = 3;
+
+error TopLevelCustomErrorWithArg(uint x);
+error TopLevelCustomErrorArgWithoutName(string);
+
+contract CustomErrors {
+  error ContractCustomError();
+  error ContractCustomErrorWithArg(uint x);
+  error ContractCustomErrorArgWithoutName(string);
+
+  function throwCustomError() {
+    revert ContractCustomError();
+  }
+}

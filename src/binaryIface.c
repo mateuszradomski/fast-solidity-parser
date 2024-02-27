@@ -225,6 +225,11 @@ pushStatement(Serializer *s, ASTNode *node) {
             l += pushExpression(s, statement->expression);
             l += pushStatement(s, statement->body);
         } break;
+        case ASTNodeType_RevertStatement: {
+            ASTNodeRevertStatement *statement = &node->revertStatementNode;
+
+            l += pushExpression(s, statement->expression);
+        } break;
         default: {
             assert(0);
         }

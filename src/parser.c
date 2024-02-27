@@ -34,6 +34,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_VariableDeclarationTupleStatement,
     ASTNodeType_WhileStatement,
     ASTNodeType_ContractDefinition,
+    ASTNodeType_RevertStatement,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -208,6 +209,12 @@ typedef struct ASTNodeContractDefintion {
     ASTNodeList elements;
 } ASTNodeContractDefintion;
 
+typedef struct ASTNodeRevertStatement {
+    ASTNode *expression;
+    ASTNodeList argumentExpressions;
+    ASTNodeList argumentNames;
+} ASTNodeRevertStatement;
+
 typedef struct ASTNode {
     ASTNodeType type;
 
@@ -256,6 +263,7 @@ typedef struct ASTNode {
         ASTNodeVariableDeclarationTupleStatement variableDeclarationTupleStatementNode;
         ASTNodeWhileStatement whileStatementNode;
         ASTNodeContractDefintion contractDefintionNode;
+        ASTNodeRevertStatement revertStatementNode;
     };
 } ASTNode;
 
@@ -1188,6 +1196,30 @@ parseStatement(Parser *parser, ASTNode *node) {
 
         statement->body = structPush(parser->arena, ASTNode);
         parseStatement(parser, statement->body);
+    } else if(acceptToken(parser, TokenType_Revert)) {
+        node->type = ASTNodeType_RevertStatement;
+        ASTNodeRevertStatement *statement = &node->revertStatementNode;
+
+        statement->expression = structPush(parser->arena, ASTNode);
+        parseExpression(parser, statement->expression);
+        expectToken(parser, TokenType_Semicolon);
+
+        // expectToken(parser, TokenType_LParen);
+
+        // javascriptPrintString("here1");
+        // if(acceptToken(parser, TokenType_LBrace)) {
+        //     assert(0);
+        // } else {
+        //     if(!acceptToken(parser, TokenType_RParen)) {
+        //         do {
+        //             ASTNodeLink *expression = structPush(parser->arena, ASTNodeLink);
+        //             parseExpression(parser, &expression->node);
+        //             SLL_QUEUE_PUSH(statement->argumentExpressions.head, statement->argumentExpressions.last, expression);
+        //             statement->argumentExpressions.count += 1;
+        //         } while(acceptToken(parser, TokenType_Comma));
+        //         expectToken(parser, TokenType_RParen);
+        //     }
+        // }
     } else if(acceptToken(parser, TokenType_Comment)) {
         return false;
     } else {
@@ -1279,9 +1311,9 @@ parseFunction(Parser *parser, ASTNode *node) {
             SLL_QUEUE_PUSH(function->parameters.head, function->parameters.last, parameter);
             function->parameters.count += 1;
         } while(acceptToken(parser, TokenType_Comma));
-    }
 
-    expectToken(parser, TokenType_RParen);
+        expectToken(parser, TokenType_RParen);
+    }
 
     if(acceptToken(parser, TokenType_Internal)) {
         function->visibility = 1;

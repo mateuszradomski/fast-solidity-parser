@@ -32,6 +32,7 @@ const ASTNodeType_NewExpression = 31
 const ASTNodeType_VariableDeclarationTupleStatement = 32
 const ASTNodeType_WhileStatement = 33
 const ASTNodeType_ContractDefinition = 34
+const ASTNodeType_RevertStatement = 35
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -122,7 +123,7 @@ class Deserializer {
         ]
 
         this.stateMutabilityString = [
-            "default",
+            null,
             "pure" ,
             "view",
             "payable",
@@ -431,6 +432,13 @@ class Deserializer {
                 type: "WhileStatement",
                 condition,
                 body
+            }
+        } else if(type === ASTNodeType_RevertStatement) {
+            const revertCall = this.popExpression();
+
+            return {
+                type: "RevertStatement",
+                revertCall,
             }
         } else {
             throw new Error("Unknown/Unsupported statement kind " + type)

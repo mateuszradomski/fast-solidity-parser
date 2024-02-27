@@ -51,4 +51,4 @@
 
 # Stuff that @solidity-parser/parser is inconsistent about
 
-Errors will have parameters `[]` if empty, functions have `null` if empty.
+Errors will have parameters `[]` if empty, functions have `null` if empty but contract functions will have parameters set to `[]` is empty and returnParameters will be `null` if empty.
