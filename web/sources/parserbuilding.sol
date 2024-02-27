@@ -3146,7 +3146,7 @@ function readList(RLPItem memory _in) internal pure returns (RLPItem[] memory) {
 
     uint256 itemCount = 0;
     uint256 offset = listOffset;
-    // while (offset < _in.length) {
+    while (offset < _in.length) {
     //     (uint256 itemOffset, uint256 itemLength, ) = _decodeLength(
     //         RLPItem({
     //         length: _in.length - offset,
@@ -3161,9 +3161,9 @@ function readList(RLPItem memory _in) internal pure returns (RLPItem[] memory) {
     //         ptr: MemoryPointer.wrap(MemoryPointer.unwrap(_in.ptr) + offset)
     //     });
 
-    //     itemCount += 1;
-    //     offset += itemOffset + itemLength;
-    // }
+        itemCount += 1;
+        offset += itemOffset + itemLength;
+    }
 
     // // Decrease the array size to match the actual item count.
     // assembly {
@@ -3410,4 +3410,30 @@ function _copy(
     //}
 
     return out;
+}
+
+enum Locations {
+    Continent,
+    Empire,
+    Union,
+    Country,
+    State,
+    City,
+    Council,
+    Village
+}
+
+event E();
+
+contract c {
+    enum foo { }
+    enum validEnum { Value1, Value2, Value3, Value4 }
+}
+
+/*
+ * Top-level functions
+ */
+
+function helper(uint x) pure returns (uint) {
+    return x * 2;
 }

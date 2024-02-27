@@ -5,6 +5,8 @@ typedef struct Serializer {
     char **head;
 } Serializer;
 
+static u32 pushASTNode(Serializer *s, ASTNode *node);
+
 static Serializer
 createSerializer(Arena *arena, const void *inputStringBase, TokenizeResult tokens) {
     Serializer s = {
@@ -217,6 +219,12 @@ pushStatement(Serializer *s, ASTNode *node) {
 
             l += pushExpression(s, statement->initialValue);
         } break;
+        case ASTNodeType_WhileStatement: {
+            ASTNodeWhileStatement *statement = &node->whileStatementNode;
+
+            l += pushExpression(s, statement->expression);
+            l += pushStatement(s, statement->body);
+        } break;
         default: {
             assert(0);
         }
@@ -374,6 +382,22 @@ pushFunctionDefinition(Serializer *s, ASTNode *node) {
 }
 
 static u32
+pushContractDefinition(Serializer *s, ASTNode *node) {
+    u32 l = pushU32(s, node->type);
+
+    ASTNodeContractDefintion *contract = &node->contractDefintionNode;
+    l += pushTokenStringById(s, contract->name);
+    l += pushU32(s, contract->elements.count);
+
+    ASTNodeLink *element = contract->elements.head;
+    for(u32 i = 0; i < contract->elements.count; i++, element = element->next) {
+        l += pushASTNode(s, &element->node);
+    }
+
+    return l;
+}
+
+static u32
 pushASTNode(Serializer *s, ASTNode *node) {
     u32 l = 0;
 
@@ -401,6 +425,9 @@ pushASTNode(Serializer *s, ASTNode *node) {
         } break;
         case ASTNodeType_FunctionDefinition: {
             l = pushFunctionDefinition(s, node);
+        } break;
+        case ASTNodeType_ContractDefinition: {
+            l = pushContractDefinition(s, node);
         } break;
         default: {
             assert(0);

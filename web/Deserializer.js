@@ -30,6 +30,8 @@ const ASTNodeType_VariableDeclarationStatement = 29
 const ASTNodeType_VariableDeclaration = 30
 const ASTNodeType_NewExpression = 31
 const ASTNodeType_VariableDeclarationTupleStatement = 32
+const ASTNodeType_WhileStatement = 33
+const ASTNodeType_ContractDefinition = 34
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -99,6 +101,16 @@ class Deserializer {
             89: "||",
             90: "?",
             91: "=",
+            92: "|=",
+            93: "^=",
+            94: "&=",
+            95: "<<=",
+            96: ">>=",
+            97: "+=",
+            98: "-=",
+            99: "*=",
+            100: "/=",
+            101: "%=",
         }
 
         this.visibilityString = [
@@ -411,6 +423,17 @@ class Deserializer {
                 variables: array,
                 initialValue
             }
+        } else if(type === ASTNodeType_WhileStatement) {
+            const condition = this.popExpression();
+            const body = this.popStatement();
+
+            return {
+                type: "WhileStatement",
+                condition,
+                body
+            }
+        } else {
+            throw new Error("Unknown/Unsupported statement kind " + type)
         }
     }
 
@@ -620,6 +643,24 @@ class Deserializer {
         }
     }
 
+    popContractDefinition() {
+        const name = this.popString();
+        const count = this.popU32();
+        const subNodes = []
+
+        for(let i = 0; i < count; i++) {
+            subNodes.push(this.popASTNode());
+        }
+
+        return {
+            type: "ContractDefinition",
+            name,
+            baseContracts: [],
+            subNodes,
+            kind: "contract"
+        }
+    }
+
     popASTNode() {
         const type = this.popU32();
 
@@ -641,6 +682,10 @@ class Deserializer {
             return this.popConstVariable();
         } else if(type === ASTNodeType_FunctionDefinition) {
             return this.popFunctionDefinition();
+        } else if(type === ASTNodeType_ContractDefinition) {
+            return this.popContractDefinition();
+        } else {
+            throw new Error(`Unknown/Unsupported ASTNode kind: ${type}`);
         }
         
     }

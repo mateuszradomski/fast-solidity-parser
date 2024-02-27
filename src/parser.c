@@ -32,6 +32,8 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_VariableDeclaration,
     ASTNodeType_NewExpression,
     ASTNodeType_VariableDeclarationTupleStatement,
+    ASTNodeType_WhileStatement,
+    ASTNodeType_ContractDefinition,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -196,6 +198,16 @@ typedef struct ASTNodeVariableDeclarationTupleStatement {
     ASTNode *initialValue;
 } ASTNodeVariableDeclarationTupleStatement;
 
+typedef struct ASTNodeWhileStatement {
+    ASTNode *expression;
+    ASTNode *body;
+} ASTNodeWhileStatement;
+
+typedef struct ASTNodeContractDefintion {
+    TokenId name;
+    ASTNodeList elements;
+} ASTNodeContractDefintion;
+
 typedef struct ASTNode {
     ASTNodeType type;
 
@@ -242,6 +254,8 @@ typedef struct ASTNode {
         ASTNodeVariableDeclarationStatement variableDeclarationStatementNode;
         ASTNodeVariableDeclaration variableDeclarationNode;
         ASTNodeVariableDeclarationTupleStatement variableDeclarationTupleStatementNode;
+        ASTNodeWhileStatement whileStatementNode;
+        ASTNodeContractDefintion contractDefintionNode;
     };
 } ASTNode;
 
@@ -674,13 +688,16 @@ parseEnum(Parser *parser, ASTNode *node) {
     node->nameTokenId = nameTokenId;
     expectToken(parser, TokenType_LBrace);
 
-    do {
-        TokenId valueName = parseIdentifier(parser);
-        assert(valueName > 0);
-        listPushTokenId(&node->values, valueName, parser->arena);
-    } while(acceptToken(parser, TokenType_Comma));
+    if(!acceptToken(parser, TokenType_RBrace)) {
+        do {
+            TokenId valueName = parseIdentifier(parser);
+            assert(valueName > 0);
+            listPushTokenId(&node->values, valueName, parser->arena);
+        } while(acceptToken(parser, TokenType_Comma));
 
-    expectToken(parser, TokenType_RBrace);
+        expectToken(parser, TokenType_RBrace);
+    }
+
     return true;
 }
 
@@ -1160,6 +1177,17 @@ parseStatement(Parser *parser, ASTNode *node) {
             SLL_QUEUE_PUSH(node->blockStatementNode.statements.head, node->blockStatementNode.statements.last, statement);
             node->blockStatementNode.statements.count += 1;
         }
+    } else if(acceptToken(parser, TokenType_While)) {
+        node->type = ASTNodeType_WhileStatement;
+        ASTNodeWhileStatement *statement = &node->whileStatementNode;
+
+        expectToken(parser, TokenType_LParen);
+        statement->expression = structPush(parser->arena, ASTNode);
+        parseExpression(parser, statement->expression);
+        expectToken(parser, TokenType_RParen);
+
+        statement->body = structPush(parser->arena, ASTNode);
+        parseStatement(parser, statement->body);
     } else if(acceptToken(parser, TokenType_Comment)) {
         return false;
     } else {
@@ -1309,6 +1337,61 @@ parseFunction(Parser *parser, ASTNode *node) {
     return true;
 }
 
+static bool
+parseContract(Parser *parser, ASTNode *node) {
+    node->type = ASTNodeType_ContractDefinition;
+    ASTNodeContractDefintion *contract = &node->contractDefintionNode;
+
+    contract->name = parseIdentifier(parser);
+
+    if(acceptToken(parser, TokenType_Is)) {
+        assert(0);
+    }
+
+    expectToken(parser, TokenType_LBrace);
+    while(!acceptToken(parser, TokenType_RBrace)) {
+        ASTNodeLink *element = structPush(parser->arena, ASTNodeLink);
+
+        if(acceptToken(parser, TokenType_Constructor)) {
+            assert(0);
+        } else if(acceptToken(parser, TokenType_Function)) {
+            assert(parseFunction(parser, &element->node));
+        } else if(acceptToken(parser, TokenType_Modifier)) {
+            assert(0);
+        } else if(acceptToken(parser, TokenType_Fallback)) {
+            assert(0);
+        } else if(acceptToken(parser, TokenType_Receive)) {
+            assert(0);
+        } else if(acceptToken(parser, TokenType_Struct)) {
+            assert(parseStruct(parser, &element->node));
+        } else if(acceptToken(parser, TokenType_Enum)) {
+            assert(parseEnum(parser, &element->node));
+        } else if(acceptToken(parser, TokenType_Type)) {
+            assert(parseTypedef(parser, &element->node));
+        } else if(acceptToken(parser, TokenType_Event)) {
+            assert(parseEvent(parser, &element->node));
+        } else if(acceptToken(parser, TokenType_Error)) {
+            assert(parseError(parser, &element->node));
+        } else if(acceptToken(parser, TokenType_EOF)) {
+            break;
+        } else if(acceptToken(parser, TokenType_Comment)) {
+            continue;
+        } else {
+            assert(0);
+            ASTNode *type = structPush(parser->arena, ASTNode);
+            parseType(parser, type);
+            if(acceptToken(parser, TokenType_Constant)) {
+                parseConstVariable(parser, &element->node, type);
+            }
+        }
+
+        SLL_QUEUE_PUSH(contract->elements.head, contract->elements.last, element);
+        contract->elements.count += 1;
+    }
+
+    return true;
+}
+
 static ASTNode
 parseSourceUnit(Parser *parser) {
     ASTNode node = { .type = ASTNodeType_SourceUnit };
@@ -1334,6 +1417,8 @@ parseSourceUnit(Parser *parser) {
             assert(parseTypedef(parser, &child->node));
         } else if(acceptToken(parser, TokenType_Function)) {
             assert(parseFunction(parser, &child->node));
+        } else if(acceptToken(parser, TokenType_Contract)) {
+            assert(parseContract(parser, &child->node));
         } else if(acceptToken(parser, TokenType_EOF)) {
             break;
         } else if(acceptToken(parser, TokenType_Comment)) {

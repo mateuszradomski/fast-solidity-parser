@@ -63,6 +63,7 @@ static const String HOURS_TOKEN = LIT_TO_STR("hours");
 static const String DAYS_TOKEN = LIT_TO_STR("days");
 static const String WEEKS_TOKEN = LIT_TO_STR("weeks");
 static const String YEARS_TOKEN = LIT_TO_STR("years");
+static const String CONSTRUCTOR_TOKEN = LIT_TO_STR("constructor");
 
 typedef enum TokenType {
     TokenType_None,
@@ -183,6 +184,7 @@ typedef enum TokenType {
     TokenType_HexNumberLit,
     TokenType_BinNumberLit,
     TokenType_Comment,
+    TokenType_Constructor,
     TokenType_EOF,
     TokenType_Count,
 } TokenType;
@@ -334,6 +336,7 @@ tokenTypeToString(TokenType tokenType) {
         case TokenType_HexNumberLit: return LIT_TO_STR("HexNumberLit");
         case TokenType_BinNumberLit: return LIT_TO_STR("BinNumberLit");
         case TokenType_Comment: return LIT_TO_STR("Comment");
+        case TokenType_Constructor: return LIT_TO_STR("Constructor");
         case TokenType_Count: return LIT_TO_STR("Count");
         case TokenType_EOF: return LIT_TO_STR("EOF");
     }
@@ -588,6 +591,8 @@ tokenize(String source, Arena *arena) {
                 pushToken(&result, TokenType_Weeks, symbol);
             } else if(stringMatch(symbol, YEARS_TOKEN)) {
                 pushToken(&result, TokenType_Years, symbol);
+            } else if(stringMatch(symbol, CONSTRUCTOR_TOKEN)) {
+                pushToken(&result, TokenType_Constructor, symbol);
             } else {
                 pushToken(&result, TokenType_Symbol, symbol);
             }
