@@ -33,6 +33,7 @@ const ASTNodeType_VariableDeclarationTupleStatement = 32
 const ASTNodeType_WhileStatement = 33
 const ASTNodeType_ContractDefinition = 34
 const ASTNodeType_RevertStatement = 35
+const ASTNodeType_StateVariableDeclaration = 36
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -120,6 +121,15 @@ class Deserializer {
             "external",
             "private",
             "public"
+        ]
+
+        this.variableVisibilityString = [
+            null,
+            "public",
+            "private",
+            "internal",
+            "constant",
+            "immutable"
         ]
 
         this.stateMutabilityString = [
@@ -626,6 +636,39 @@ class Deserializer {
         }
     }
 
+    popStateVariableDeclaration() {
+        const name = this.popString();
+        const typeName = this.popType();
+        const visibility = this.popU32();
+        const hasExpression = this.popU32();
+
+        let expression = null
+        if(hasExpression === 1) {
+            expression = this.popExpression();
+        }
+
+        return {
+            type: "StateVariableDeclaration",
+            variables: [
+                {
+                    type: "VariableDeclaration",
+                    typeName,
+                    name,
+                    identifier: stringToIdentifier(name),
+                    expression,
+                    visibility: this.variableVisibilityString[visibility],
+                    isStateVar: true,
+                    isDeclaredConst: false,
+                    isIndexed: false,
+                    isImmutable: false,
+                    override: null,
+                    storageLocation: null,
+                }
+            ],
+            initialValue: null
+        }
+    }
+
     popFunctionDefinition() {
         const name = this.popString();
         const parameters = this.popFunctionParameters();
@@ -688,6 +731,8 @@ class Deserializer {
             return this.popTypedef();
         } else if(type === ASTNodeType_ConstVariable) {
             return this.popConstVariable();
+        } else if(type === ASTNodeType_StateVariableDeclaration) {
+            return this.popStateVariableDeclaration();
         } else if(type === ASTNodeType_FunctionDefinition) {
             return this.popFunctionDefinition();
         } else if(type === ASTNodeType_ContractDefinition) {

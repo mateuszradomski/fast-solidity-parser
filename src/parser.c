@@ -35,6 +35,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_WhileStatement,
     ASTNodeType_ContractDefinition,
     ASTNodeType_RevertStatement,
+    ASTNodeType_StateVariableDeclaration,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -115,6 +116,7 @@ typedef struct ASTNodeConstVariable {
     TokenId identifier;
     ASTNode *type;
     ASTNode *expression;
+    u32 visibility;
 } ASTNodeConstVariable;
 
 typedef struct ASTNodeNumberLitExpression {
@@ -242,6 +244,7 @@ typedef struct ASTNode {
         ASTNodeEvent eventNode;
         ASTNodeTypedef typedefNode;
         ASTNodeConstVariable constVariableNode;
+        ASTNodeConstVariable stateVariableDeclarataion;
         ASTNodeNumberLitExpression numberLitExpressionNode;
         ASTNodeStringLitExpression stringLitExpressionNode;
         ASTNodeStringLitExpression boolLitExpressionNode;
@@ -1260,6 +1263,40 @@ parseConstVariable(Parser *parser, ASTNode *node, ASTNode *type) {
 }
 
 static bool
+parseStateVariableDeclaration(Parser *parser, ASTNode *node, ASTNode *type) {
+    node->type = ASTNodeType_StateVariableDeclaration;
+    ASTNodeConstVariable *decl = &node->constVariableNode;
+
+    decl->type = type;
+    decl->visibility = 0;
+
+    if(acceptToken(parser, TokenType_Public)) {
+        decl->visibility = 1;
+    } else if(acceptToken(parser, TokenType_Private)) {
+        decl->visibility = 2;
+    } else if(acceptToken(parser, TokenType_Internal)) {
+        decl->visibility = 3;
+    } else if(acceptToken(parser, TokenType_Constant)) {
+        decl->visibility = 4;
+    } else if(acceptToken(parser, TokenType_Immutable)) {
+        decl->visibility = 5;
+    } else {
+        assert(0 && "Unimplemented override-specifier");
+    }
+
+    decl->identifier = parseIdentifier(parser);
+    assert(decl->identifier > 0);
+
+    if(acceptToken(parser, TokenType_Equal)) {
+        decl->expression = structPush(parser->arena, ASTNode);
+        parseExpression(parser, decl->expression);
+    }
+
+    expectToken(parser, TokenType_Semicolon);
+    return true;
+}
+
+static bool
 parseFunction(Parser *parser, ASTNode *node) {
     node->type = ASTNodeType_FunctionDefinition;
     TokenId name = parseIdentifier(parser);
@@ -1392,11 +1429,12 @@ parseContract(Parser *parser, ASTNode *node) {
         } else if(acceptToken(parser, TokenType_Comment)) {
             continue;
         } else {
-            assert(0);
             ASTNode *type = structPush(parser->arena, ASTNode);
             parseType(parser, type);
             if(acceptToken(parser, TokenType_Constant)) {
                 parseConstVariable(parser, &element->node, type);
+            } else {
+                parseStateVariableDeclaration(parser, &element->node, type);
             }
         }
 

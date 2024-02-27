@@ -3466,3 +3466,13 @@ contract CustomErrors {
     revert ContractCustomError();
   }
 }
+
+type Price is uint128;
+type Quantity is uint128;
+type UFixed is uint256;
+
+contract Foo {
+  type Id is uint8;
+
+  Id public id;
+}

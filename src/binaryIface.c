@@ -371,6 +371,23 @@ pushConstVariable(Serializer *s, ASTNode *node) {
 }
 
 static u32
+pushStateVariableDeclaration(Serializer *s, ASTNode *node) {
+    u32 l = pushU32(s, node->type);
+
+    ASTNodeConstVariable *decl = &node->constVariableNode;
+
+    l += pushTokenStringById(s, decl->identifier);
+    l += pushType(s, decl->type);
+    l += pushU32(s, decl->visibility);
+    l += pushU32(s, decl->expression != 0x0);
+    if(decl->expression != 0x0) {
+        l += pushExpression(s, decl->expression);
+    }
+
+    return l;
+}
+
+static u32
 pushFunctionDefinition(Serializer *s, ASTNode *node) {
     u32 l = pushU32(s, node->type);
 
@@ -427,6 +444,9 @@ pushASTNode(Serializer *s, ASTNode *node) {
         } break;
         case ASTNodeType_ConstVariable: {
             l = pushConstVariable(s, node);
+        } break;
+        case ASTNodeType_StateVariableDeclaration: {
+            l = pushStateVariableDeclaration(s, node);
         } break;
         case ASTNodeType_FunctionDefinition: {
             l = pushFunctionDefinition(s, node);
