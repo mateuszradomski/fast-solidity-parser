@@ -3255,15 +3255,15 @@ returns (
         "RLPReader: length of an RLP item must be greater than zero to be decodable"
     );
 
-    // MemoryPointer ptr = _in.ptr;
-    // uint256 prefix;
+    MemoryPointer ptr = _in.ptr;
+    uint256 prefix;
     // assembly {
     //     prefix := byte(0, mload(ptr))
     // }
 
     if (prefix <= 0x7f) {
         // Single byte.
-        // return (0, 1, RLPItemType.DATA_ITEM);
+        return (0, 1, RLPItemType.DATA_ITEM);
     } else if (prefix <= 0xb7) {
         // Short string.
 
@@ -3285,7 +3285,7 @@ returns (
             "RLPReader: invalid prefix, single byte < 0x80 are not prefixed (short string)"
         );
 
-        // return (1, strLen, RLPItemType.DATA_ITEM);
+        return (1, strLen, RLPItemType.DATA_ITEM);
     } else if (prefix <= 0xbf) {
         // Long string.
         uint256 lenOfStrLen = prefix - 0xb7;
@@ -3320,7 +3320,7 @@ returns (
             "RLPReader: length of content must be greater than total length (long string)"
         );
 
-        // return (1 + lenOfStrLen, strLen, RLPItemType.DATA_ITEM);
+        return (1 + lenOfStrLen, strLen, RLPItemType.DATA_ITEM);
     } else if (prefix <= 0xf7) {
         // Short list.
         // slither-disable-next-line variable-scope
@@ -3331,7 +3331,7 @@ returns (
             "RLPReader: length of content must be greater than list length (short list)"
         );
 
-        // return (1, listLen, RLPItemType.LIST_ITEM);
+        return (1, listLen, RLPItemType.LIST_ITEM);
     } else {
         // Long list.
         uint256 lenOfListLen = prefix - 0xf7;
@@ -3366,7 +3366,7 @@ returns (
             "RLPReader: length of content must be greater than total length (long list)"
         );
 
-        // return (1 + lenOfListLen, listLen, RLPItemType.LIST_ITEM);
+        return (1 + lenOfListLen, listLen, RLPItemType.LIST_ITEM);
     }
 }
 

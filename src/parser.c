@@ -128,7 +128,7 @@ typedef struct ASTNodeBinaryExpression {
 } ASTNodeBinaryExpression;
 
 typedef struct ASTNodeTupleExpression {
-    ASTNode *element;
+    ASTNodeList elements;
 } ASTNodeTupleExpression;
 
 typedef struct ASTNodeUnaryExpression {
@@ -930,9 +930,19 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
         node->boolLitExpressionNode.value = peekLastTokenId(parser);
     } else if(acceptToken(parser, TokenType_LParen)) {
         node->type = ASTNodeType_TupleExpression;
-        node->tupleExpressionNode.element = structPush(parser->arena, ASTNode);
-        parseExpressionImpl(parser, node->tupleExpressionNode.element, previousPrecedence);
-        expectToken(parser, TokenType_RParen);
+
+        if(!acceptToken(parser, TokenType_RParen)) {
+            do {
+                ASTNodeLink *element = structPush(parser->arena, ASTNodeLink);
+
+                parseExpressionImpl(parser, &element->node, previousPrecedence);
+
+                SLL_QUEUE_PUSH(node->tupleExpressionNode.elements.head, node->tupleExpressionNode.elements.last, element);
+                node->tupleExpressionNode.elements.count += 1;
+            } while (acceptToken(parser, TokenType_Comma));
+
+            expectToken(parser, TokenType_RParen);
+        }
     } else if(isUnaryOperator(peekToken(parser).type)) {
         node->type = ASTNodeType_UnaryExpression;
         node->unaryExpressionNode.operator = peekToken(parser).type;

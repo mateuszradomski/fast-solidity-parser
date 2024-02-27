@@ -33,7 +33,7 @@ entryPointBinaryInterface(const char *string, int len) {
 
     traceBegin(4);
     Serializer s = createSerializer(&arena, string, tokens);
-    result = astNodeToBinary(&s, node);
+    result = astNodeToBinary(&s, &node);
     traceEnd();
 
     return &result;

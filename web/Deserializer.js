@@ -253,11 +253,15 @@ class Deserializer {
                 right: rhs
             }
         } else if(type === ASTNodeType_TupleExpression) {
-            const element = this.popExpression();
+            const elementCount = this.popU32();
+            const elements = []
+            for(let i = 0; i < elementCount; i++) {
+                elements.push(this.popExpression());
+            }
 
             return {
                 type: "TupleExpression",
-                components: [element],
+                components: elements,
                 isArray: false
             }
         } else if(type === ASTNodeType_UnaryExpression) {
