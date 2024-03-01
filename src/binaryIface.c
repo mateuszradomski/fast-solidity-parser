@@ -20,6 +20,17 @@ createSerializer(Arena *arena, const void *inputStringBase, TokenizeResult token
 }
 
 static u32
+pushU16(Serializer *s, u16 value) {
+    if(s->head) {
+        u16 *ptr = (u16 *)*s->head;
+        *ptr = value;
+        *s->head += sizeof(u16);
+    }
+
+    return sizeof(u16);
+}
+
+static u32
 pushU32(Serializer *s, u32 value) {
     if(s->head) {
         u32 *ptr = (u32 *)*s->head;
@@ -389,7 +400,8 @@ pushStateVariableDeclaration(Serializer *s, ASTNode *node) {
 
     l += pushTokenStringById(s, decl->identifier);
     l += pushType(s, decl->type);
-    l += pushU32(s, decl->visibility);
+    l += pushU16(s, decl->visibility);
+    l += pushU16(s, decl->mutability);
     l += pushU32(s, decl->expression != 0x0);
     if(decl->expression != 0x0) {
         l += pushExpression(s, decl->expression);
@@ -462,6 +474,7 @@ pushASTNode(Serializer *s, ASTNode *node) {
         case ASTNodeType_FunctionDefinition: {
             l = pushFunctionDefinition(s, node);
         } break;
+        case ASTNodeType_LibraryDefinition:
         case ASTNodeType_ContractDefinition: {
             l = pushContractDefinition(s, node);
         } break;

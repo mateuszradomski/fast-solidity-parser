@@ -3502,3 +3502,35 @@ contract NamedMappingParams {
   mapping (address => bool b) m3;
   mapping (address a => bool b) m4;
 }
+
+library a {}
+library b {}
+library c {}
+library f {}
+
+library Lib {
+}
+
+library Lib {
+    function f() { }
+}
+
+library FixedMath {
+    uint constant multiplier = 10**18;
+
+    function add(UFixed a, UFixed b) internal pure returns (UFixed) {
+        return UFixed.wrap(UFixed.unwrap(a) + UFixed.unwrap(b));
+    }
+
+    function mul(UFixed a, uint256 b) internal pure returns (UFixed) {
+        return UFixed.wrap(UFixed.unwrap(a) * b);
+    }
+
+    function floor(UFixed a) internal pure returns (uint256) {
+        return UFixed.unwrap(a) / multiplier;
+    }
+
+    function toUFixed(uint256 a) internal pure returns (UFixed) {
+        return UFixed.wrap(a * multiplier);
+    }
+}

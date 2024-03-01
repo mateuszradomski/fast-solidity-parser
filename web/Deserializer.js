@@ -34,6 +34,7 @@ const ASTNodeType_WhileStatement = 33
 const ASTNodeType_ContractDefinition = 34
 const ASTNodeType_RevertStatement = 35
 const ASTNodeType_StateVariableDeclaration = 36
+const ASTNodeType_LibraryDefinition = 37
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -145,6 +146,12 @@ class Deserializer {
             "storage",
             "calldata",
         ]
+    }
+
+    popU16() {
+        const value = this.dataView.getUint16(this.offset, true);
+        this.offset += 2;
+        return value;
     }
 
     popU32() {
@@ -650,7 +657,8 @@ class Deserializer {
     popStateVariableDeclaration() {
         const name = this.popString();
         const typeName = this.popType();
-        const visibility = this.popU32();
+        const visibility = this.popU16();
+        const mutability = this.popU16();
         const hasExpression = this.popU32();
 
         let expression = null
@@ -669,14 +677,14 @@ class Deserializer {
                     expression,
                     visibility: this.variableVisibilityString[visibility],
                     isStateVar: true,
-                    isDeclaredConst: false,
+                    isDeclaredConst: mutability === 1,
                     isIndexed: false,
-                    isImmutable: false,
+                    isImmutable: mutability === 2,
                     override: null,
                     storageLocation: null,
                 }
             ],
-            initialValue: null
+            initialValue: expression
         }
     }
 
@@ -748,6 +756,10 @@ class Deserializer {
             return this.popFunctionDefinition();
         } else if(type === ASTNodeType_ContractDefinition) {
             return this.popContractDefinition();
+        } else if(type === ASTNodeType_LibraryDefinition) {
+            const result = this.popContractDefinition();
+            result.kind = "library"
+            return result
         } else {
             throw new Error(`Unknown/Unsupported ASTNode kind: ${type}`);
         }

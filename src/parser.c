@@ -36,6 +36,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_ContractDefinition,
     ASTNodeType_RevertStatement,
     ASTNodeType_StateVariableDeclaration,
+    ASTNodeType_LibraryDefinition,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -117,7 +118,8 @@ typedef struct ASTNodeConstVariable {
     TokenId identifier;
     ASTNode *type;
     ASTNode *expression;
-    u32 visibility;
+    u16 visibility;
+    u16 mutability;
 } ASTNodeConstVariable;
 
 typedef struct ASTNodeNumberLitExpression {
@@ -212,6 +214,11 @@ typedef struct ASTNodeContractDefintion {
     ASTNodeList elements;
 } ASTNodeContractDefintion;
 
+typedef struct ASTNodeLibraryDefintion {
+    TokenId name;
+    ASTNodeList elements;
+} ASTNodeLibraryDefintion;
+
 typedef struct ASTNodeRevertStatement {
     ASTNode *expression;
     ASTNodeList argumentExpressions;
@@ -267,6 +274,7 @@ typedef struct ASTNode {
         ASTNodeVariableDeclarationTupleStatement variableDeclarationTupleStatementNode;
         ASTNodeWhileStatement whileStatementNode;
         ASTNodeContractDefintion contractDefintionNode;
+        ASTNodeLibraryDefintion libraryDefintionNode;
         ASTNodeRevertStatement revertStatementNode;
     };
 } ASTNode;
@@ -1357,9 +1365,9 @@ parseStateVariableDeclaration(Parser *parser, ASTNode *node, ASTNode *type) {
     } else if(acceptToken(parser, TokenType_Internal)) {
         decl->visibility = 3;
     } else if(acceptToken(parser, TokenType_Constant)) {
-        decl->visibility = 4;
+        decl->mutability = 1;
     } else if(acceptToken(parser, TokenType_Immutable)) {
-        decl->visibility = 5;
+        decl->mutability = 2;
     } else if(acceptToken(parser, TokenType_Override)) {
         assert(0 && "Unimplemented override-specifier");
     } 
@@ -1525,6 +1533,58 @@ parseContract(Parser *parser, ASTNode *node) {
     return true;
 }
 
+static bool
+parseLibrary(Parser *parser, ASTNode *node) {
+    node->type = ASTNodeType_LibraryDefinition;
+    ASTNodeLibraryDefintion *library = &node->libraryDefintionNode;
+
+    library->name = parseIdentifier(parser);
+
+    if(acceptToken(parser, TokenType_Is)) {
+        assert(0);
+    }
+
+    expectToken(parser, TokenType_LBrace);
+    while(!acceptToken(parser, TokenType_RBrace)) {
+        ASTNodeLink *element = structPush(parser->arena, ASTNodeLink);
+
+        if(acceptToken(parser, TokenType_Constructor)) {
+            assert(0);
+        } else if(acceptToken(parser, TokenType_Function)) {
+            assert(parseFunction(parser, &element->node));
+        } else if(acceptToken(parser, TokenType_Modifier)) {
+            assert(0);
+        } else if(acceptToken(parser, TokenType_Fallback)) {
+            assert(0);
+        } else if(acceptToken(parser, TokenType_Receive)) {
+            assert(0);
+        } else if(acceptToken(parser, TokenType_Struct)) {
+            assert(parseStruct(parser, &element->node));
+        } else if(acceptToken(parser, TokenType_Enum)) {
+            assert(parseEnum(parser, &element->node));
+        } else if(acceptToken(parser, TokenType_Type)) {
+            assert(parseTypedef(parser, &element->node));
+        } else if(acceptToken(parser, TokenType_Event)) {
+            assert(parseEvent(parser, &element->node));
+        } else if(acceptToken(parser, TokenType_Error)) {
+            assert(parseError(parser, &element->node));
+        } else if(acceptToken(parser, TokenType_EOF)) {
+            break;
+        } else if(acceptToken(parser, TokenType_Comment)) {
+            continue;
+        } else {
+            ASTNode *type = structPush(parser->arena, ASTNode);
+            parseType(parser, type);
+            parseStateVariableDeclaration(parser, &element->node, type);
+        }
+
+        SLL_QUEUE_PUSH(library->elements.head, library->elements.last, element);
+        library->elements.count += 1;
+    }
+
+    return true;
+}
+
 static ASTNode
 parseSourceUnit(Parser *parser) {
     ASTNode node = { .type = ASTNodeType_SourceUnit };
@@ -1552,6 +1612,8 @@ parseSourceUnit(Parser *parser) {
             assert(parseFunction(parser, &child->node));
         } else if(acceptToken(parser, TokenType_Contract)) {
             assert(parseContract(parser, &child->node));
+        } else if(acceptToken(parser, TokenType_Library)) {
+            assert(parseLibrary(parser, &child->node));
         } else if(acceptToken(parser, TokenType_EOF)) {
             break;
         } else if(acceptToken(parser, TokenType_Comment)) {
