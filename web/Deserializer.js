@@ -694,7 +694,12 @@ class Deserializer {
         const visibility = this.popU32();
         const stateMutability = this.popU32();
         const returnParameters = this.popFunctionParameters();
-        const body = this.popStatement();
+        const hasBody = this.popU32();
+
+        let body = null;
+        if(hasBody) {
+            body = this.popStatement();
+        }
 
         return {
             type: "FunctionDefinition",

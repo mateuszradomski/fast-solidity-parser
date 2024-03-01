@@ -1469,6 +1469,7 @@ parseFunction(Parser *parser, ASTNode *node) {
         expectToken(parser, TokenType_RParen);
     }
 
+    function->body = 0x0;
     if(!acceptToken(parser, TokenType_Semicolon)) {
         function->body = structPush(parser->arena, ASTNode);
         parseBlock(parser, function->body);

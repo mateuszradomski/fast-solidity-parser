@@ -253,6 +253,8 @@ pushStatement(Serializer *s, ASTNode *node) {
             l += pushExpression(s, statement->expression);
         } break;
         default: {
+            javascriptPrintString("Unreachable, unhandled statement type = ");
+            javascriptPrintNumber(node->type);
             assert(0);
         }
     }
@@ -421,7 +423,11 @@ pushFunctionDefinition(Serializer *s, ASTNode *node) {
     l += pushU32(s, function->visibility);
     l += pushU32(s, function->stateMutability);
     l += pushFunctionParameters(s, &function->returnParameters);
-    l += pushStatement(s, function->body);
+    l += pushU32(s, function->body != 0x0);
+
+    if(function->body != 0x0) {
+        l += pushStatement(s, function->body);
+    }
 
     return l;
 }
