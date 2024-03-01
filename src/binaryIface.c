@@ -46,6 +46,8 @@ pushTokenStringById(Serializer *s, TokenId token) {
     return 2 * sizeof(u32);
 }
 
+static u32 pushExpression(Serializer *s, ASTNode *node);
+
 static u32
 pushType(Serializer *s, ASTNode *node) {
     u32 l = 0;
@@ -74,6 +76,10 @@ pushType(Serializer *s, ASTNode *node) {
         case ASTNodeType_ArrayType: {
             l += pushU32(s, node->type);
             l += pushType(s, node->arrayTypeNode.elementType);
+            l += pushU32(s, node->arrayTypeNode.lengthExpression != 0x0);
+            if(node->arrayTypeNode.lengthExpression != 0x0) {
+                l += pushExpression(s, node->arrayTypeNode.lengthExpression);
+            }
         } break;
         default: {
             assert(0);
@@ -157,9 +163,14 @@ pushExpression(Serializer *s, ASTNode *node) {
         case ASTNodeType_ArrayAccessExpression: {
             ASTNodeArrayAccessExpression *array = &node->arrayAccessExpressionNode;
             l += pushExpression(s, array->expression);
-            l += pushExpression(s, array->indexExpression);
+            l += pushU32(s, array->indexExpression != 0x0);
+            if(array->indexExpression != 0x0) {
+                l += pushExpression(s, array->indexExpression);
+            }
         } break;
         default: {
+            javascriptPrintNumber(node->type);
+            javascriptPrintString("here");
             assert(0);
         }
     }

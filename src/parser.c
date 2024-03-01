@@ -94,6 +94,7 @@ typedef struct ASTNodeFunctionType {
 
 typedef struct ASTNodeArrayType {
     ASTNode *elementType;
+    ASTNode *lengthExpression;
 } ASTNodeArrayType;
 
 typedef struct ASTNodeError {
@@ -297,6 +298,43 @@ createParser(TokenizeResult tokens, Arena *arena) {
     return parser;
 }
 
+static void
+reportError(Parser *parser, String userError) {
+    String error = { 0 };
+
+    u8 *head = arrayPush(parser->arena, u8, userError.size + 4096);
+    error.data = head;
+
+    String m = LIT_TO_STR("ERROR [");
+    memcpy(head, m.data, m.size);
+    head += m.size;
+
+    u32 byteOffset = parser->tokens[parser->current].string.data - parser->tokens[0].string.data;
+    u32 digits = 0;
+    do {
+        digits += 1;
+        byteOffset /= 10;
+    } while(byteOffset != 0);
+
+    byteOffset = parser->tokens[parser->current].string.data - parser->tokens[0].string.data;
+    for(u32 i = 0; i < digits; i++) {
+        head[digits - i - 1] = (byteOffset % 10) + '0';
+        byteOffset /= 10;
+    }
+
+    head += digits;
+
+    m = LIT_TO_STR("]: ");
+    memcpy(head, m.data, m.size);
+    head += m.size;
+
+    memcpy(head, userError.data, userError.size);
+    head += userError.size;
+
+    error.size = head - error.data;
+    javascriptPrintStringPtr(&error);
+}
+
 static Token
 peekToken(Parser *parser) {
     return parser->tokens[parser->current];
@@ -331,7 +369,37 @@ acceptToken(Parser *parser, TokenType type) {
 
 static void
 expectToken(Parser *parser, TokenType type) {
-    assert(acceptToken(parser, type));
+    bool success = acceptToken(parser, type);
+    if(!success) {
+        String error = { 0 };
+
+        u8 *head = arrayPush(parser->arena, u8, 4096);
+        error.data = head;
+
+        String myError = LIT_TO_STR("Unexpected token encountered (");
+        memcpy(head, myError.data, myError.size);
+        head += myError.size;
+
+        String tokenName = tokenTypeToString(peekToken(parser).type);
+        memcpy(head, tokenName.data, tokenName.size);
+        head += tokenName.size;
+
+        myError = LIT_TO_STR(") but wanted (");
+        memcpy(head, myError.data, myError.size);
+        head += myError.size;
+
+        tokenName = tokenTypeToString(type);
+        memcpy(head, tokenName.data, tokenName.size);
+        head += tokenName.size;
+
+        myError = LIT_TO_STR(")");
+        memcpy(head, myError.data, myError.size);
+        head += myError.size;
+
+        error.size = head - error.data;
+        reportError(parser, error);
+    }
+    assert(success);
 }
 
 static u32
@@ -343,6 +411,8 @@ static void
 setCurrentParserPosition(Parser *parser, u32 newPosition) {
     parser->current = newPosition;
 }
+
+static bool parseExpression(Parser *parser, ASTNode *node);
 
 static TokenId
 parseIdentifier(Parser *parser) {
@@ -634,7 +704,12 @@ parseType(Parser *parser, ASTNode *node) {
         *copy = *node;
         node->type = ASTNodeType_ArrayType;
         node->arrayTypeNode.elementType = copy;
-        expectToken(parser, TokenType_RBracket);
+        node->arrayTypeNode.lengthExpression = 0x0;
+        if(!acceptToken(parser, TokenType_RBracket)) {
+            node->arrayTypeNode.lengthExpression = structPush(parser->arena, ASTNode);
+            parseExpression(parser, node->arrayTypeNode.lengthExpression);
+            expectToken(parser, TokenType_RBracket);
+        }
     }
 
     return true;
@@ -1021,6 +1096,7 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
         expectToken(parser, TokenType_LParen);
         parseFunctionCallExpression(parser, node);
     } else {
+        reportError(parser, LIT_TO_STR("Unexpected token"));
         assert(false);
     }
 
@@ -1042,10 +1118,13 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
         } else if(type == TokenType_LBracket) {
             ASTNode *expression = structPush(parser->arena, ASTNode);
             *expression = *node;
+            ASTNode *indexExpression = 0x0;
 
-            ASTNode *indexExpression = structPush(parser->arena, ASTNode);
-            parseExpressionImpl(parser, indexExpression, 0);
-            expectToken(parser, TokenType_RBracket);
+            if(!acceptToken(parser, TokenType_RBracket)) {
+                indexExpression = structPush(parser->arena, ASTNode);
+                parseExpressionImpl(parser, indexExpression, 0);
+                expectToken(parser, TokenType_RBracket);
+            }
 
             node->type = ASTNodeType_ArrayAccessExpression;
             node->arrayAccessExpressionNode.expression = expression;
@@ -1144,6 +1223,7 @@ tryParseVariableDeclarationTuple(Parser *parser, ASTNode *node) {
     expectToken(parser, TokenType_RParen);
     expectToken(parser, TokenType_Equal);
 
+    tuple->initialValue = structPush(parser->arena, ASTNode);
     parseExpression(parser, tuple->initialValue);
 
     node->type = ASTNodeType_VariableDeclarationTupleStatement;
@@ -1280,9 +1360,9 @@ parseStateVariableDeclaration(Parser *parser, ASTNode *node, ASTNode *type) {
         decl->visibility = 4;
     } else if(acceptToken(parser, TokenType_Immutable)) {
         decl->visibility = 5;
-    } else {
+    } else if(acceptToken(parser, TokenType_Override)) {
         assert(0 && "Unimplemented override-specifier");
-    }
+    } 
 
     decl->identifier = parseIdentifier(parser);
     assert(decl->identifier > 0);

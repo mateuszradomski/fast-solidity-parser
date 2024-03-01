@@ -124,7 +124,7 @@ class Deserializer {
         ]
 
         this.variableVisibilityString = [
-            null,
+            "default",
             "public",
             "private",
             "internal",
@@ -202,10 +202,16 @@ class Deserializer {
             }
         } else if(kind === ASTNodeType_ArrayType) {
             const baseType = this.popType();
+            const hasLengthExpression = this.popU32();
+            let length = null
+            if(hasLengthExpression === 1) {
+                length = this.popExpression();
+            }
+
             return {
                 type: "ArrayTypeName",
                 baseTypeName: baseType,
-                length: null,
+                length,
             }
         } else {
             throw new Error(`Unknown/Unsupported type kind: ${kind}`);
@@ -351,7 +357,12 @@ class Deserializer {
             }
         } else if(type === ASTNodeType_ArrayAccessExpression) {
             const base = this.popExpression();
-            const index = this.popExpression();
+            const hasIndexExpression = this.popU32();
+            let index = null
+            
+            if(hasIndexExpression == 1) {
+                index = this.popExpression();
+            }
 
             return {
                 type: "IndexAccess",

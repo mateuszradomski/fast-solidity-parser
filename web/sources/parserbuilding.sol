@@ -3476,3 +3476,29 @@ contract Foo {
 
   Id public id;
 }
+
+// issue #54
+contract Foo {
+  function f() public {
+    Id[2] id = ids[functionCall(x,y,z) + 1];
+    (uint[][] memory x, uint y) = abi.decode(data, (uint, uint));
+    (uint[3][] memory x, uint y) = abi.decode(data, (uint, uint));
+    (uint[][3] memory x, uint y) = abi.decode(data, (uint, uint));
+    (uint[][][] memory x, uint y) = abi.decode(data, (uint, uint));
+  }
+}
+
+type Fixed18 is int256;
+
+contract GlobalVarName {
+    function test() pure {
+        uint256 global = 1;
+    }
+}
+
+contract NamedMappingParams {
+  mapping (address => bool) m1;
+  mapping (address a => bool) m2;
+  mapping (address => bool b) m3;
+  mapping (address a => bool b) m4;
+}
