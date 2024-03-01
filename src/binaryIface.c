@@ -179,6 +179,12 @@ pushExpression(Serializer *s, ASTNode *node) {
                 l += pushExpression(s, array->indexExpression);
             }
         } break;
+        case ASTNodeType_TerneryExpression: {
+            ASTNodeTerneryExpression *ternery = &node->terneryExpressionNode;
+            l += pushExpression(s, ternery->condition);
+            l += pushExpression(s, ternery->trueExpression);
+            l += pushExpression(s, ternery->falseExpression);
+        } break;
         default: {
             javascriptPrintNumber(node->type);
             javascriptPrintString("here");

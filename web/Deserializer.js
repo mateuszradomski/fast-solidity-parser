@@ -35,6 +35,7 @@ const ASTNodeType_ContractDefinition = 34
 const ASTNodeType_RevertStatement = 35
 const ASTNodeType_StateVariableDeclaration = 36
 const ASTNodeType_LibraryDefinition = 37
+const ASTNodeType_TerneryExpression = 38
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -375,6 +376,17 @@ class Deserializer {
                 type: "IndexAccess",
                 base,
                 index,
+            }
+        } else if(type === ASTNodeType_TerneryExpression) {
+            const condition = this.popExpression();
+            const trueExpression = this.popExpression();
+            const falseExpression = this.popExpression();
+
+            return {
+                type: "Conditional",
+                condition,
+                trueExpression,
+                falseExpression,
             }
         } else {
             throw new Error(`Unknown/Unsupported expression type: ${type}`);

@@ -37,6 +37,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_RevertStatement,
     ASTNodeType_StateVariableDeclaration,
     ASTNodeType_LibraryDefinition,
+    ASTNodeType_TerneryExpression,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -165,6 +166,12 @@ typedef struct ASTNodeArrayAccessExpression {
     ASTNode *indexExpression;
 } ASTNodeArrayAccessExpression;
 
+typedef struct ASTNodeTerneryExpression {
+    ASTNode *condition;
+    ASTNode *trueExpression;
+    ASTNode *falseExpression;
+} ASTNodeTerneryExpression;
+
 typedef struct ASTNodeFunctionDefinition {
     TokenId name;
     FunctionParameterList parameters;
@@ -264,6 +271,7 @@ typedef struct ASTNode {
         ASTNodeFunctionCallExpression functionCallExpressionNode;
         ASTNodeMemberAccessExpression memberAccessExpressionNode;
         ASTNodeArrayAccessExpression arrayAccessExpressionNode;
+        ASTNodeTerneryExpression terneryExpressionNode;
         ASTNodeFunctionDefinition functionDefinitionNode;
         ASTNodeBlockStatement blockStatementNode;
         ASTNodeReturnStatement returnStatementNode;
@@ -468,6 +476,43 @@ parseSubdenomination(Parser *parser) {
     }
 }
 
+static bool
+isFixedPointNumberType(String string, String fixedPointPrefix) {
+    if(stringStartsWith(string, fixedPointPrefix)) {
+        String suffix = {
+            .data = string.data + fixedPointPrefix.size,
+            .size = string.size - fixedPointPrefix.size
+        };
+
+        SplitIterator it = stringSplit(suffix, 'x');
+        String MString = stringNextInSplit(&it);
+        String NString = stringNextInSplit(&it);
+
+        if(MString.data == 0x0 && NString.data == 0x0) {
+            return false;
+        }
+
+        if(!stringIsInteger(MString) || !stringIsInteger(NString)) {
+            return false;
+        }
+
+        u32 M = stringToInteger(MString);
+        u32 N = stringToInteger(NString);
+
+        if(M < 8 || M > 256 || (M % 8) != 0) {
+            return false;
+        }
+
+        if(N > 80) {
+            return false;
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
 // TODO(radomski): This is obviously stupid
 static bool
 isBaseTypeName(String string) {
@@ -584,7 +629,10 @@ isBaseTypeName(String string) {
         }
     }
 
-    return false;
+    bool isFixed = isFixedPointNumberType(string, LIT_TO_STR("fixed"));
+    bool isUFixed = isFixedPointNumberType(string, LIT_TO_STR("ufixed"));
+
+    return isFixed || isUFixed;
 }
 
 static bool
@@ -936,7 +984,8 @@ isOperator(TokenType type) {
         case TokenType_MinusEqual:
         case TokenType_StarEqual:
         case TokenType_DivideEqual:
-        case TokenType_PercentEqual: return true;
+        case TokenType_PercentEqual:
+        case TokenType_QuestionMark: return true;
         default: return false;
     }
 }
@@ -978,6 +1027,7 @@ getOperatorPrecedence(TokenType type) {
         case TokenType_StarEqual:
         case TokenType_DivideEqual:
         case TokenType_PercentEqual: return -14;
+        case TokenType_QuestionMark: return -15;
         default: assert(0);
     }
 
@@ -1105,6 +1155,7 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
         parseFunctionCallExpression(parser, node);
     } else {
         reportError(parser, LIT_TO_STR("Unexpected token"));
+        javascriptPrintNumber(peekToken(parser).type);
         assert(false);
     }
 
@@ -1146,6 +1197,19 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
             node->type = ASTNodeType_MemberAccessExpression;
             node->memberAccessExpressionNode.expression = expression;
             node->memberAccessExpressionNode.memberName = parseIdentifier(parser);
+            continue;
+        } else if(type == TokenType_QuestionMark) {
+            ASTNode *expression = structPush(parser->arena, ASTNode);
+            *expression = *node;
+
+            node->type = ASTNodeType_TerneryExpression;
+            node->terneryExpressionNode.condition = expression;
+            node->terneryExpressionNode.trueExpression = structPush(parser->arena, ASTNode);
+            node->terneryExpressionNode.falseExpression = structPush(parser->arena, ASTNode);
+
+            parseExpressionImpl(parser, node->terneryExpressionNode.trueExpression, 0);
+            expectToken(parser, TokenType_Colon);
+            parseExpressionImpl(parser, node->terneryExpressionNode.falseExpression, 0);
             continue;
         }
 

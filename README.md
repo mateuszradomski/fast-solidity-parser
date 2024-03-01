@@ -1,6 +1,7 @@
 # Stuff that @solidity-parser/parser will accept but is invalid
 
 - `import Test as Test2 from './abc.sol';`
+- `uint256 x = ([1, 2, 3 + 4][a/=9] - 3) ** 4;`
 
 # Stuff that @solidity-parser/parser will not accept but is valid
 

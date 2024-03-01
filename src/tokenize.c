@@ -631,6 +631,10 @@ tokenize(String source, Arena *arena) {
                 }
 
                 pushToken(&result, TokenType_Comment, symbol);
+            } else if(nextByte == '=') {
+                consumeByte(&c);
+                String symbol = { .data = c.head - 2, .size = 2 };
+                pushToken(&result, TokenType_DivideEqual, symbol);
             } else {
                 String symbol = { .data = c.head - 1, .size = 1 };
                 pushToken(&result, TokenType_Divide, symbol);

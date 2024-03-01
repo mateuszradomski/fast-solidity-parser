@@ -3539,3 +3539,147 @@ contract test {
     function f(uint a, uint b);
     function g(uint c);
 }
+contract c {
+    event e(uint[10] a, bytes7[8] indexed b, c[3] x);
+}
+contract c {
+    function f() {
+        uint8[10 * 2] x;
+    }
+}
+contract c {
+    uint[10] a;
+    uint[] a2;
+    struct x { uint[2**20] b; y[0] c; }
+    struct y { uint d; mapping(uint=>x)[] e; }
+}
+contract test {
+    function fun(uint256 a) {
+        uint256 x = (a[3 + 4][a/=9] - 3) ** 4;
+    }
+}
+
+contract z {}
+contract A {
+    function f() {
+        uint x = 3 < 0 ? 2 > 1 ? 2 : 1 : 7 > 2 ? 7 : 6;
+    }
+}
+contract A {
+    function f() {
+        uint x = true ? 1 : 0;
+        uint y = false ? 0 : 1;
+    }
+}
+contract A {
+    function f() {
+        uint y = 1;
+        uint x = 3 < 0 ? x = 3 : 6;
+        true ? x = 3 : 4;
+    }
+}
+contract A {
+    function f() {
+        uint x = 3 > 0 ? 3 : 0;
+        uint y = (3 > 0) ? 3 : 0;
+    }
+}
+contract A {
+    function f() {
+        uint x = 3;
+        uint y = 1;
+        uint z = (x > y) ? x : y;
+        uint w = x > y ? x : y;
+    }
+}
+contract base {
+  function fun() {
+    uint64(2);
+  }
+}
+
+// TODO(radomski): Inheriting
+// contract derived is base() {
+//   function fun() {
+//     uint64(2);
+//   }
+// }
+
+contract foo {
+  function fun() {
+  }
+}
+
+contract bar {
+  function fun() {
+  }
+}
+
+contract A {
+    fixed40x40 storeMe;
+    fixed256x0 storeMe;
+    fixed256x80 storeMe;
+    fixed8x0 storeMe;
+    fixed8x80 storeMe;
+
+    fixed64x69 storeMe;
+
+    function f(ufixed x, fixed32x32 y) {
+        ufixed8x8 a;
+        fixed b;
+    }
+}
+
+contract test {
+  function fun(uint256 a) returns (address b) {
+    if (a < 0) b = 0x67; else if (a == 0) b = 0x12; else b = 0x78;
+  }
+}
+contract test
+{}
+contract test {
+  uint256 stateVar;
+}
+contract c {
+    enum validEnum { Value1, Value2, Value3, Value4 }
+
+    // TODO(radomski): Make that work
+    // function c () {
+    //     a = validEnum.Value3;
+    // }
+
+    function z () {
+        a = validEnum.Value3;
+    }
+
+    validEnum a;
+}
+contract c {
+    event e();
+}
+contract c {
+    event e() anonymous;
+}
+contract c {
+    event e(uint a, bytes32 s);
+}
+contract c {
+    event e(uint a, bytes32 indexed s, bool indexed b);
+}
+contract test {
+    function fun(uint256 a) {
+        uint256 x = 3 ** a;
+    }
+}
+contract c {
+    function x() external {}
+}
+
+// TODO(radomski): Support this. In early days a function without a name is the
+// same thing as a fallback function right now.
+//contract c {
+//    function() { }
+//}
+
+// Same here, this is valid in very early solidity. It's now called pure
+// `function f() constant returns (int id) { }`

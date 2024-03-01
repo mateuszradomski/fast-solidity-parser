@@ -267,6 +267,39 @@ void _javascriptPrintString(char *s, u32 size) {
     javascriptPrintStringPtr(&str);
 }
 
+static bool
+isWhitespace(char c) {
+    return c == 0x20 || (c >= 0x09 && c <= 0x0d);
+}
+
+static char
+toUpper(char c) {
+    return c & ~(1 << 5);
+}
+
+static bool
+isAlphabet(char c) {
+    c = toUpper(c);
+    return (c >= 'A' && c <= 'Z');
+}
+
+static bool
+isDigit(char c) {
+    return (c >= '0' && c <= '9');
+}
+
+static bool
+isHexDigit(char c) {
+    char upper = toUpper(c);
+    return (c >= '0' && c <= '9') | (upper >= 'A' && upper <= 'F');
+}
+
+static bool
+isBinDigit(char c) {
+    return (c >= '0' && c <= '1');
+}
+
+
 typedef struct SplitIterator
 {
     char delim;
@@ -328,6 +361,45 @@ stringMatch(String a, String b) {
     }
 }
 
+static bool
+stringStartsWith(String string, String prefix) {
+    if(string.size < prefix.size) {
+        return false;
+    } else {
+        string.size = prefix.size;
+        return stringMatch(string, prefix);
+    }
+}
+
+static bool
+stringIsInteger(String string) {
+    for(u32 i = 0; i < string.size; i++) {
+        if(!isDigit(string.data[i])) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+static u32
+stringToInteger(String string) {
+    u32 result = 0;
+
+    assert(string.data[0] != '-');
+
+    for(u32 i = 0; i < string.size; i++) {
+        if(!isDigit(string.data[i])) {
+            return result;
+        }
+
+        u32 digit = string.data[i] - '0';
+        result = result * 10 + digit;
+    }
+
+    return result;
+}
+
 static String
 stringNextInSplit(SplitIterator *it) {
     String result = { };
@@ -387,38 +459,6 @@ typedef struct ByteConsumer {
     u8 *head;
     u32 length;
 } ByteConsumer;
-
-static bool
-isWhitespace(char c) {
-    return c == 0x20 || (c >= 0x09 && c <= 0x0d);
-}
-
-static char
-toUpper(char c) {
-    return c & ~(1 << 5);
-}
-
-static bool
-isAlphabet(char c) {
-    c = toUpper(c);
-    return (c >= 'A' && c <= 'Z');
-}
-
-static bool
-isDigit(char c) {
-    return (c >= '0' && c <= '9');
-}
-
-static bool
-isHexDigit(char c) {
-    char upper = toUpper(c);
-    return (c >= '0' && c <= '9') | (upper >= 'A' && upper <= 'F');
-}
-
-static bool
-isBinDigit(char c) {
-    return (c >= '0' && c <= '1');
-}
 
 static u32
 consumerGood(ByteConsumer *c) {
