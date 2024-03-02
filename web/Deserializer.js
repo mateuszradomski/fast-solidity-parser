@@ -43,6 +43,7 @@ const ASTNodeType_UnaryExpressionPostfix = 42
 const ASTNodeType_HexStringLitExpression = 43
 const ASTNodeType_ArraySliceExpression = 44
 const ASTNodeType_UncheckedBlockStatement = 45
+const ASTNodeType_ModifierDefinition = 46
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -632,8 +633,11 @@ class Deserializer {
 
     popFunctionParameters() {
         const paramCount = this.popU32();
-        if(paramCount === 0) {
+        if(paramCount === 0xffffffff) {
             return null
+        }
+        if(paramCount === 0) {
+            return []
         }
         const params = []
         for(let i = 0; i < paramCount; i++) {
@@ -803,6 +807,27 @@ class Deserializer {
         }
     }
 
+    popModifierDefinition() {
+        const name = this.popString();
+        const parameters = this.popFunctionParameters();
+        const isVirtual = this.popU16();
+        const hasBody = this.popU32();
+
+        let body = null;
+        if(hasBody) {
+            body = this.popStatement();
+        }
+
+        return {
+            type: "ModifierDefinition",
+            name,
+            parameters,
+            body,
+            isVirtual: isVirtual == 1,
+            override: null,
+        }
+    }
+
     popContractDefinition() {
         const name = this.popString();
         const count = this.popU32();
@@ -844,6 +869,8 @@ class Deserializer {
             return this.popStateVariableDeclaration();
         } else if(type === ASTNodeType_FunctionDefinition) {
             return this.popFunctionDefinition();
+        } else if(type === ASTNodeType_ModifierDefinition) {
+            return this.popModifierDefinition();
         } else if(type === ASTNodeType_ContractDefinition) {
             return this.popContractDefinition();
         } else if(type === ASTNodeType_LibraryDefinition) {

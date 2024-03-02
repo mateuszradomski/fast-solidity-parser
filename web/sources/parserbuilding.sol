@@ -3860,22 +3860,35 @@ contract bar {
     }
 }
 
-// contract c {
-//     modifier mod { if (msg.sender == 0) _; }
-// }
-// 
-// contract c {
-//     modifier mod(address a) { if (msg.sender == a) _; }
-// }
-// contract c {
-//     modifier mod1(address a) { if (msg.sender == a) _; }
-//     modifier mod2 { if (msg.sender == 2) _; }
-//     function f() mod1(7) mod2 { }
-// }
+contract c {
+    modifier mod { if (msg.sender == 0) _; }
+}
+
+contract c {
+    modifier mod(address a) { if (msg.sender == a) _; }
+}
+contract c {
+    modifier mod1(address a) { if (msg.sender == a) _; }
+    modifier mod2 { if (msg.sender == 2) _; }
+    // function f() mod1(7) mod2 { }
+}
 // contract derived is foo(2), bar("abc", "def") {
 //   function fun() {
 //   }
 // }
+
+library c {
+    modifier mod { if (msg.sender == 0) _; }
+}
+
+library c {
+    modifier mod(address a) { if (msg.sender == a) _; }
+}
+library c {
+    modifier mod1(address a) { if (msg.sender == a) _; }
+    modifier mod2 { if (msg.sender == 2) _; }
+    // function f() mod1(7) mod2 { }
+}
 
 contract test {
     function f() returns(bool succeeded) {
@@ -4250,10 +4263,10 @@ contract userDefinedTypesAsMappingKeys {
   mapping (Foo => uint) map;
 }
 
-//contract modifierWithVirtualOrOverride {
-//  modifier foo() virtual {_;}
-//  modifier bar() override {_;}
-//}
+contract modifierWithVirtualOrOverride {
+  modifier foo() virtual {_;}
+  // modifier bar() override {_;}
+}
 
 contract Base1
 {

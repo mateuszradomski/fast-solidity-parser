@@ -349,6 +349,10 @@ pushFunctionParameters(Serializer *s, FunctionParameterList *parameters) {
 
     FunctionParameter *param = parameters->head;
     l += pushU32(s, parameters->count);
+    if(parameters->count == -1) {
+        return l;
+    }
+
     for(u32 i = 0; i < parameters->count; i++, param = param->next) {
         l += pushType(s, param->type);
         l += pushTokenStringById(s, param->identifier);
@@ -515,6 +519,24 @@ pushFunctionDefinition(Serializer *s, ASTNode *node) {
 }
 
 static u32
+pushModifierDefinition(Serializer *s, ASTNode *node) {
+    u32 l = pushU32(s, node->type);
+
+    ASTNodeFunctionDefinition *function = &node->functionDefinitionNode;
+    l += pushTokenStringById(s, function->name);
+
+    l += pushFunctionParameters(s, &function->parameters);
+    l += pushU16(s, function->virtual);
+    l += pushU32(s, function->body != 0x0);
+
+    if(function->body != 0x0) {
+        l += pushStatement(s, function->body);
+    }
+
+    return l;
+}
+
+static u32
 pushContractDefinition(Serializer *s, ASTNode *node) {
     u32 l = pushU32(s, node->type);
 
@@ -561,6 +583,9 @@ pushASTNode(Serializer *s, ASTNode *node) {
         } break;
         case ASTNodeType_FunctionDefinition: {
             l = pushFunctionDefinition(s, node);
+        } break;
+        case ASTNodeType_ModifierDefinition: {
+            l = pushModifierDefinition(s, node);
         } break;
         case ASTNodeType_LibraryDefinition:
         case ASTNodeType_ContractDefinition: {

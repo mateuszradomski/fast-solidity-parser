@@ -45,6 +45,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_HexStringLitExpression,
     ASTNodeType_ArraySliceExpression,
     ASTNodeType_UncheckedBlockStatement,
+    ASTNodeType_ModifierDefinition,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -1638,7 +1639,9 @@ parseFunction(Parser *parser, ASTNode *node) {
         }
     }
 
+    function->returnParameters.count = -1;
     if(acceptToken(parser, TokenType_Returns)) {
+        function->returnParameters.count = 0;
         expectToken(parser, TokenType_LParen);
         do {
             FunctionParameter *parameter = structPush(parser->arena, FunctionParameter);
@@ -1672,6 +1675,63 @@ parseFunction(Parser *parser, ASTNode *node) {
 }
 
 static bool
+parseModifier(Parser *parser, ASTNode *node) {
+    node->type = ASTNodeType_ModifierDefinition;
+    TokenId name = parseIdentifier(parser);
+    assert(name != INVALID_TOKEN_ID);
+    ASTNodeFunctionDefinition *modifier = &node->functionDefinitionNode;
+    modifier->name = name;
+
+    modifier->parameters.count = -1;
+    if(acceptToken(parser, TokenType_LParen)) {
+        modifier->parameters.count = 0;
+        if(!acceptToken(parser, TokenType_RParen)) {
+            do {
+                FunctionParameter *parameter = structPush(parser->arena, FunctionParameter);
+                parameter->type = structPush(parser->arena, ASTNode);
+                parseType(parser, parameter->type);
+                if(acceptToken(parser, TokenType_Memory)) {
+                    parameter->dataLocation = 1;
+                } else if(acceptToken(parser, TokenType_Storage)) {
+                    parameter->dataLocation = 2;
+                } else if(acceptToken(parser, TokenType_Calldata)) {
+                    parameter->dataLocation = 3;
+                } else {
+                    parameter->dataLocation = 0;
+                }
+
+                parameter->identifier = parseIdentifier(parser);
+
+                SLL_QUEUE_PUSH(modifier->parameters.head, modifier->parameters.last, parameter);
+                modifier->parameters.count += 1;
+            } while(acceptToken(parser, TokenType_Comma));
+
+            expectToken(parser, TokenType_RParen);
+        }
+    }
+
+    modifier->stateMutability = 0;
+    modifier->virtual = 0;
+    for(;;) {
+        if (acceptToken(parser, TokenType_Virtual)) {
+            modifier->virtual = 1;
+        } else if(acceptToken(parser, TokenType_Override)) {
+            assert(0 && "Unimplemented override-specifier");
+        } else {
+            break;
+        }
+    }
+
+    modifier->body = 0x0;
+    if(!acceptToken(parser, TokenType_Semicolon)) {
+        modifier->body = structPush(parser->arena, ASTNode);
+        parseBlock(parser, modifier->body);
+    }
+
+    return true;
+}
+
+static bool
 parseContract(Parser *parser, ASTNode *node) {
     node->type = ASTNodeType_ContractDefinition;
     ASTNodeContractDefintion *contract = &node->contractDefintionNode;
@@ -1691,7 +1751,7 @@ parseContract(Parser *parser, ASTNode *node) {
         } else if(acceptToken(parser, TokenType_Function)) {
             assert(parseFunction(parser, &element->node));
         } else if(acceptToken(parser, TokenType_Modifier)) {
-            assert(0);
+            assert(parseModifier(parser, &element->node));
         } else if(acceptToken(parser, TokenType_Fallback)) {
             assert(0);
         } else if(acceptToken(parser, TokenType_Receive)) {
@@ -1743,7 +1803,7 @@ parseLibrary(Parser *parser, ASTNode *node) {
         } else if(acceptToken(parser, TokenType_Function)) {
             assert(parseFunction(parser, &element->node));
         } else if(acceptToken(parser, TokenType_Modifier)) {
-            assert(0);
+            assert(parseModifier(parser, &element->node));
         } else if(acceptToken(parser, TokenType_Fallback)) {
             assert(0);
         } else if(acceptToken(parser, TokenType_Receive)) {
