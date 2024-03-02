@@ -558,6 +558,20 @@ pushContractDefinition(Serializer *s, ASTNode *node) {
 }
 
 static u32
+pushConstructorDefinition(Serializer *s, ASTNode *node) {
+    u32 l = pushU32(s, node->type);
+
+    ASTNodeConstructorDefinition *constructor = &node->constructorDefinitionNode;
+
+    l += pushFunctionParameters(s, &constructor->parameters);
+    l += pushU16(s, constructor->visibility);
+    l += pushU16(s, constructor->stateMutability);
+    l += pushStatement(s, constructor->body);
+
+    return l;
+}
+
+static u32
 pushASTNode(Serializer *s, ASTNode *node) {
     u32 l = 0;
 
@@ -590,6 +604,9 @@ pushASTNode(Serializer *s, ASTNode *node) {
         case ASTNodeType_ReceiveFunction:
         case ASTNodeType_FunctionDefinition: {
             l = pushFunctionDefinition(s, node);
+        } break;
+        case ASTNodeType_ConstructorDefinition: {
+            l = pushConstructorDefinition(s, node);
         } break;
         case ASTNodeType_ModifierDefinition: {
             l = pushModifierDefinition(s, node);

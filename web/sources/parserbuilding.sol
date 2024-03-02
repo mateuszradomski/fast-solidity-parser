@@ -4133,34 +4133,34 @@ contract test {
   fallback () external payable {}
 }
 
-// contract D {
-//     uint public x;
-//     constructor(uint a) public payable {
-//         x = a;
-//     }
-// }
+contract D {
+    uint public x;
+    constructor(uint a) public payable {
+        x = a;
+    }
+}
 
-// contract C {
-//     D d = new D(4); // will be executed as part of C's constructor
-// 
-//     function createD(uint arg) public {
-//         D newD = new D(arg);
-//         newD.x();
-//     }
-// 
-//     function createAndEndowD(uint arg, uint amount) public payable {
-//         // Send ether along with the creation
-//         D newD = new D{value: amount}(arg);
-//         newD.x();
-//     }
-// }
+contract C {
+    D d = new D(4); // will be executed as part of C's constructor
 
-//contract D {
-//    uint public x;
-//    constructor(uint a) public {
-//        x = a;
-//    }
-//}
+    function createD(uint arg) public {
+        D newD = new D(arg);
+        newD.x();
+    }
+
+    function createAndEndowD(uint arg, uint amount) public payable {
+        // Send ether along with the creation
+        // D newD = new D{value: amount}(arg);
+        newD.x();
+    }
+}
+
+contract D {
+    uint public x;
+    constructor(uint a) public {
+        x = a;
+    }
+}
 
 contract C {
     function createDSalted(bytes32 salt, uint arg) public {
@@ -4183,10 +4183,10 @@ contract C {
     }
 }
 
-//contract owned {
-//    constructor() public { owner = msg.sender; }
-//    address payable owner;
-//}
+contract owned {
+    constructor() public { owner = msg.sender; }
+    address payable owner;
+}
 
 // contract Destructible is owned {
 //     function destroy() virtual public {
@@ -4254,9 +4254,25 @@ contract WithUncheckedBlock {
 contract stateVariables {
     bytes32 constant adminRole = keccak256("ADMIN_ROLE");
     uint immutable totalSupply;
-    // constructor(uint _totalSupply) public {
-    //     totalSupply = _totalSupply;
-    // }
+    constructor(uint _totalSupply) public {
+        totalSupply = _totalSupply;
+    }
+}
+
+contract stateVariables {
+    bytes32 constant adminRole = keccak256("ADMIN_ROLE");
+    uint immutable totalSupply;
+    constructor(uint _totalSupply) {
+        totalSupply = _totalSupply;
+    }
+}
+
+contract stateVariables {
+    bytes32 constant adminRole = keccak256("ADMIN_ROLE");
+    uint immutable totalSupply;
+    constructor(uint _totalSupply) public payable {
+        totalSupply = _totalSupply;
+    }
 }
 
 contract userDefinedTypesAsMappingKeys {

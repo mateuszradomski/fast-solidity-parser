@@ -47,6 +47,7 @@ const ASTNodeType_ModifierDefinition = 46
 const ASTNodeType_FallbackFunction = 47
 const ASTNodeType_ReceiveFunction = 48
 const ASTNodeType_EmitStatement = 49
+const ASTNodeType_ConstructorDefinition = 50
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -856,6 +857,29 @@ class Deserializer {
         }
     }
 
+    popConstructorDefinition() {
+        const parameters = this.popFunctionParameters();
+        const visibility = this.popU16();
+        const stateMutability = this.popU16();
+        const body = this.popStatement();
+
+        return {
+            type: "FunctionDefinition",
+            name: null,
+            parameters,
+            returnParameters: null,
+            body,
+            visibility: this.visibilityString[visibility],
+            modifiers: [],
+            override: null,
+            isConstructor: true,
+            isReceiveEther: false,
+            isFallback: false,
+            isVirtual: false,
+            stateMutability: this.stateMutabilityString[stateMutability]
+        }
+    }
+
     popASTNode() {
         const type = this.popU32();
 
@@ -898,6 +922,8 @@ class Deserializer {
             const result = this.popContractDefinition();
             result.kind = "library"
             return result
+        } else if(type === ASTNodeType_ConstructorDefinition) {
+            return this.popConstructorDefinition();
         } else {
             throw new Error(`Unknown/Unsupported ASTNode kind: ${type}`);
         }

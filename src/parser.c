@@ -49,6 +49,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_FallbackFunction,
     ASTNodeType_ReceiveFunction,
     ASTNodeType_EmitStatement,
+    ASTNodeType_ConstructorDefinition,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -269,6 +270,14 @@ typedef struct ASTNodeEmitStatement {
     ASTNode *expression;
 } ASTNodeEmitStatement;
 
+typedef struct ASTNodeConstructorDefinition {
+    FunctionParameterList parameters;
+    u8 visibility;
+    u8 stateMutability;
+    u8 virtual;
+    ASTNode *body;
+} ASTNodeConstructorDefinition;
+
 typedef struct ASTNode {
     ASTNodeType type;
 
@@ -325,6 +334,7 @@ typedef struct ASTNode {
         ASTNodeRevertStatement revertStatementNode;
         ASTNodeForStatement forStatementNode;
         ASTNodeEmitStatement emitStatementNode;
+        ASTNodeConstructorDefinition constructorDefinitionNode;
     };
 } ASTNode;
 
@@ -1748,6 +1758,57 @@ parseModifier(Parser *parser, ASTNode *node) {
 }
 
 static bool
+parseConstructor(Parser *parser, ASTNode *node) {
+    node->type = ASTNodeType_ConstructorDefinition;
+    ASTNodeConstructorDefinition *constructor = &node->constructorDefinitionNode;
+
+    expectToken(parser, TokenType_LParen);
+    constructor->parameters.count = 0;
+    if(!acceptToken(parser, TokenType_RParen)) {
+        do {
+            FunctionParameter *parameter = structPush(parser->arena, FunctionParameter);
+            parameter->type = structPush(parser->arena, ASTNode);
+            parseType(parser, parameter->type);
+            if(acceptToken(parser, TokenType_Memory)) {
+                parameter->dataLocation = 1;
+            } else if(acceptToken(parser, TokenType_Storage)) {
+                parameter->dataLocation = 2;
+            } else if(acceptToken(parser, TokenType_Calldata)) {
+                parameter->dataLocation = 3;
+            } else {
+                parameter->dataLocation = 0;
+            }
+
+            parameter->identifier = parseIdentifier(parser);
+
+            SLL_QUEUE_PUSH(constructor->parameters.head, constructor->parameters.last, parameter);
+            constructor->parameters.count += 1;
+        } while(acceptToken(parser, TokenType_Comma));
+
+        expectToken(parser, TokenType_RParen);
+    }
+
+    constructor->stateMutability = 0;
+    constructor->visibility = 0;
+    for(;;) {
+        if (acceptToken(parser, TokenType_Payable)) {
+            constructor->stateMutability = 3;
+        } else if(acceptToken(parser, TokenType_Internal)) {
+            constructor->visibility = 1;
+        } else if (acceptToken(parser, TokenType_Public)) {
+            constructor->visibility = 4;
+        } else {
+            break;
+        }
+    }
+
+    constructor->body = structPush(parser->arena, ASTNode);
+    parseBlock(parser, constructor->body);
+
+    return true;
+}
+
+static bool
 parseContract(Parser *parser, ASTNode *node) {
     node->type = ASTNodeType_ContractDefinition;
     ASTNodeContractDefintion *contract = &node->contractDefintionNode;
@@ -1763,7 +1824,7 @@ parseContract(Parser *parser, ASTNode *node) {
         ASTNodeLink *element = structPush(parser->arena, ASTNodeLink);
 
         if(acceptToken(parser, TokenType_Constructor)) {
-            assert(0);
+            assert(parseConstructor(parser, &element->node));
         } else if(acceptToken(parser, TokenType_Function)) {
             assert(parseFunction(parser, &element->node));
         } else if(acceptToken(parser, TokenType_Modifier)) {
@@ -1813,7 +1874,7 @@ parseLibrary(Parser *parser, ASTNode *node) {
         ASTNodeLink *element = structPush(parser->arena, ASTNodeLink);
 
         if(acceptToken(parser, TokenType_Constructor)) {
-            assert(0);
+            assert(parseConstructor(parser, &element->node));
         } else if(acceptToken(parser, TokenType_Function)) {
             assert(parseFunction(parser, &element->node));
         } else if(acceptToken(parser, TokenType_Modifier)) {
