@@ -244,7 +244,7 @@ typedef struct ASTNodeWhileStatement {
 } ASTNodeWhileStatement;
 
 typedef struct ASTNodeInheritanceSpecifier {
-    TokenIdList identifiers;
+    ASTNode *identifier;
     ASTNodeList arguments;
 } ASTNodeInheritanceSpecifier;
 
@@ -1925,13 +1925,9 @@ parseContract(Parser *parser, ASTNode *node) {
             baseContractLink->node.type = ASTNodeType_InheritanceSpecifier;
             ASTNodeInheritanceSpecifier *inheritance = &baseContractLink->node.inheritanceSpecifierNode;
 
-            TokenId identifier = parseIdentifier(parser);
-            listPushTokenId(&inheritance->identifiers, identifier, parser->arena);
-            while(acceptToken(parser, TokenType_Dot)) {
-                TokenId nextIdentifier = parseIdentifier(parser);
-                assert(nextIdentifier > 0);
-                listPushTokenId(&inheritance->identifiers, nextIdentifier, parser->arena);
-            }
+            inheritance->identifier = structPush(parser->arena, ASTNode);
+            parseType(parser, inheritance->identifier);
+            assert(inheritance->identifier->type == ASTNodeType_IdentifierPath);
 
             if(acceptToken(parser, TokenType_LParen)) {
                 parseCallArgumentList(parser, &inheritance->arguments);

@@ -553,6 +553,23 @@ pushModifierDefinition(Serializer *s, ASTNode *node) {
 }
 
 static u32
+pushInheritanceSpecifier(Serializer *s, ASTNode *node) {
+    u32 l = pushU32(s, node->type);
+
+    ASTNodeInheritanceSpecifier *inheritance = &node->inheritanceSpecifierNode;
+    l += pushType(s, inheritance->identifier);
+
+    // TODO(radomski): call-argument-list
+    l += pushU32(s, inheritance->arguments.count);
+    ASTNodeLink *argument = inheritance->arguments.head;
+    for(u32 i = 0; i < inheritance->arguments.count; i++, argument = argument->next) {
+        l += pushExpression(s, &argument->node);
+    }
+
+    return l;
+}
+
+static u32
 pushContractDefinition(Serializer *s, ASTNode *node) {
     u32 l = pushU32(s, node->type);
 
@@ -562,19 +579,7 @@ pushContractDefinition(Serializer *s, ASTNode *node) {
     l += pushU32(s, contract->baseContracts.count);
     ASTNodeLink *baseContract = contract->baseContracts.head;
     for(u32 i = 0; i < contract->baseContracts.count; i++, baseContract = baseContract->next) {
-        ASTNodeInheritanceSpecifier *inheritance = &baseContract->node.inheritanceSpecifierNode;
-
-        l += pushU32(s, inheritance->identifiers.count);
-        for(u32 i = 0; i < inheritance->identifiers.count; i++) {
-            TokenId part = listGetTokenId(&inheritance->identifiers, i);
-            l += pushTokenStringById(s, part);
-        }
-
-        l += pushU32(s, inheritance->arguments.count);
-        ASTNodeLink *argument = inheritance->arguments.head;
-        for(u32 i = 0; i < inheritance->arguments.count; i++, argument = argument->next) {
-            l += pushExpression(s, &argument->node);
-        }
+        l += pushInheritanceSpecifier(s, &baseContract->node);
     }
 
     l += pushU32(s, contract->elements.count);

@@ -51,6 +51,7 @@ const ASTNodeType_ConstructorDefinition = 50
 const ASTNodeType_NamedParametersExpression = 51
 const ASTNodeType_InterfaceDefinition = 52
 const ASTNodeType_AbstractContractDefinition = 53
+const ASTNodeType_InheritanceSpecifier = 54
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -866,35 +867,29 @@ class Deserializer {
         }
     }
 
+    popInheritanceSpecifier() {
+        const identifier = this.popType();
+
+        const argCount = this.popU32();
+        const args = []
+        for(let k = 0; k < argCount; k++) {
+            args.push(this.popExpression());
+        }
+
+        return {
+            type: "InheritanceSpecifier",
+            baseName: identifier,
+            arguments: args,
+        };
+    }
+
     popContractDefinition() {
         const name = this.popString();
         const baseContractCount = this.popU32();
         const baseContracts = []
 
         for(let i = 0; i < baseContractCount; i++) {
-            const identifiersCount = this.popU32();
-            let path = ""
-            for(let i = 0; i < identifiersCount; i++) {
-                path += this.popString();
-                if(i < identifiersCount - 1) {
-                    path += ".";
-                }
-            }
-
-            const argCount = this.popU32();
-            const args = []
-            for(let k = 0; k < argCount; k++) {
-                args.push(this.popExpression());
-            }
-
-            baseContracts.push({
-                               type: "InheritanceSpecifier",
-                               baseName: {
-                                   type: "UserDefinedTypeName",
-                                   namePath: path,
-                               },
-                               arguments: args,
-            });
+            baseContracts.push(this.popASTNode());
         }
 
         const subNodeCount = this.popU32();
@@ -988,6 +983,8 @@ class Deserializer {
             return result
         } else if(type === ASTNodeType_ConstructorDefinition) {
             return this.popConstructorDefinition();
+        } else if(type === ASTNodeType_InheritanceSpecifier) {
+            return this.popInheritanceSpecifier();
         } else {
             throw new Error(`Unknown/Unsupported ASTNode kind: ${type}`);
         }
