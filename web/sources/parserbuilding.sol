@@ -4013,9 +4013,9 @@ contract test {
   }
 }
 
-// contract test {
-//   uint x = 0.1 ether;
-// }
+contract test {
+  uint x = .1 ether;
+}
 
 contract test {
   function asd() {
@@ -4027,11 +4027,11 @@ contract test {
   uint x = 1000000;
   int x2 = -1000000;
   int x3 = -1000000 * 200;
-  //uint y = .25;
-  //uint y2 = 0.25;
-  //uint y3 = 10.25;
-  //uint y4 = 100.25;
-  //uint y5 = 0.0025 * 1e18;
+  uint y = .25;
+  uint y2 = 0.25;
+  uint y3 = 10.25;
+  uint y4 = 100.25;
+  uint y5 = 0.0025 * 1e18;
   uint y6 = 1000000e-2;
   uint z = 0x11_22;
   uint z2 = 0x1122;
@@ -4061,4 +4061,222 @@ contract Sharer {
         assert(address(this).balance == balanceBeforeTransfer - msg.value / 2);
         return address(this).balance;
     }
+}
+
+// contract FeedConsumer {
+//     DataFeed feed;
+//     uint errorCount;
+//     function rate(address token) public returns (uint value, bool success) {
+//         // Permanently disable the mechanism if there are
+//         // more than 10 errors.
+//         require(errorCount < 10);
+//         try feed.getData(token) returns (uint v) {
+//             return (v, true);
+//         } catch Error(string memory /*reason*/) {
+//             // This is executed in case
+//             // revert was called inside getData
+//             // and a reason string was provided.
+//             errorCount++;
+//             return (0, false);
+//         } catch (bytes memory /*lowLevelData*/) {
+//             // This is executed in case revert() was used
+//             // or there was a failing assertion, division
+//             // by zero, etc. inside getData.
+//             errorCount++;
+//             return (0, false);
+//         } catch {
+//             // This is also executed in case revert() was used
+//             // or there was a failing assertion, division
+//             // by zero, etc. inside getData.
+//             errorCount++;
+//             return (0, false);
+//         }
+//     }
+// }
+
+// contract test {
+//   receive () external payable {}
+//   fallback () external payable {}
+// }
+
+// contract D {
+//     uint public x;
+//     constructor(uint a) public payable {
+//         x = a;
+//     }
+// }
+
+// contract C {
+//     D d = new D(4); // will be executed as part of C's constructor
+// 
+//     function createD(uint arg) public {
+//         D newD = new D(arg);
+//         newD.x();
+//     }
+// 
+//     function createAndEndowD(uint arg, uint amount) public payable {
+//         // Send ether along with the creation
+//         D newD = new D{value: amount}(arg);
+//         newD.x();
+//     }
+// }
+
+//contract D {
+//    uint public x;
+//    constructor(uint a) public {
+//        x = a;
+//    }
+//}
+
+contract C {
+    function createDSalted(bytes32 salt, uint arg) public {
+        /// This complicated expression just tells you how the address
+        /// can be pre-computed. It is just there for illustration.
+        /// You actually only need ``new D{salt: salt}(arg)``.
+        address predictedAddress = address(bytes20(keccak256(abi.encodePacked(
+            // byte(0xff), // this also is stupido!!
+            address(0xff),
+            address(this),
+            salt,
+            keccak256(abi.encodePacked(
+                type(D).creationCode,
+                arg
+            ))
+        ))));
+
+        // D d = new D{salt: salt}(arg);
+        require(address(d) == predictedAddress);
+    }
+}
+
+//contract owned {
+//    constructor() public { owner = msg.sender; }
+//    address payable owner;
+//}
+
+// contract Destructible is owned {
+//     function destroy() virtual public {
+//         if (msg.sender == owner) selfdestruct(owner);
+//     }
+// }
+
+// contract Base1 is Destructible {
+//     function destroy() public virtual override { /* do cleanup 1 */ super.destroy(); }
+// }
+// 
+// 
+// contract Base2 is Destructible {
+//     function destroy() public virtual override { /* do cleanup 2 */ super.destroy(); }
+// }
+// 
+// contract Final is Base1, Base2 {
+//     function destroy() public override(Base1, Base2) { super.destroy(); }
+// }
+
+contract PayableAddress {
+    function payableFn() public pure {
+        address x;
+        address y = payable(x);
+    }
+}
+
+// contract VirtualA {
+//     GlobalBaseStruct base;
+//     event MyEvent(string _myString);
+//     function funA() public virtual {
+//         emit MyEvent("from A");
+//     }
+// }
+// 
+// contract VirtualB {
+//     function funA() public virtual {
+//         //does nothing
+//     }
+// }
+// 
+// contract VirtualOverdide is VirtualA, VirtualB {
+//     function funA() public override(VirtualB,VirtualA) {
+//         emit MyEvent("from B");
+//         super.funA();
+//     }
+
+//contract ArraySlices {
+//    function f(bytes calldata x) public {
+//        bytes memory a1 = abi.decode(x[:], (bytes));
+//        bytes4 a2 = abi.decode(x[:4], (bytes4));
+//        address a3 = abi.decode(x[4:], (address));
+//    }
+//}
+
+contract WithUncheckedBlock {
+  function f() public pure returns (uint) {
+    uint x = 0;
+    // unchecked { x--; }
+    return x;
+  }
+}
+
+contract stateVariables {
+    // bytes32 constant adminRole = keccak256("ADMIN_ROLE");
+    uint immutable totalSupply;
+    // constructor(uint _totalSupply) public {
+    //     totalSupply = _totalSupply;
+    // }
+}
+
+contract userDefinedTypesAsMappingKeys {
+  mapping (Foo => uint) map;
+}
+
+//contract modifierWithVirtualOrOverride {
+//  modifier foo() virtual {_;}
+//  modifier bar() override {_;}
+//}
+
+//contract Base1
+//{
+//    function foo() virtual public {}
+//}
+//
+//contract Base2
+//{
+//    function foo() virtual public {}
+//}
+
+//contract Inherited is Base1, Base2
+//{
+//    // Derives from multiple bases defining foo(), so we must explicitly
+//    // override it
+//    function foo() public override(Base1, Base2) {}
+//}
+//
+//contract CallWithNameValue {
+//  function foo() {
+//    recipient.call("");
+//    recipient.call{value: 1}("");
+//    recipient.call{value: 1, gas: 1000}("");
+//  }
+//}
+
+contract FunctionsNamedAsKeywords {
+  function receive() {}
+  function leave() {}
+}
+
+contract ImmutableKeyword {
+  uint immutable foo;
+}
+
+//contract FallbackWithArgs {
+//  fallback (bytes calldata input) external payable returns (bytes memory output) {}
+//}
+
+// issue #54
+contract Foo {
+  function f() public {
+    //(uint[][] memory x, uint y) = abi.decode(data, (uint[][], uint));
+    //(uint[3][] memory x, uint y) = abi.decode(data, (uint[3][], uint));
+    //(uint[][3] memory x, uint y) = abi.decode(data, (uint[][3], uint));
+    //(uint[][][] memory x, uint y) = abi.decode(data, (uint[][][], uint));
+  }
 }

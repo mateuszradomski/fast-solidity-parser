@@ -434,6 +434,99 @@ pushToken(TokenizeResult *result, TokenType tokenType, String string) {
     // printToken(result->tokens[result->count - 1]);
 }
 
+static Token
+tokenizeNumberLiteral(ByteConsumer *c, u8 byte) {
+    u8 nextByte = peekByte(c);
+
+    if(byte == '0' && (nextByte == 'x' || nextByte == 'X')) {
+        String symbol = { .data = c->head - 1, .size = 2 };
+        consumeByte(c);
+        while(consumerGood(c)) {
+            u8 nextByte = peekByte(c);
+            if(isHexDigit(nextByte) || nextByte == '_') {
+                symbol.size += 1;
+                consumeByte(c);
+            } else {
+                break;
+            }
+        }
+
+        return (Token) {
+            .type = TokenType_HexNumberLit,
+            .string = symbol,
+        };
+    } else if(byte == '0' && nextByte == 'b') {
+        String symbol = { .data = c->head - 1, .size = 2 };
+        consumeByte(c);
+        while(consumerGood(c)) {
+            u8 nextByte = peekByte(c);
+            if(isBinDigit(nextByte)) {
+                symbol.size += 1;
+                consumeByte(c);
+            } else {
+                break;
+            }
+        }
+
+        return (Token) {
+            .type = TokenType_BinNumberLit,
+            .string = symbol,
+        };
+    } else {
+        String symbol = { .data = c->head - 1, .size = 1 };
+
+        while(consumerGood(c)) {
+            u8 nextByte = peekByte(c);
+            if(!(isDigit(nextByte) || nextByte == '_')) {
+                break;
+            }
+
+            symbol.size += 1;
+            consumeByte(c);
+        }
+
+        if(peekByte(c) == '.') {
+            symbol.size += 1;
+            consumeByte(c);
+        }
+
+        while(consumerGood(c)) {
+            u8 nextByte = peekByte(c);
+            if(!(isDigit(nextByte) || nextByte == '_')) {
+                break;
+            }
+
+            symbol.size += 1;
+            consumeByte(c);
+        }
+
+        if(peekByte(c) == 'e' || peekByte(c) == 'E') {
+            symbol.size += 1;
+            consumeByte(c);
+
+            if(peekByte(c) == '-') {
+                symbol.size += 1;
+                consumeByte(c);
+            }
+
+            while(consumerGood(c)) {
+                u8 nextByte = peekByte(c);
+                if(isDigit(nextByte) || nextByte == '_') {
+                    symbol.size += 1;
+                    consumeByte(c);
+                } else {
+                    break;
+                }
+            }
+        }
+
+        return (Token) {
+            .type = TokenType_NumberLit,
+            .string = symbol,
+        };
+    }
+}
+
 static TokenizeResult
 tokenize(String source, Arena *arena) {
     TokenizeResult result = allocateTokenSpace(arena, source.size);
@@ -616,7 +709,7 @@ tokenize(String source, Arena *arena) {
                     }
                 }
 
-                pushToken(&result, TokenType_Comment, symbol);
+                // pushToken(&result, TokenType_Comment, symbol);
             } else if(nextByte == '/') {
                 String symbol = { .data = c.head - 1, .size = 2 };
                 consumeByte(&c);
@@ -630,7 +723,7 @@ tokenize(String source, Arena *arena) {
                     }
                 }
 
-                pushToken(&result, TokenType_Comment, symbol);
+                // pushToken(&result, TokenType_Comment, symbol);
             } else if(nextByte == '=') {
                 consumeByte(&c);
                 String symbol = { .data = c.head - 2, .size = 2 };
@@ -664,76 +757,8 @@ tokenize(String source, Arena *arena) {
 
             pushToken(&result, TokenType_StringLit, symbol);
         } else if(isDigit(byte)) {
-            u8 nextByte = peekByte(&c);
-
-            if(byte == '0' && (nextByte == 'x' || nextByte == 'X')) {
-                String symbol = { .data = c.head - 1, .size = 2 };
-                consumeByte(&c);
-                while(consumerGood(&c)) {
-                    u8 nextByte = peekByte(&c);
-                    if(isHexDigit(nextByte) || nextByte == '_') {
-                        symbol.size += 1;
-                        consumeByte(&c);
-                    } else {
-                        break;
-                    }
-                }
-
-                pushToken(&result, TokenType_HexNumberLit, symbol);
-            } else if(byte == '0' && nextByte == 'b') {
-                String symbol = { .data = c.head - 1, .size = 2 };
-                consumeByte(&c);
-                while(consumerGood(&c)) {
-                    u8 nextByte = peekByte(&c);
-                    if(isBinDigit(nextByte)) {
-                        symbol.size += 1;
-                        consumeByte(&c);
-                    } else {
-                        break;
-                    }
-                }
-
-                pushToken(&result, TokenType_BinNumberLit, symbol);
-            } else {
-                String symbol = { .data = c.head - 1, .size = 1 };
-
-                if(peekByte(&c) == '.') {
-                    symbol.size += 1;
-                    consumeByte(&c);
-                }
-
-                while(consumerGood(&c)) {
-                    u8 nextByte = peekByte(&c);
-                    if(!(isDigit(nextByte) || nextByte == '_')) {
-                        break;
-                    }
-
-                    symbol.size += 1;
-                    consumeByte(&c);
-                }
-
-                if(peekByte(&c) == 'e' || peekByte(&c) == 'E') {
-                    symbol.size += 1;
-                    consumeByte(&c);
-
-                    if(peekByte(&c) == '-') {
-                        symbol.size += 1;
-                        consumeByte(&c);
-                    }
-
-                    while(consumerGood(&c)) {
-                        u8 nextByte = peekByte(&c);
-                        if(isDigit(nextByte) || nextByte == '_') {
-                            symbol.size += 1;
-                            consumeByte(&c);
-                        } else {
-                            break;
-                        }
-                    }
-                }
-
-                pushToken(&result, TokenType_NumberLit, symbol);
-            }
+            Token token = tokenizeNumberLiteral(&c, byte);
+            pushToken(&result, token.type, token.string);
         } else if(byte == '[') {
             pushToken(&result, TokenType_LBracket, (String){ .data = c.head - 1, .size = 1 });
         } else if(byte == ']') {
@@ -781,7 +806,13 @@ tokenize(String source, Arena *arena) {
         } else if(byte == ',') {
             pushToken(&result, TokenType_Comma, (String){ .data = c.head - 1, .size = 1 });
         } else if(byte == '.') {
-            pushToken(&result, TokenType_Dot, (String){ .data = c.head - 1, .size = 1 });
+            u8 nextByte = peekByte(&c);
+            if(isDigit(nextByte)) {
+                Token token = tokenizeNumberLiteral(&c, byte);
+                pushToken(&result, token.type, token.string);
+            } else {
+                pushToken(&result, TokenType_Dot, (String){ .data = c.head - 1, .size = 1 });
+            }
         } else if(byte == '!') {
             u8 nextByte = peekByte(&c);
             if(nextByte == '=') {
