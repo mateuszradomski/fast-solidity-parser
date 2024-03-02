@@ -821,6 +821,17 @@ class Deserializer {
         const visibility = this.popU16();
         const stateMutability = this.popU16();
         const isVirtual = this.popU16();
+        const isOverride = this.popU16();
+        let override = null 
+        if(isOverride === 1) {
+            override = []
+            const count = this.popU32();
+            for(let i = 0; i < count; i++) {
+                override.push(this.popType());
+            }
+        }
+
+
         const returnParameters = this.popFunctionParameters();
         const hasBody = this.popU32();
 
@@ -837,7 +848,7 @@ class Deserializer {
             body,
             visibility: this.visibilityString[visibility],
             modifiers: [],
-            override: null,
+            override,
             isConstructor: false,
             isReceiveEther: false,
             isFallback: false,
@@ -850,8 +861,17 @@ class Deserializer {
         const name = this.popString();
         const parameters = this.popFunctionParameters();
         const isVirtual = this.popU16();
-        const hasBody = this.popU32();
+        const isOverride = this.popU16();
+        let override = null 
+        if(isOverride === 1) {
+            override = []
+            const count = this.popU32();
+            for(let i = 0; i < count; i++) {
+                override.push(this.popType());
+            }
+        }
 
+        const hasBody = this.popU32();
         let body = null;
         if(hasBody) {
             body = this.popStatement();
@@ -863,7 +883,7 @@ class Deserializer {
             parameters,
             body,
             isVirtual: isVirtual == 1,
-            override: null,
+            override,
         }
     }
 

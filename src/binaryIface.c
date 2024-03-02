@@ -524,6 +524,16 @@ pushFunctionDefinition(Serializer *s, ASTNode *node) {
     l += pushU16(s, function->visibility);
     l += pushU16(s, function->stateMutability);
     l += pushU16(s, function->virtual);
+    l += pushU16(s, function->override);
+
+    if(function->override != 0) {
+        l += pushU32(s, function->overrides.count);
+        ASTNodeLink *override = function->overrides.head;
+        for(u32 i = 0; i < function->overrides.count; i++, override = override->next) {
+            l += pushType(s, &override->node);
+        }
+    }
+
     l += pushFunctionParameters(s, &function->returnParameters);
     l += pushU32(s, function->body != 0x0);
 
@@ -543,8 +553,17 @@ pushModifierDefinition(Serializer *s, ASTNode *node) {
 
     l += pushFunctionParameters(s, &function->parameters);
     l += pushU16(s, function->virtual);
-    l += pushU32(s, function->body != 0x0);
+    l += pushU16(s, function->override);
 
+    if(function->override != 0) {
+        l += pushU32(s, function->overrides.count);
+        ASTNodeLink *override = function->overrides.head;
+        for(u32 i = 0; i < function->overrides.count; i++, override = override->next) {
+            l += pushType(s, &override->node);
+        }
+    }
+
+    l += pushU32(s, function->body != 0x0);
     if(function->body != 0x0) {
         l += pushStatement(s, function->body);
     }

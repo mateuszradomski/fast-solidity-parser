@@ -204,6 +204,8 @@ typedef struct ASTNodeFunctionDefinition {
     u8 visibility;
     u8 stateMutability;
     u8 virtual;
+    u8 override;
+    ASTNodeList overrides;
     FunctionParameterList returnParameters;
     ASTNode *body;
 } ASTNodeFunctionDefinition;
@@ -1657,6 +1659,22 @@ parseStateVariableDeclaration(Parser *parser, ASTNode *node, ASTNode *type) {
     return true;
 }
 
+static void
+parseOverrideSpecifierArgs(Parser *parser, ASTNodeList *list) {
+    if(acceptToken(parser, TokenType_LParen)) {
+        do {
+            ASTNodeLink *argument = structPush(parser->arena, ASTNodeLink);
+            parseType(parser, &argument->node);
+            assert(argument->node.type == ASTNodeType_IdentifierPath);
+
+            SLL_QUEUE_PUSH(list->head, list->last, argument);
+            list->count += 1;
+        } while(acceptToken(parser, TokenType_Comma));
+
+        expectToken(parser, TokenType_RParen);
+    }
+}
+
 static bool
 parseFunction(Parser *parser, ASTNode *node) {
     node->type = ASTNodeType_FunctionDefinition;
@@ -1718,6 +1736,9 @@ parseFunction(Parser *parser, ASTNode *node) {
             function->stateMutability = 3;
         } else if (acceptToken(parser, TokenType_Virtual)) {
             function->virtual = 1;
+        } else if (acceptToken(parser, TokenType_Override)) {
+            function->override = 1;
+            parseOverrideSpecifierArgs(parser, &function->overrides);
         } else {
             break;
         }
@@ -1800,7 +1821,8 @@ parseModifier(Parser *parser, ASTNode *node) {
         if (acceptToken(parser, TokenType_Virtual)) {
             modifier->virtual = 1;
         } else if(acceptToken(parser, TokenType_Override)) {
-            assert(0 && "Unimplemented override-specifier");
+            modifier->override = 1;
+            parseOverrideSpecifierArgs(parser, &modifier->overrides);
         } else {
             break;
         }

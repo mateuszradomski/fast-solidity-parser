@@ -4193,18 +4193,18 @@ contract Destructible is owned {
     }
 }
 
-// contract Base1 is Destructible {
-//     function destroy() public virtual override { /* do cleanup 1 */ super.destroy(); }
-// }
-// 
-// 
-// contract Base2 is Destructible {
-//     function destroy() public virtual override { /* do cleanup 2 */ super.destroy(); }
-// }
-// 
-// contract Final is Base1, Base2 {
-//     function destroy() public override(Base1, Base2) { super.destroy(); }
-// }
+contract Base1 is Destructible {
+    function destroy() public virtual override { /* do cleanup 1 */ super.destroy(); }
+}
+
+
+contract Base2 is Destructible {
+    function destroy() public virtual override { /* do cleanup 2 */ super.destroy(); }
+}
+
+contract Final is Base1, Base2 {
+    function destroy() public override(Base1, Base2) { super.destroy(); }
+}
 
 contract PayableAddress {
     function payableFn() public pure {
@@ -4227,11 +4227,12 @@ contract VirtualB {
     }
 }
 
-// contract VirtualOverdide is VirtualA, VirtualB {
-//     function funA() public override(VirtualB,VirtualA) {
-//         emit MyEvent("from B");
-//         super.funA();
-//     }
+contract VirtualOverdide is VirtualA, VirtualB {
+    function funA() public override(VirtualB,VirtualA) {
+        emit MyEvent("from B");
+        super.funA();
+    }
+}
 
 contract ArraySlices {
     function f(bytes calldata x) public {
@@ -4280,7 +4281,9 @@ contract userDefinedTypesAsMappingKeys {
 
 contract modifierWithVirtualOrOverride {
   modifier foo() virtual {_;}
-  // modifier bar() override {_;}
+  modifier bar() override {_;}
+  modifier bar() override(Base1,Base3) {_;}
+  modifier bar() override(Base1) {_;}
 }
 
 contract Base1
@@ -4293,12 +4296,12 @@ contract Base2
     function foo() virtual public {}
 }
 
-//contract Inherited is Base1, Base2
-//{
-//    // Derives from multiple bases defining foo(), so we must explicitly
-//    // override it
-//    function foo() public override(Base1, Base2) {}
-//}
+contract Inherited is Base1, Base2
+{
+    // Derives from multiple bases defining foo(), so we must explicitly
+    // override it
+    function foo() public override(Base1, Base2) {}
+}
 
 contract CallWithNameValue {
   function foo() {
