@@ -3714,3 +3714,62 @@ contract test {
         }
     }
 }
+contract test {
+  function fun(uint256 a) {
+    uint256 i =0;
+    for (i = 0; i < 10; i++)
+        continue;
+  }
+}
+contract test {
+    function fun(uint256 a) {
+        for (uint256 i = 0; i < 10; i++) {
+            uint256 x = i;
+            break;
+            continue;
+        }
+    }
+}
+contract test {
+  function functionName(bytes32 input) returns (bytes32 out);
+}
+
+contract test {}
+
+contract test {}
+
+contract test {
+  function fun() {
+    uint64(2);
+  }
+}
+
+contract test {}
+
+contract c {
+    uint[] a;
+    function f() returns (uint, uint) {
+        a = 123;
+        return (a[3], a[0]);
+    }
+}
+contract test {
+    function z() {
+        a = 1 wei;
+        a = 4 ether;
+        a = 5 gwei;
+
+        a = 1 seconds;
+        a = 2 minutes;
+        a = 3 hours;
+        a = 4 days;
+        a = 5 weeks;
+        a = 6 years;
+
+        // TODO(radomski): @versioning: Removed in 0.7.0
+        // a = 2 szabo;
+        // a = 3 finney;
+    }
+
+    uint256 a;
+}
