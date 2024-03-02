@@ -212,6 +212,19 @@ pushExpression(Serializer *s, ASTNode *node) {
                 l += pushExpression(s, array->indexExpression);
             }
         } break;
+        case ASTNodeType_ArraySliceExpression: {
+            ASTNodeArraySliceExpression *array = &node->arraySliceExpressionNode;
+            l += pushExpression(s, array->expression);
+
+            l += pushU32(s, array->leftFenceExpression != 0x0);
+            if(array->leftFenceExpression != 0x0) {
+                l += pushExpression(s, array->leftFenceExpression);
+            }
+            l += pushU32(s, array->rightFenceExpression != 0x0);
+            if(array->rightFenceExpression != 0x0) {
+                l += pushExpression(s, array->rightFenceExpression);
+            }
+        } break;
         case ASTNodeType_TerneryExpression: {
             ASTNodeTerneryExpression *ternery = &node->terneryExpressionNode;
             l += pushExpression(s, ternery->condition);

@@ -43,6 +43,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_ContinueStatement,
     ASTNodeType_UnaryExpressionPostfix,
     ASTNodeType_HexStringLitExpression,
+    ASTNodeType_ArraySliceExpression,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -175,6 +176,12 @@ typedef struct ASTNodeArrayAccessExpression {
     ASTNode *indexExpression;
 } ASTNodeArrayAccessExpression;
 
+typedef struct ASTNodeArraySliceExpression {
+    ASTNode *expression;
+    ASTNode *leftFenceExpression;
+    ASTNode *rightFenceExpression;
+} ASTNodeArraySliceExpression;
+
 typedef struct ASTNodeTerneryExpression {
     ASTNode *condition;
     ASTNode *trueExpression;
@@ -288,6 +295,7 @@ typedef struct ASTNode {
         ASTNodeFunctionCallExpression functionCallExpressionNode;
         ASTNodeMemberAccessExpression memberAccessExpressionNode;
         ASTNodeArrayAccessExpression arrayAccessExpressionNode;
+        ASTNodeArraySliceExpression arraySliceExpressionNode;
         ASTNodeTerneryExpression terneryExpressionNode;
         ASTNodeFunctionDefinition functionDefinitionNode;
         ASTNodeBlockStatement blockStatementNode;
@@ -395,6 +403,15 @@ static bool
 acceptToken(Parser *parser, TokenType type) {
     if(peekToken(parser).type == type) {
         advanceToken(parser);
+        return true;
+    }
+
+    return false;
+}
+
+static bool
+nextTokenIs(Parser *parser, TokenType type) {
+    if(peekToken(parser).type == type) {
         return true;
     }
 
@@ -1211,18 +1228,37 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
         } else if(type == TokenType_LBracket) {
             ASTNode *expression = structPush(parser->arena, ASTNode);
             *expression = *node;
-            ASTNode *indexExpression = 0x0;
+            ASTNode *firstExpression = 0x0;
+            ASTNode *secondExpression = 0x0;
 
+            ASTNodeType type = ASTNodeType_ArrayAccessExpression;
             if(!acceptToken(parser, TokenType_RBracket)) {
-                indexExpression = structPush(parser->arena, ASTNode);
-                parseExpressionImpl(parser, indexExpression, 0);
-                expectToken(parser, TokenType_RBracket);
+                if(!nextTokenIs(parser, TokenType_Colon)) {
+                    firstExpression = structPush(parser->arena, ASTNode);
+                    parseExpressionImpl(parser, firstExpression, 0);
+                }
+
+                if(acceptToken(parser, TokenType_Colon)) {
+                    type = ASTNodeType_ArraySliceExpression;
+                    if(!acceptToken(parser, TokenType_RBracket)) {
+                        secondExpression = structPush(parser->arena, ASTNode);
+                        parseExpressionImpl(parser, secondExpression, 0);
+                        expectToken(parser, TokenType_RBracket);
+                    }
+                } else {
+                    expectToken(parser, TokenType_RBracket);
+                }
             }
 
-            node->type = ASTNodeType_ArrayAccessExpression;
-            node->arrayAccessExpressionNode.expression = expression;
-            node->arrayAccessExpressionNode.indexExpression = indexExpression;
-
+            node->type = type;
+            if(type == ASTNodeType_ArrayAccessExpression) {
+                node->arrayAccessExpressionNode.expression = expression;
+                node->arrayAccessExpressionNode.indexExpression = firstExpression;
+            } else {
+                node->arraySliceExpressionNode.expression = expression;
+                node->arraySliceExpressionNode.leftFenceExpression = firstExpression;
+                node->arraySliceExpressionNode.rightFenceExpression = secondExpression;
+            }
             continue;
         } else if(type == TokenType_Dot) {
             ASTNode *expression = structPush(parser->arena, ASTNode);

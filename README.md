@@ -75,3 +75,5 @@
 # Stuff that @solidity-parser/parser is inconsistent about
 
 Errors will have parameters `[]` if empty, functions have `null` if empty but contract functions will have parameters set to `[]` is empty and returnParameters will be `null` if empty.
+
+Array slices when they have index expressions are actuall `IndexRangeAccess`, if the colon is present but no index expressions are provided it defaults to `IndexAccess`. Addtionally, if indexing expression is provided in `IndexRangeAccess` the property does not exist instead of being set to null.

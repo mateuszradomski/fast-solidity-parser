@@ -41,6 +41,7 @@ const ASTNodeType_BreakStatement = 40
 const ASTNodeType_ContinueStatement = 41
 const ASTNodeType_UnaryExpressionPostfix = 42
 const ASTNodeType_HexStringLitExpression = 43
+const ASTNodeType_ArraySliceExpression = 44
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -401,6 +402,25 @@ class Deserializer {
                 base,
                 index,
             }
+        } else if(type === ASTNodeType_ArraySliceExpression) {
+            const base = this.popExpression();
+
+            const result =  {
+                type: "IndexRangeAccess",
+                base,
+            }
+
+            const hasIndexStart = this.popU32();
+            if(hasIndexStart == 1) {
+                result.indexStart = this.popExpression();
+            }
+
+            const hasIndexEnd = this.popU32();
+            if(hasIndexEnd == 1) {
+                result.indexEnd = this.popExpression();
+            }
+
+            return result;
         } else if(type === ASTNodeType_TerneryExpression) {
             const condition = this.popExpression();
             const trueExpression = this.popExpression();

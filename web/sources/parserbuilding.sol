@@ -4221,13 +4221,14 @@ contract VirtualB {
 //         super.funA();
 //     }
 
-//contract ArraySlices {
-//    function f(bytes calldata x) public {
-//        bytes memory a1 = abi.decode(x[:], (bytes));
-//        bytes4 a2 = abi.decode(x[:4], (bytes4));
-//        address a3 = abi.decode(x[4:], (address));
-//    }
-//}
+contract ArraySlices {
+    function f(bytes calldata x) public {
+        bytes memory a1 = abi.decode(x[:], (bytes));
+        bytes4 a2 = abi.decode(x[:4], (bytes4));
+        address a3 = abi.decode(x[4:], (address));
+        uint a4 = abi.decode(x[4:7], (address));
+    }
+}
 
 contract WithUncheckedBlock {
   function f() public pure returns (uint) {
