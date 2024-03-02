@@ -404,7 +404,7 @@ expectToken(Parser *parser, TokenType type) {
         u8 *head = arrayPush(parser->arena, u8, 4096);
         error.data = head;
 
-        String myError = LIT_TO_STR("Unexpected token encountered (");
+        String myError = LIT_TO_STR("Unexpected token => encountered (");
         memcpy(head, myError.data, myError.size);
         head += myError.size;
 
@@ -1127,7 +1127,7 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
             do {
                 ASTNodeLink *element = structPush(parser->arena, ASTNodeLink);
 
-                parseExpressionImpl(parser, &element->node, previousPrecedence);
+                parseExpressionImpl(parser, &element->node, 0);
 
                 SLL_QUEUE_PUSH(node->tupleExpressionNode.elements.head, node->tupleExpressionNode.elements.last, element);
                 node->tupleExpressionNode.elements.count += 1;
@@ -1306,7 +1306,7 @@ tryParseVariableDeclarationTuple(Parser *parser, ASTNode *node) {
         ASTNodeLink *declaration = structPush(parser->arena, ASTNodeLink);
         declaration->node.type = ASTNodeType_None;
 
-        if(peekToken(parser).type != TokenType_Comma) {
+        if(peekToken(parser).type != TokenType_Comma && peekToken(parser).type != TokenType_RParen) {
             if(!tryParseVariableDeclaration(parser, &declaration->node)) {
                 setCurrentParserPosition(parser, startPosition);
                 return false;

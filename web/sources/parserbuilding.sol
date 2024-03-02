@@ -3773,3 +3773,141 @@ contract test {
 
     uint256 a;
 }
+contract c {
+    function z ()
+    {
+        a = 1 wei * 100 wei + 7 gwei - 3;
+    }
+    uint256 a;
+}
+contract Foo {
+    function f() {
+        uint[] storage x;
+        uint[] memory y;
+    }
+}
+contract test {
+    mapping(address => bytes32) names;
+}
+contract test {
+    struct test_struct {
+        address addr;
+        uint256 count;
+        mapping(bytes32 => test_struct) self_reference;
+    }
+}
+contract test {
+    struct test_struct {
+        address addr;
+        mapping (uint64 => mapping (bytes32 => uint)) complex_mapping;
+    }
+}
+
+contract c {
+    mapping(uint => mapping(uint => int8)[8][][9])[] x;
+}
+
+contract test {
+  function fun() {
+    uint64(2);
+  }
+}
+
+contract test2 {
+  function fun() {
+    uint64(2);
+  }
+}
+
+contract test {
+  function fun() {
+  }
+}
+
+contract test2 {
+  function fun() {
+  }
+}
+
+contract foo {
+  function z(uint a) {
+  }
+}
+
+contract bar {
+    function z(string a, string b) {
+    }
+}
+
+// contract c {
+//     modifier mod { if (msg.sender == 0) _; }
+// }
+// 
+// contract c {
+//     modifier mod(address a) { if (msg.sender == a) _; }
+// }
+// contract c {
+//     modifier mod1(address a) { if (msg.sender == a) _; }
+//     modifier mod2 { if (msg.sender == 2) _; }
+//     function f() mod1(7) mod2 { }
+// }
+// contract derived is foo(2), bar("abc", "def") {
+//   function fun() {
+//   }
+// }
+
+contract test {
+    function f() returns(bool succeeded) {
+        return false;
+    }
+}
+contract test {
+  uint256 stateVar;
+  function functionName() {}
+}
+contract test {
+    function fun(int256 a) {
+        int256 x = (1 + 4) * (a - 12) + -9;
+        bool y = true && (a < 6) || false;
+    }
+}
+contract test {
+    function fun(uint a) returns(uint r) { return a; }
+    function fun(uint a, uint b) returns(uint r) { return a + b; }
+}
+contract c {
+    function fun() returns (uint r) {
+        uint _ = 8;
+        return _ + 1;
+    }
+}
+contract test {}
+contract test {
+  uint256 stateVar;
+  function functionName(bytes32 input) returns (bytes32 out) {}
+}
+contract test {
+  uint256 stateVariable1;
+}
+contract test {
+    function fun() {
+        uint64(2);
+    }
+}
+contract test {
+    uint256 stateVar;
+    struct MyStructName {
+        address addr;
+        uint256 count;
+    }
+}
+contract C {
+    function f() {
+        uint a = (1);
+        (uint256 listOffset, uint256 listLength, RLPItemType itemType) = _decodeLength(_in);
+        (uint256 b,) = 1;
+        (uint256 c,uint256 d) = (1, 2 + a);
+        (uint256 e,) = (1, 2, b);
+        (uint256 a) = 3;
+    }
+}
