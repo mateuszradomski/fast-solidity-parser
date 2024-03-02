@@ -131,8 +131,20 @@ pushExpression(Serializer *s, ASTNode *node) {
             l += pushTokenStringById(s, node->numberLitExpressionNode.value);
             l += pushTokenStringById(s, node->numberLitExpressionNode.subdenomination);
         } break;
+        case ASTNodeType_HexStringLitExpression:
         case ASTNodeType_StringLitExpression: {
-            l += pushTokenStringById(s, node->stringLitExpressionNode.value);
+            ASTNodeStringLitExpression *expression = &node->stringLitExpressionNode;
+
+            l += pushU32(s, expression->values.count);
+            for(u32 i = 0; i < expression->values.count; i++) {
+                // PERF-NOTE(radomski): we could pull out pushing a token string just
+                // by itself since we know that the token here is never going to be
+                // invalid. But in pushTokenStringById we have to check for invalid
+                // which is additional overhead.
+
+                TokenId literal = listGetTokenId(&expression->values, i);
+                l += pushTokenStringById(s, literal);
+            }
         } break;
         case ASTNodeType_BoolLitExpression: {
             l += pushTokenStringById(s, node->boolLitExpressionNode.value);

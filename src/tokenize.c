@@ -113,6 +113,7 @@ typedef enum TokenType {
     TokenType_Dot,
     TokenType_Symbol,
     TokenType_StringLit,
+    TokenType_HexStringLit,
     TokenType_NumberLit,
     TokenType_HexNumberLit,
     TokenType_Comment,
@@ -264,6 +265,7 @@ tokenTypeToString(TokenType tokenType) {
         case TokenType_Dot: return LIT_TO_STR("Dot");
         case TokenType_Symbol: return LIT_TO_STR("Symbol");
         case TokenType_StringLit: return LIT_TO_STR("StringLit");
+        case TokenType_HexStringLit: return LIT_TO_STR("HexStringLit");
         case TokenType_NumberLit: return LIT_TO_STR("NumberLit");
         case TokenType_HexNumberLit: return LIT_TO_STR("HexNumberLit");
         case TokenType_Comment: return LIT_TO_STR("Comment");
@@ -571,8 +573,35 @@ tokenize(String source, Arena *arena) {
                 }
             }
 
-            TokenType tokenType = categorizeSymbol(symbol);
-            pushToken(&result, tokenType, symbol);
+            u8 nextByte = peekByte(&c);
+            if(stringMatch(symbol, LIT_TO_STR("hex")) && (nextByte == '"' || nextByte == '\'')) {
+                u8 delimiter = nextByte;
+                consumeByte(&c);
+                String symbol = { .data = c.head, .size = 0 };
+
+                while(consumerGood(&c)) {
+                    u8 nextByte = consumeByte(&c);
+                    if(nextByte == delimiter) {
+                        break;
+                    }
+                    if(nextByte == '_') {
+                        symbol.size += 1;
+                        continue;
+                    }
+
+                    u8 leftNibble = nextByte;
+                    u8 rightNibble = consumeByte(&c);
+
+                    assert(isHexDigit(leftNibble) && isHexDigit(rightNibble));
+
+                    symbol.size += 2;
+                }
+
+                pushToken(&result, TokenType_HexStringLit, symbol);
+            } else {
+                TokenType tokenType = categorizeSymbol(symbol);
+                pushToken(&result, tokenType, symbol);
+            }
         } else if(byte == '/') {
             u8 nextByte = peekByte(&c);
 

@@ -42,6 +42,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_BreakStatement,
     ASTNodeType_ContinueStatement,
     ASTNodeType_UnaryExpressionPostfix,
+    ASTNodeType_HexStringLitExpression,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -133,8 +134,12 @@ typedef struct ASTNodeNumberLitExpression {
 } ASTNodeNumberLitExpression;
 
 typedef struct ASTNodeStringLitExpression {
-    TokenId value;
+    TokenIdList values;
 } ASTNodeStringLitExpression;
+
+typedef struct ASTNodeTokenLitExpression {
+    TokenId value;
+} ASTNodeTokenLitExpression;
 
 typedef struct ASTNodeBinaryExpression {
     ASTNode *left;
@@ -273,8 +278,8 @@ typedef struct ASTNode {
         ASTNodeConstVariable stateVariableDeclarataion;
         ASTNodeNumberLitExpression numberLitExpressionNode;
         ASTNodeStringLitExpression stringLitExpressionNode;
-        ASTNodeStringLitExpression boolLitExpressionNode;
-        ASTNodeStringLitExpression identifierExpressionNode;
+        ASTNodeTokenLitExpression boolLitExpressionNode;
+        ASTNodeTokenLitExpression identifierExpressionNode;
         ASTNodeBinaryExpression binaryExpressionNode;
         ASTNodeTupleExpression tupleExpressionNode;
         ASTNodeUnaryExpression unaryExpressionNode;
@@ -1118,7 +1123,16 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
         node->numberLitExpressionNode.subdenomination = parseSubdenomination(parser);
     } else if(acceptToken(parser, TokenType_StringLit)) {
         node->type = ASTNodeType_StringLitExpression;
-        node->stringLitExpressionNode.value = peekLastTokenId(parser);
+        do {
+            TokenId literal = peekLastTokenId(parser);
+            listPushTokenId(&node->stringLitExpressionNode.values, literal, parser->arena);
+        } while(acceptToken(parser, TokenType_StringLit));
+    } else if(acceptToken(parser, TokenType_HexStringLit)) {
+        node->type = ASTNodeType_HexStringLitExpression;
+        do {
+            TokenId literal = peekLastTokenId(parser);
+            listPushTokenId(&node->stringLitExpressionNode.values, literal, parser->arena);
+        } while(acceptToken(parser, TokenType_HexStringLit));
     } else if(acceptToken(parser, TokenType_True) || acceptToken(parser, TokenType_False)) {
         node->type = ASTNodeType_BoolLitExpression;
         node->boolLitExpressionNode.value = peekLastTokenId(parser);

@@ -1653,9 +1653,9 @@ address constant PNT_TOKEN_ADDRESS = 0x89Ab32156e46F46D02ade3FEcbe5Fc4243B9AAeD;
 address constant RETRYABLE_TICKET_MAGIC = 0xa723C008e76E379c55599D2E4d93879BeaFDa79C;
 address constant l2RefundL2Address = 0x428AB2BA90Eba0a4Be7aF34C9Ac451ab061AC010;
 bytes constant ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-// bytes constant sha256MultiHash = hex"1220";
+bytes constant sha256MultiHash = hex"1220";
 bytes constant EXPLANATION_KEY = "explanation";
-// bytes constant INITIALIZE_TX_BRIDGE_PARAMS = hex"80808401c9c38094";
+bytes constant INITIALIZE_TX_BRIDGE_PARAMS = hex"80808401c9c38094";
 bytes constant PROPOSAL_HASH_KEY = "proposalHash";
 bytes constant RULES_KEY = "rules";
 bytes constant arithmeticError = abi.encodeWithSignature("Panic(uint256)", 0x11);
@@ -1672,11 +1672,11 @@ bytes1 constant DATA_AUTHENTICATED_FLAG = 0x40;
 bytes1 constant INITIALIZE_TX_EFFECTIVE_PERCENTAGE = 0xFF;
 bytes13 constant DEPLOY_CODE_PREFIX = 0x600D380380600D6000396000f3;
 bytes13 constant DEPLOY_CODE_PREFIX = 0x600D380380600D6000396000f3;
-// bytes15 constant SUFFIX = hex"5af43d82803e903d91602b57fd5bf3";
+bytes15 constant SUFFIX = hex"5af43d82803e903d91602b57fd5bf3";
 bytes16 constant HEX_DIGITS = "0123456789abcdef";
 bytes16 constant _HEX_SYMBOLS = "0123456789abcdef";
 bytes16 constant _SYMBOLS = "0123456789abcdef";
-// bytes20 constant PREFIX = hex"3d602d80600a3d3981f3363d3d373d3d3d363d73";
+bytes20 constant PREFIX = hex"3d602d80600a3d3981f3363d3d373d3d3d363d73";
 bytes32 constant CREATE2_PREFIX = keccak256("zksyncCreate2");
 bytes32 constant DIAMOND_STORAGE_POSITION = 0xc8fcad8db84d3cc18b4c41d551ea0ee66dd599cde068d998e57d5e09332c131b; // keccak256("diamond.standard.diamond.storage") - 1;
 bytes32 constant DIAMOND_STORAGE_POSITION = keccak256("diamond.standard.diamond.storage");
@@ -2819,45 +2819,45 @@ address payable constant OVM_ETH = payable(0xDeadDeAddeAddEAddeadDEaDDEAdDeaDDeA
 bytes constant EIP712_VERSION = '1';
 bytes1 constant RLP_NULL = bytes1(0x80);
 bytes16 constant alphabet = '0123456789abcdef';
-// bytes29 constant NULL = hex"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+bytes29 constant NULL = hex"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
 bytes32 constant DIAMOND_STORAGE_POSITION = keccak256("diamond.standard.diamond.storage");
 bytes32 constant ENS_ORACLE_SUBNAME = keccak256("oracle");
 bytes32 constant ENS_TOKEN_SUBNAME = keccak256("link");
 bytes32 constant CREATED_ACCOUNT_HASH = 0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470;
 bytes32 constant EMPTY_HASH = keccak256("");
-// bytes32 constant Z_0 = hex"0000000000000000000000000000000000000000000000000000000000000000";
-// bytes32 constant Z_1 = hex"ad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5";
-// bytes32 constant Z_10 = hex"f9dc3e7fe016e050eff260334f18a5d4fe391d82092319f5964f2e2eb7c1c3a5";
-// bytes32 constant Z_11 = hex"f8b13a49e282f609c317a833fb8d976d11517c571d1221a265d25af778ecf892";
-// bytes32 constant Z_12 = hex"3490c6ceeb450aecdc82e28293031d10c7d73bf85e57bf041a97360aa2c5d99c";
-// bytes32 constant Z_13 = hex"c1df82d9c4b87413eae2ef048f94b4d3554cea73d92b0f7af96e0271c691e2bb";
-// bytes32 constant Z_14 = hex"5c67add7c6caf302256adedf7ab114da0acfe870d449a3a489f781d659e8becc";
-// bytes32 constant Z_15 = hex"da7bce9f4e8618b6bd2f4132ce798cdc7a60e7e1460a7299e3c6342a579626d2";
-// bytes32 constant Z_16 = hex"2733e50f526ec2fa19a22b31e8ed50f23cd1fdf94c9154ed3a7609a2f1ff981f";
-// bytes32 constant Z_17 = hex"e1d3b5c807b281e4683cc6d6315cf95b9ade8641defcb32372f1c126e398ef7a";
-// bytes32 constant Z_18 = hex"5a2dce0a8a7f68bb74560f8f71837c2c2ebbcbf7fffb42ae1896f13f7c7479a0";
-// bytes32 constant Z_19 = hex"b46a28b6f55540f89444f63de0378e3d121be09e06cc9ded1c20e65876d36aa0";
-// bytes32 constant Z_2 = hex"b4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d30";
-// bytes32 constant Z_20 = hex"c65e9645644786b620e2dd2ad648ddfcbf4a7e5b1a3a4ecfe7f64667a3f0b7e2";
-// bytes32 constant Z_21 = hex"f4418588ed35a2458cffeb39b93d26f18d2ab13bdce6aee58e7b99359ec2dfd9";
-// bytes32 constant Z_22 = hex"5a9c16dc00d6ef18b7933a6f8dc65ccb55667138776f7dea101070dc8796e377";
-// bytes32 constant Z_23 = hex"4df84f40ae0c8229d0d6069e5c8f39a7c299677a09d367fc7b05e3bc380ee652";
-// bytes32 constant Z_24 = hex"cdc72595f74c7b1043d0e1ffbab734648c838dfb0527d971b602bc216c9619ef";
-// bytes32 constant Z_25 = hex"0abf5ac974a1ed57f4050aa510dd9c74f508277b39d7973bb2dfccc5eeb0618d";
-// bytes32 constant Z_26 = hex"b8cd74046ff337f0a7bf2c8e03e10f642c1886798d71806ab1e888d9e5ee87d0";
-// bytes32 constant Z_27 = hex"838c5655cb21c6cb83313b5a631175dff4963772cce9108188b34ac87c81c41e";
-// bytes32 constant Z_28 = hex"662ee4dd2dd7b2bc707961b1e646c4047669dcb6584f0d8d770daf5d7e7deb2e";
-// bytes32 constant Z_29 = hex"388ab20e2573d171a88108e79d820e98f26c0b84aa8b2f4aa4968dbb818ea322";
-// bytes32 constant Z_3 = hex"21ddb9a356815c3fac1026b6dec5df3124afbadb485c9ba5a3e3398a04b7ba85";
-// bytes32 constant Z_30 = hex"93237c50ba75ee485f4c22adf2f741400bdf8d6a9cc7df7ecae576221665d735";
-// bytes32 constant Z_31 = hex"8448818bb4ae4562849e949e17ac16e0be16688e156b5cf15e098c627c0056a9";
-// bytes32 constant Z_32 = hex"27ae5ba08d7291c96c8cbddcc148bf48a6d68c7974b94356f53754ef6171d757";
-// bytes32 constant Z_4 = hex"e58769b32a1beaf1ea27375a44095a0d1fb664ce2dd358e7fcbfb78c26a19344";
-// bytes32 constant Z_5 = hex"0eb01ebfc9ed27500cd4dfc979272d1f0913cc9f66540d7e8005811109e1cf2d";
-// bytes32 constant Z_6 = hex"887c22bd8750d34016ac3c66b5ff102dacdd73f6b014e710b51e8022af9a1968";
-// bytes32 constant Z_7 = hex"ffd70157e48063fc33c97a050f7f640233bf646cc98d9524c6b92bcf3ab56f83";
-// bytes32 constant Z_8 = hex"9867cc5f7f196b93bae1e27e6320742445d290f2263827498b54fec539f756af";
-// bytes32 constant Z_9 = hex"cefad4e508c098b9a7e1d8feb19955fb02ba9675585078710969d3440f5054e0";
+bytes32 constant Z_0 = hex"0000000000000000000000000000000000000000000000000000000000000000";
+bytes32 constant Z_1 = hex"ad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5";
+bytes32 constant Z_10 = hex"f9dc3e7fe016e050eff260334f18a5d4fe391d82092319f5964f2e2eb7c1c3a5";
+bytes32 constant Z_11 = hex"f8b13a49e282f609c317a833fb8d976d11517c571d1221a265d25af778ecf892";
+bytes32 constant Z_12 = hex"3490c6ceeb450aecdc82e28293031d10c7d73bf85e57bf041a97360aa2c5d99c";
+bytes32 constant Z_13 = hex"c1df82d9c4b87413eae2ef048f94b4d3554cea73d92b0f7af96e0271c691e2bb";
+bytes32 constant Z_14 = hex"5c67add7c6caf302256adedf7ab114da0acfe870d449a3a489f781d659e8becc";
+bytes32 constant Z_15 = hex"da7bce9f4e8618b6bd2f4132ce798cdc7a60e7e1460a7299e3c6342a579626d2";
+bytes32 constant Z_16 = hex"2733e50f526ec2fa19a22b31e8ed50f23cd1fdf94c9154ed3a7609a2f1ff981f";
+bytes32 constant Z_17 = hex"e1d3b5c807b281e4683cc6d6315cf95b9ade8641defcb32372f1c126e398ef7a";
+bytes32 constant Z_18 = hex"5a2dce0a8a7f68bb74560f8f71837c2c2ebbcbf7fffb42ae1896f13f7c7479a0";
+bytes32 constant Z_19 = hex"b46a28b6f55540f89444f63de0378e3d121be09e06cc9ded1c20e65876d36aa0";
+bytes32 constant Z_2 = hex"b4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d30";
+bytes32 constant Z_20 = hex"c65e9645644786b620e2dd2ad648ddfcbf4a7e5b1a3a4ecfe7f64667a3f0b7e2";
+bytes32 constant Z_21 = hex"f4418588ed35a2458cffeb39b93d26f18d2ab13bdce6aee58e7b99359ec2dfd9";
+bytes32 constant Z_22 = hex"5a9c16dc00d6ef18b7933a6f8dc65ccb55667138776f7dea101070dc8796e377";
+bytes32 constant Z_23 = hex"4df84f40ae0c8229d0d6069e5c8f39a7c299677a09d367fc7b05e3bc380ee652";
+bytes32 constant Z_24 = hex"cdc72595f74c7b1043d0e1ffbab734648c838dfb0527d971b602bc216c9619ef";
+bytes32 constant Z_25 = hex"0abf5ac974a1ed57f4050aa510dd9c74f508277b39d7973bb2dfccc5eeb0618d";
+bytes32 constant Z_26 = hex"b8cd74046ff337f0a7bf2c8e03e10f642c1886798d71806ab1e888d9e5ee87d0";
+bytes32 constant Z_27 = hex"838c5655cb21c6cb83313b5a631175dff4963772cce9108188b34ac87c81c41e";
+bytes32 constant Z_28 = hex"662ee4dd2dd7b2bc707961b1e646c4047669dcb6584f0d8d770daf5d7e7deb2e";
+bytes32 constant Z_29 = hex"388ab20e2573d171a88108e79d820e98f26c0b84aa8b2f4aa4968dbb818ea322";
+bytes32 constant Z_3 = hex"21ddb9a356815c3fac1026b6dec5df3124afbadb485c9ba5a3e3398a04b7ba85";
+bytes32 constant Z_30 = hex"93237c50ba75ee485f4c22adf2f741400bdf8d6a9cc7df7ecae576221665d735";
+bytes32 constant Z_31 = hex"8448818bb4ae4562849e949e17ac16e0be16688e156b5cf15e098c627c0056a9";
+bytes32 constant Z_32 = hex"27ae5ba08d7291c96c8cbddcc148bf48a6d68c7974b94356f53754ef6171d757";
+bytes32 constant Z_4 = hex"e58769b32a1beaf1ea27375a44095a0d1fb664ce2dd358e7fcbfb78c26a19344";
+bytes32 constant Z_5 = hex"0eb01ebfc9ed27500cd4dfc979272d1f0913cc9f66540d7e8005811109e1cf2d";
+bytes32 constant Z_6 = hex"887c22bd8750d34016ac3c66b5ff102dacdd73f6b014e710b51e8022af9a1968";
+bytes32 constant Z_7 = hex"ffd70157e48063fc33c97a050f7f640233bf646cc98d9524c6b92bcf3ab56f83";
+bytes32 constant Z_8 = hex"9867cc5f7f196b93bae1e27e6320742445d290f2263827498b54fec539f756af";
+bytes32 constant Z_9 = hex"cefad4e508c098b9a7e1d8feb19955fb02ba9675585078710969d3440f5054e0";
 bytes32 constant BALLOT_TYPEHASH = 0xd900570327c4c0df8dd6bdd522b7da7e39145dd049d2fd4602276adcd511e3c2;
 bytes32 constant CALLBACK_REGISTERS_SLOT = 0x5da136eb38f8d8e354915fc8a767c0dc81d49de5fb65d5477122a82ddd976240;
 bytes32 constant GOVENOR_OF_SLOT = 0x8400683eb2cb350596d73644c0c89fe45f108600003457374f4ab3e87b4f3aa3;
@@ -3475,6 +3475,27 @@ contract Foo {
   type Id is uint8;
 
   Id public id;
+}
+
+contract test {
+    string a = hex"00FF0000";
+    string b = hex'00AA0000';
+    string b = hex'00AA_0000';
+    string b = hex"";
+    string a = "aaa"
+    "bbb";
+    string b = "aaa""bbb";
+    string c = "aaa"  "bbb";
+
+    // unicode strings
+    // string a = unicode"Hello ";
+    // string b = unicode'Hello ';
+
+    // hex literal parts
+    function foo() public {
+      bytes memory c = hex'dead' hex'beef'
+        hex'deadbe' hex'ef';
+    }
 }
 
 // issue #54

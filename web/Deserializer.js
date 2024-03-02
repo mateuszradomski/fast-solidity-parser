@@ -40,6 +40,7 @@ const ASTNodeType_ForStatement = 39
 const ASTNodeType_BreakStatement = 40
 const ASTNodeType_ContinueStatement = 41
 const ASTNodeType_UnaryExpressionPostfix = 42
+const ASTNodeType_HexStringLitExpression = 43
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -278,13 +279,31 @@ class Deserializer {
                 subdenomination
             }
         } else if(type === ASTNodeType_StringLitExpression) {
-            const value = this.popString();
+            const count = this.popU32();
+            const parts = []
+            const isUnicode = []
+            for(let i = 0; i < count; i++) {
+                parts.push(this.popString());
+                isUnicode.push(false)
+            }
 
             return {
                 type: "StringLiteral",
-                value,
-                parts: [value],
-                isUnicode: [false]
+                value: parts.join(""),
+                parts,
+                isUnicode
+            }
+        } else if(type === ASTNodeType_HexStringLitExpression) {
+            const count = this.popU32();
+            const parts = []
+            for(let i = 0; i < count; i++) {
+                parts.push(this.popString());
+            }
+
+            return {
+                type: "HexLiteral",
+                value: parts.join(""),
+                parts,
             }
         } else if(type === ASTNodeType_BoolLitExpression) {
             const value = this.popString();
