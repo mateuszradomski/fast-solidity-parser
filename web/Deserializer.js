@@ -39,6 +39,7 @@ const ASTNodeType_TerneryExpression = 38
 const ASTNodeType_ForStatement = 39
 const ASTNodeType_BreakStatement = 40
 const ASTNodeType_ContinueStatement = 41
+const ASTNodeType_UnaryExpressionPostfix = 42
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -323,7 +324,7 @@ class Deserializer {
                 components: elements,
                 isArray: false
             }
-        } else if(type === ASTNodeType_UnaryExpression) {
+        } else if(type === ASTNodeType_UnaryExpression || type === ASTNodeType_UnaryExpressionPostfix) {
             const operator = this.popU32();
             const subExpression = this.popExpression();
 
@@ -331,7 +332,7 @@ class Deserializer {
                 type: "UnaryOperation",
                 operator: this.operatorStrings[operator],
                 subExpression,
-                isPrefix: true
+                isPrefix: type !== ASTNodeType_UnaryExpressionPostfix
             }
         } else if(type === ASTNodeType_NewExpression) {
             const typeName = this.popType();

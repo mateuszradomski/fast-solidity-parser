@@ -145,7 +145,8 @@ pushExpression(Serializer *s, ASTNode *node) {
                 l += pushExpression(s, &element->node);
             }
         } break;
-        case ASTNodeType_UnaryExpression: {
+        case ASTNodeType_UnaryExpression:
+        case ASTNodeType_UnaryExpressionPostfix: {
             l += pushU32(s, node->unaryExpressionNode.operator);
             l += pushExpression(s, node->unaryExpressionNode.subExpression);
         } break;

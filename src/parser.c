@@ -41,6 +41,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_ForStatement,
     ASTNodeType_BreakStatement,
     ASTNodeType_ContinueStatement,
+    ASTNodeType_UnaryExpressionPostfix,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -962,6 +963,8 @@ parseTypedef(Parser *parser, ASTNode *node) {
 static bool
 isOperator(TokenType type) {
     switch(type) {
+        case TokenType_PlusPlus:
+        case TokenType_MinusMinus:
         case TokenType_Dot:
         case TokenType_LParen:
         case TokenType_LBracket:
@@ -1004,6 +1007,8 @@ isOperator(TokenType type) {
 static u32
 getOperatorPrecedence(TokenType type) {
     switch(type) {
+        case TokenType_PlusPlus:
+        case TokenType_MinusMinus:
         case TokenType_Dot:
         case TokenType_LParen:
         case TokenType_LBracket: return -1;
@@ -1222,6 +1227,14 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
             parseExpressionImpl(parser, node->terneryExpressionNode.trueExpression, 0);
             expectToken(parser, TokenType_Colon);
             parseExpressionImpl(parser, node->terneryExpressionNode.falseExpression, 0);
+            continue;
+        } else if(type == TokenType_PlusPlus | type == TokenType_MinusMinus) {
+            ASTNode *expression = structPush(parser->arena, ASTNode);
+            *expression = *node;
+
+            node->type = ASTNodeType_UnaryExpressionPostfix;
+            node->unaryExpressionNode.operator = type;
+            node->unaryExpressionNode.subExpression = expression;
             continue;
         }
 
