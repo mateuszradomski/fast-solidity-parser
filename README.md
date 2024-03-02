@@ -50,6 +50,28 @@
     "identifiers": []
   ```
 
+- `for(;;)`
+  the loop statement is null but the parser produces the following output
+
+  Wrong:
+  ```
+    "type": "ForStatement",
+    "initExpression": null,
+    "conditionExpression": null,
+    "loopExpression": {
+      "type": "ExpressionStatement",
+      "expression": null
+    },
+  ```
+
+  Correct:
+  ```
+    "type": "ForStatement",
+    "initExpression": null,
+    "conditionExpression": null,
+    "loopExpression": null,
+  ```
+
 # Stuff that @solidity-parser/parser is inconsistent about
 
 Errors will have parameters `[]` if empty, functions have `null` if empty but contract functions will have parameters set to `[]` is empty and returnParameters will be `null` if empty.

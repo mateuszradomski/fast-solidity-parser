@@ -416,9 +416,11 @@ class Deserializer {
                 expression: this.popExpression()
             }
         } else if(type === ASTNodeType_ExpressionStatement) {
+            const hasExpression = this.popU16() == 1;
+            const expression = hasExpression ? this.popExpression() : null;
             return {
                 type: "ExpressionStatement",
-                expression: this.popExpression()
+                expression
             }
         } else if(type === ASTNodeType_IfStatement) {
             const condition = this.popExpression();
@@ -482,8 +484,7 @@ class Deserializer {
             const initExpression = hasInit ? this.popStatement() : null;
             const hasCondition = this.popU16() == 1;
             const conditionExpression = hasCondition ? this.popExpression() : null;
-            const hasLoop = this.popU16() == 1;
-            const loopExpression = hasLoop ? this.popStatement() : null;
+            const loopExpression = this.popStatement()
             const body = this.popStatement();
 
             return {

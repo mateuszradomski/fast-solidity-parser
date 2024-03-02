@@ -233,7 +233,7 @@ typedef struct ASTNodeLibraryDefintion {
 typedef struct ASTNodeForStatement {
     ASTNode *variableStatement;
     ASTNode *conditionExpression;
-    ASTNode *incrementStatement;
+    ASTNode *incrementExpression;
     ASTNode *body;
 } ASTNodeForStatement;
 
@@ -1397,14 +1397,10 @@ parseStatement(Parser *parser, ASTNode *node) {
             expectToken(parser, TokenType_Semicolon);
         }
 
-        statement->incrementStatement = 0x0;
+        statement->incrementExpression = 0x0;
         if(!acceptToken(parser, TokenType_RParen)) {
-            ASTNode *expression = structPush(parser->arena, ASTNode);
-            parseExpression(parser, expression);
-
-            statement->incrementStatement = structPush(parser->arena, ASTNode);
-            statement->incrementStatement->type = ASTNodeType_ExpressionStatement;
-            statement->incrementStatement->expressionStatementNode.expression = expression;
+            statement->incrementExpression = structPush(parser->arena, ASTNode);
+            parseExpression(parser, statement->incrementExpression);
             acceptToken(parser, TokenType_RParen);
         }
 

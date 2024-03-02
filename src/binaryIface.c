@@ -213,7 +213,10 @@ pushStatement(Serializer *s, ASTNode *node) {
             l += pushExpression(s, node->returnStatementNode.expression);
         } break;
         case ASTNodeType_ExpressionStatement: {
-            l += pushExpression(s, node->expressionStatementNode.expression);
+            l += pushU16(s, node->expressionStatementNode.expression != 0x0);
+            if(node->expressionStatementNode.expression != 0x0) {
+                l += pushExpression(s, node->expressionStatementNode.expression);
+            }
         } break;
         case ASTNodeType_IfStatement: {
             l += pushExpression(s, node->ifStatementNode.conditionExpression);
@@ -265,10 +268,11 @@ pushStatement(Serializer *s, ASTNode *node) {
             if(statement->conditionExpression != 0x0) {
                 l += pushExpression(s, statement->conditionExpression);
             }
-            l += pushU16(s, statement->incrementStatement != 0x0);
-            if(statement->incrementStatement != 0x0) {
-                l += pushStatement(s, statement->incrementStatement);
-            }
+
+            ASTNode virtualExpressionStatement = { 0 };
+            virtualExpressionStatement.type = ASTNodeType_ExpressionStatement;
+            virtualExpressionStatement.expressionStatementNode.expression = statement->incrementExpression;
+            l += pushStatement(s, &virtualExpressionStatement);
 
             l += pushStatement(s, statement->body);
         } break;
