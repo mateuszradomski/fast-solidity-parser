@@ -6,6 +6,7 @@
 # Stuff that @solidity-parser/parser will not accept but is valid
 
 - `uint256 constant MAX_STEPS = 1 >>> 43;`
+- `function fallback() {}`
 
 # Stuff that @solidity-parser/parser parses wrong
 

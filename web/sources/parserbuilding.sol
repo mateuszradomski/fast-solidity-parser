@@ -4128,10 +4128,10 @@ contract Sharer {
 //     }
 // }
 
-// contract test {
-//   receive () external payable {}
-//   fallback () external payable {}
-// }
+contract test {
+  receive () external payable {}
+  fallback () external payable {}
+}
 
 // contract D {
 //     uint public x;
@@ -4302,9 +4302,9 @@ contract ImmutableKeyword {
   uint immutable foo;
 }
 
-//contract FallbackWithArgs {
-//  fallback (bytes calldata input) external payable returns (bytes memory output) {}
-//}
+contract FallbackWithArgs {
+  fallback (bytes calldata input) external payable returns (bytes memory output) {}
+}
 
 // issue #54
 contract Foo {

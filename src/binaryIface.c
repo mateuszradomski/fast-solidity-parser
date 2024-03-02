@@ -581,6 +581,8 @@ pushASTNode(Serializer *s, ASTNode *node) {
         case ASTNodeType_StateVariableDeclaration: {
             l = pushStateVariableDeclaration(s, node);
         } break;
+        case ASTNodeType_FallbackFunction:
+        case ASTNodeType_ReceiveFunction:
         case ASTNodeType_FunctionDefinition: {
             l = pushFunctionDefinition(s, node);
         } break;

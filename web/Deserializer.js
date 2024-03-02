@@ -44,6 +44,8 @@ const ASTNodeType_HexStringLitExpression = 43
 const ASTNodeType_ArraySliceExpression = 44
 const ASTNodeType_UncheckedBlockStatement = 45
 const ASTNodeType_ModifierDefinition = 46
+const ASTNodeType_FallbackFunction = 47
+const ASTNodeType_ReceiveFunction = 48
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -869,6 +871,17 @@ class Deserializer {
             return this.popStateVariableDeclaration();
         } else if(type === ASTNodeType_FunctionDefinition) {
             return this.popFunctionDefinition();
+        } else if(type === ASTNodeType_FallbackFunction) {
+            const result = this.popFunctionDefinition();
+            result.name = null
+            result.isFallback = true;
+
+            return result
+        } else if(type === ASTNodeType_ReceiveFunction) {
+            const result = this.popFunctionDefinition();
+            result.name = null
+            result.isReceiveEther = true;
+            return result
         } else if(type === ASTNodeType_ModifierDefinition) {
             return this.popModifierDefinition();
         } else if(type === ASTNodeType_ContractDefinition) {

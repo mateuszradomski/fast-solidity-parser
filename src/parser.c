@@ -46,6 +46,8 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_ArraySliceExpression,
     ASTNodeType_UncheckedBlockStatement,
     ASTNodeType_ModifierDefinition,
+    ASTNodeType_FallbackFunction,
+    ASTNodeType_ReceiveFunction,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -1581,7 +1583,9 @@ parseFunction(Parser *parser, ASTNode *node) {
     TokenId name = parseIdentifier(parser);
     if(name == INVALID_TOKEN_ID) {
         if(acceptToken(parser, TokenType_Fallback) ||
-           acceptToken(parser, TokenType_Receive)) {
+           acceptToken(parser, TokenType_Receive) ||
+           peekLastToken(parser).type == TokenType_Receive ||
+           peekLastToken(parser).type == TokenType_Fallback) {
             name = peekLastTokenId(parser);
         }
     }
@@ -1753,9 +1757,11 @@ parseContract(Parser *parser, ASTNode *node) {
         } else if(acceptToken(parser, TokenType_Modifier)) {
             assert(parseModifier(parser, &element->node));
         } else if(acceptToken(parser, TokenType_Fallback)) {
-            assert(0);
+            assert(parseFunction(parser, &element->node));
+            element->node.type = ASTNodeType_FallbackFunction;
         } else if(acceptToken(parser, TokenType_Receive)) {
-            assert(0);
+            assert(parseFunction(parser, &element->node));
+            element->node.type = ASTNodeType_ReceiveFunction;
         } else if(acceptToken(parser, TokenType_Struct)) {
             assert(parseStruct(parser, &element->node));
         } else if(acceptToken(parser, TokenType_Enum)) {
@@ -1805,9 +1811,11 @@ parseLibrary(Parser *parser, ASTNode *node) {
         } else if(acceptToken(parser, TokenType_Modifier)) {
             assert(parseModifier(parser, &element->node));
         } else if(acceptToken(parser, TokenType_Fallback)) {
-            assert(0);
+            assert(parseFunction(parser, &element->node));
+            element->node.type = ASTNodeType_FallbackFunction;
         } else if(acceptToken(parser, TokenType_Receive)) {
-            assert(0);
+            assert(parseFunction(parser, &element->node));
+            element->node.type = ASTNodeType_ReceiveFunction;
         } else if(acceptToken(parser, TokenType_Struct)) {
             assert(parseStruct(parser, &element->node));
         } else if(acceptToken(parser, TokenType_Enum)) {
