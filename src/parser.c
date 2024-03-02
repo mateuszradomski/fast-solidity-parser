@@ -38,6 +38,9 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_StateVariableDeclaration,
     ASTNodeType_LibraryDefinition,
     ASTNodeType_TerneryExpression,
+    ASTNodeType_ForStatement,
+    ASTNodeType_BreakStatement,
+    ASTNodeType_ContinueStatement,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -226,6 +229,13 @@ typedef struct ASTNodeLibraryDefintion {
     ASTNodeList elements;
 } ASTNodeLibraryDefintion;
 
+typedef struct ASTNodeForStatement {
+    ASTNode *variableStatement;
+    ASTNode *conditionExpression;
+    ASTNode *incrementStatement;
+    ASTNode *body;
+} ASTNodeForStatement;
+
 typedef struct ASTNodeRevertStatement {
     ASTNode *expression;
     ASTNodeList argumentExpressions;
@@ -284,6 +294,7 @@ typedef struct ASTNode {
         ASTNodeContractDefintion contractDefintionNode;
         ASTNodeLibraryDefintion libraryDefintionNode;
         ASTNodeRevertStatement revertStatementNode;
+        ASTNodeForStatement forStatementNode;
     };
 } ASTNode;
 
@@ -1155,7 +1166,8 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
         parseFunctionCallExpression(parser, node);
     } else {
         reportError(parser, LIT_TO_STR("Unexpected token"));
-        javascriptPrintNumber(peekToken(parser).type);
+        String type = tokenTypeToString(peekToken(parser).type);
+        javascriptPrintStringPtr(&type);
         assert(false);
     }
 
@@ -1351,12 +1363,52 @@ parseStatement(Parser *parser, ASTNode *node) {
 
         statement->body = structPush(parser->arena, ASTNode);
         parseStatement(parser, statement->body);
+    } else if(acceptToken(parser, TokenType_For)) {
+        node->type = ASTNodeType_ForStatement;
+        ASTNodeForStatement *statement = &node->forStatementNode;
+
+        expectToken(parser, TokenType_LParen);
+
+        statement->variableStatement = 0x0;
+        if(!acceptToken(parser, TokenType_Semicolon)) {
+            statement->variableStatement = structPush(parser->arena, ASTNode);
+            parseStatement(parser, statement->variableStatement);
+            assert(statement->variableStatement->type == ASTNodeType_ExpressionStatement || 
+                   statement->variableStatement->type == ASTNodeType_VariableDeclarationStatement);
+        }
+
+        statement->conditionExpression = 0x0;
+        if(!acceptToken(parser, TokenType_Semicolon)) {
+            statement->conditionExpression = structPush(parser->arena, ASTNode);
+            parseExpression(parser, statement->conditionExpression);
+            expectToken(parser, TokenType_Semicolon);
+        }
+
+        statement->incrementStatement = 0x0;
+        if(!acceptToken(parser, TokenType_RParen)) {
+            ASTNode *expression = structPush(parser->arena, ASTNode);
+            parseExpression(parser, expression);
+
+            statement->incrementStatement = structPush(parser->arena, ASTNode);
+            statement->incrementStatement->type = ASTNodeType_ExpressionStatement;
+            statement->incrementStatement->expressionStatementNode.expression = expression;
+            acceptToken(parser, TokenType_RParen);
+        }
+
+        statement->body = structPush(parser->arena, ASTNode);
+        parseStatement(parser, statement->body);
     } else if(acceptToken(parser, TokenType_Revert)) {
         node->type = ASTNodeType_RevertStatement;
         ASTNodeRevertStatement *statement = &node->revertStatementNode;
 
         statement->expression = structPush(parser->arena, ASTNode);
         parseExpression(parser, statement->expression);
+        expectToken(parser, TokenType_Semicolon);
+    } else if(acceptToken(parser, TokenType_Break)) {
+        node->type = ASTNodeType_BreakStatement;
+        expectToken(parser, TokenType_Semicolon);
+    } else if(acceptToken(parser, TokenType_Continue)) {
+        node->type = ASTNodeType_ContinueStatement;
         expectToken(parser, TokenType_Semicolon);
     } else if(acceptToken(parser, TokenType_Comment)) {
         return false;

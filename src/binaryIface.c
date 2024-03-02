@@ -253,10 +253,31 @@ pushStatement(Serializer *s, ASTNode *node) {
             l += pushExpression(s, statement->expression);
             l += pushStatement(s, statement->body);
         } break;
+        case ASTNodeType_ForStatement: {
+            ASTNodeForStatement *statement = &node->forStatementNode;
+
+            l += pushU16(s, statement->variableStatement != 0x0);
+            if(statement->variableStatement != 0x0) {
+                l += pushStatement(s, statement->variableStatement);
+            }
+            l += pushU16(s, statement->conditionExpression != 0x0);
+            if(statement->conditionExpression != 0x0) {
+                l += pushExpression(s, statement->conditionExpression);
+            }
+            l += pushU16(s, statement->incrementStatement != 0x0);
+            if(statement->incrementStatement != 0x0) {
+                l += pushStatement(s, statement->incrementStatement);
+            }
+
+            l += pushStatement(s, statement->body);
+        } break;
         case ASTNodeType_RevertStatement: {
             ASTNodeRevertStatement *statement = &node->revertStatementNode;
 
             l += pushExpression(s, statement->expression);
+        } break;
+        case ASTNodeType_BreakStatement:
+        case ASTNodeType_ContinueStatement: {
         } break;
         default: {
             javascriptPrintString("Unreachable, unhandled statement type = ");

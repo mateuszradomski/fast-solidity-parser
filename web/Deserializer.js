@@ -36,6 +36,9 @@ const ASTNodeType_RevertStatement = 35
 const ASTNodeType_StateVariableDeclaration = 36
 const ASTNodeType_LibraryDefinition = 37
 const ASTNodeType_TerneryExpression = 38
+const ASTNodeType_ForStatement = 39
+const ASTNodeType_BreakStatement = 40
+const ASTNodeType_ContinueStatement = 41
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -473,6 +476,26 @@ class Deserializer {
                 condition,
                 body
             }
+        } else if(type === ASTNodeType_ForStatement) {
+            const hasInit = this.popU16() == 1;
+            const initExpression = hasInit ? this.popStatement() : null;
+            const hasCondition = this.popU16() == 1;
+            const conditionExpression = hasCondition ? this.popExpression() : null;
+            const hasLoop = this.popU16() == 1;
+            const loopExpression = hasLoop ? this.popStatement() : null;
+            const body = this.popStatement();
+
+            return {
+                type: "ForStatement",
+                initExpression,
+                conditionExpression,
+                loopExpression,
+                body
+            }
+        } else if(type === ASTNodeType_BreakStatement) {
+            return { type: "BreakStatement" }
+        } else if(type === ASTNodeType_ContinueStatement) {
+            return { type: "ContinueStatement" }
         } else if(type === ASTNodeType_RevertStatement) {
             const revertCall = this.popExpression();
 
