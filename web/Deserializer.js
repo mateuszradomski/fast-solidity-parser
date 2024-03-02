@@ -42,6 +42,7 @@ const ASTNodeType_ContinueStatement = 41
 const ASTNodeType_UnaryExpressionPostfix = 42
 const ASTNodeType_HexStringLitExpression = 43
 const ASTNodeType_ArraySliceExpression = 44
+const ASTNodeType_UncheckedBlockStatement = 45
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -449,6 +450,12 @@ class Deserializer {
             return {
                 type: "Block",
                 statements,
+            }
+        } else if(type === ASTNodeType_UncheckedBlockStatement) {
+            const block = this.popStatement();
+            return {
+                type: "UncheckedStatement",
+                block,
             }
         } else if(type === ASTNodeType_ReturnStatement) {
             return {

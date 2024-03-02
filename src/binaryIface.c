@@ -254,6 +254,10 @@ pushStatement(Serializer *s, ASTNode *node) {
                 l += pushStatement(s, &statement->node);
             }
         } break;
+        case ASTNodeType_UncheckedBlockStatement: {
+            ASTNodeUncheckedBlockStatement *unchecked = &node->uncheckedBlockStatementNode;
+            l += pushStatement(s, unchecked->block);
+        } break;
         case ASTNodeType_ReturnStatement: {
             l += pushExpression(s, node->returnStatementNode.expression);
         } break;

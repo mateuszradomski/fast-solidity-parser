@@ -4233,7 +4233,7 @@ contract ArraySlices {
 contract WithUncheckedBlock {
   function f() public pure returns (uint) {
     uint x = 0;
-    // unchecked { x--; }
+    unchecked { x--; }
     return x;
   }
 }

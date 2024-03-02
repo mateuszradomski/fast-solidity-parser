@@ -44,6 +44,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_UnaryExpressionPostfix,
     ASTNodeType_HexStringLitExpression,
     ASTNodeType_ArraySliceExpression,
+    ASTNodeType_UncheckedBlockStatement,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -250,6 +251,10 @@ typedef struct ASTNodeForStatement {
     ASTNode *body;
 } ASTNodeForStatement;
 
+typedef struct ASTNodeUncheckedBlockStatement {
+    ASTNode *block;
+} ASTNodeUncheckedBlockStatement;
+
 typedef struct ASTNodeRevertStatement {
     ASTNode *expression;
     ASTNodeList argumentExpressions;
@@ -299,6 +304,7 @@ typedef struct ASTNode {
         ASTNodeTerneryExpression terneryExpressionNode;
         ASTNodeFunctionDefinition functionDefinitionNode;
         ASTNodeBlockStatement blockStatementNode;
+        ASTNodeUncheckedBlockStatement uncheckedBlockStatementNode;
         ASTNodeReturnStatement returnStatementNode;
         ASTNodeReturnStatement expressionStatementNode;
         ASTNodeIfStatement ifStatementNode;
@@ -1418,6 +1424,12 @@ parseStatement(Parser *parser, ASTNode *node) {
             SLL_QUEUE_PUSH(node->blockStatementNode.statements.head, node->blockStatementNode.statements.last, statement);
             node->blockStatementNode.statements.count += 1;
         }
+    } else if(acceptToken(parser, TokenType_Unchecked)) {
+        node->type = ASTNodeType_UncheckedBlockStatement;
+        ASTNodeUncheckedBlockStatement *statement = &node->uncheckedBlockStatementNode;
+        statement->block = structPush(parser->arena, ASTNode);
+        parseStatement(parser, statement->block);
+        assert(statement->block->type == ASTNodeType_BlockStatement);
     } else if(acceptToken(parser, TokenType_While)) {
         node->type = ASTNodeType_WhileStatement;
         ASTNodeWhileStatement *statement = &node->whileStatementNode;
