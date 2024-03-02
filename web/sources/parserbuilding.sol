@@ -3619,12 +3619,11 @@ contract base {
   }
 }
 
-// TODO(radomski): Inheriting
-// contract derived is base() {
-//   function fun() {
-//     uint64(2);
-//   }
-// }
+contract derived is base() {
+  function fun() {
+    uint64(2);
+  }
+}
 
 contract foo {
   function fun() {
@@ -3872,10 +3871,10 @@ contract c {
     modifier mod2 { if (msg.sender == 2) _; }
     // function f() mod1(7) mod2 { }
 }
-// contract derived is foo(2), bar("abc", "def") {
-//   function fun() {
-//   }
-// }
+contract derived is foo(2), bar("abc", "def") {
+  function fun() {
+  }
+}
 
 library c {
     modifier mod { if (msg.sender == 0) _; }
@@ -4188,11 +4187,11 @@ contract owned {
     address payable owner;
 }
 
-// contract Destructible is owned {
-//     function destroy() virtual public {
-//         if (msg.sender == owner) selfdestruct(owner);
-//     }
-// }
+contract Destructible is owned {
+    function destroy() virtual public {
+        if (msg.sender == owner) selfdestruct(owner);
+    }
+}
 
 // contract Base1 is Destructible {
 //     function destroy() public virtual override { /* do cleanup 1 */ super.destroy(); }
@@ -4385,330 +4384,330 @@ interface AcrossMessageHandler {
  * submits a proof that the relayer correctly submitted a relay on this SpokePool.
  * @custom:security-contact bugs@across.to
  */
-// abstract contract SpokePool is
-//     V3SpokePoolInterface,
-//     SpokePoolInterface,
-//     UUPSUpgradeable,
-//     ReentrancyGuardUpgradeable,
-//     MultiCallerUpgradeable,
-//     EIP712CrossChainUpgradeable
-// {
+abstract contract SpokePool is
+    V3SpokePoolInterface,
+    SpokePoolInterface,
+    UUPSUpgradeable,
+    ReentrancyGuardUpgradeable,
+    MultiCallerUpgradeable,
+    EIP712CrossChainUpgradeable
+{
 //     using SafeERC20Upgradeable for IERC20Upgradeable;
 //     using AddressLibUpgradeable for address;
-// 
-//     // Address of the L1 contract that acts as the owner of this SpokePool. This should normally be set to the HubPool
-//     // address. The crossDomainAdmin address is unused when the SpokePool is deployed to the same chain as the HubPool.
-//     address public crossDomainAdmin;
-// 
-//     // Address of the L1 contract that will send tokens to and receive tokens from this contract to fund relayer
-//     // refunds and slow relays.
-//     address public hubPool;
-// 
-//     // Note: The following two storage variables prefixed with DEPRECATED used to be variables that could be set by
-//     // the cross-domain admin. Admins ended up not changing these in production, so to reduce
-//     // gas in deposit/fill functions, we are converting them to private variables to maintain the contract
-//     // storage layout and replacing them with immutable or constant variables, because retrieving a constant
-//     // value is cheaper than retrieving a storage variable. Please see out the immutable/constant variable section.
-//     WETH9Interface private DEPRECATED_wrappedNativeToken;
-//     uint32 private DEPRECATED_depositQuoteTimeBuffer;
-// 
-//     // Count of deposits is used to construct a unique deposit identifier for this spoke pool.
-//     uint32 public numberOfDeposits;
-// 
-//     // Whether deposits and fills are disabled.
-//     bool public pausedFills;
-//     bool public pausedDeposits;
-// 
-//     // This contract can store as many root bundles as the HubPool chooses to publish here.
-//     RootBundle[] public rootBundles;
-// 
-//     // Origin token to destination token routings can be turned on or off, which can enable or disable deposits.
-//     mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
-// 
-//     // Each relay is associated with the hash of parameters that uniquely identify the original deposit and a relay
-//     // attempt for that deposit. The relay itself is just represented as the amount filled so far. The total amount to
-//     // relay, the fees, and the agents are all parameters included in the hash key.
-//     mapping(bytes32 => uint256) private DEPRECATED_relayFills;
-// 
-//     // Note: We will likely un-deprecate the fill and deposit counters to implement a better
-//     // dynamic LP fee mechanism but for now we'll deprecate it to reduce bytecode
-//     // in deposit/fill functions. These counters are designed to implement a fee mechanism that is based on a
-//     // canonical history of deposit and fill events and how they update a virtual running balance of liabilities and
-//     // assets, which then determines the LP fee charged to relays.
-// 
-//     // This keeps track of the worst-case liabilities due to fills.
-//     // It is never reset. Users should only rely on it to determine the worst-case increase in liabilities between
-//     // two points. This is used to provide frontrunning protection to ensure the relayer's assumptions about the state
-//     // upon which their expected repayments are based will not change before their transaction is mined.
-//     mapping(address => uint256) private DEPRECATED_fillCounter;
-// 
-//     // This keeps track of the total running deposits for each token. This allows depositors to protect themselves from
-//     // frontrunning that might change their worst-case quote.
-//     mapping(address => uint256) private DEPRECATED_depositCounter;
-// 
-//     // This tracks the number of identical refunds that have been requested.
-//     // The intention is to allow an off-chain system to know when this could be a duplicate and ensure that the other
-//     // requests are known and accounted for.
-//     mapping(bytes32 => uint256) private DEPRECATED_refundsRequested;
-// 
-//     // Mapping of V3 relay hashes to fill statuses. Distinguished from relayFills
-//     // to eliminate any chance of collision between pre and post V3 relay hashes.
-//     mapping(bytes32 => uint256) public fillStatuses;
-// 
-//     /**************************************************************
-//      *                CONSTANT/IMMUTABLE VARIABLES                *
-//      **************************************************************/
-//     // Constant and immutable variables do not take up storage slots and are instead added to the contract bytecode
-//     // at compile time. The difference between them is that constant variables must be declared inline, meaning
-//     // that they cannot be changed in production without changing the contract code, while immutable variables
-//     // can be set in the constructor. Therefore we use the immutable keyword for variables that we might want to be
-//     // different for each child contract (one obvious example of this is the wrappedNativeToken) or that we might
-//     // want to update in the future like depositQuoteTimeBuffer. Constants are unlikely to ever be changed.
-// 
-//     // Address of wrappedNativeToken contract for this network. If an origin token matches this, then the caller can
-//     // optionally instruct this contract to wrap native tokens when depositing (ie ETH->WETH or MATIC->WMATIC).
-//     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-//     WETH9Interface public immutable wrappedNativeToken;
-// 
-//     // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
-//     // caller to use an approximately "current" realized fee.
-//     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-//     uint32 public immutable depositQuoteTimeBuffer;
-// 
-//     // The fill deadline can only be set this far into the future from the timestamp of the deposit on this contract.
-//     /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
-//     uint32 public immutable fillDeadlineBuffer;
-// 
-//     uint256 public constant MAX_TRANSFER_SIZE = 1e36;
-// 
-//     // Note: this needs to be larger than the max transfer size to ensure that all slow fills are fillable, even if
-//     // their fees are negative.
-//     // It's important that it isn't too large, however, as it should be multipliable by ~2e18 without overflowing.
-//     // 1e40 * 2e18 = 2e58 << 2^255 ~= 5e76
-//     /// @custom:audit FOLLOWING VARIABLE TO BE DEPRECATED
-//     uint256 public constant SLOW_FILL_MAX_TOKENS_TO_SEND = 1e40;
-// 
-//     // Set max payout adjustment to something
-//     /// @custom:audit FOLLOWING VARIABLE TO BE DEPRECATED
-//     bytes32 public constant UPDATE_DEPOSIT_DETAILS_HASH =
-//         keccak256(
-//             "UpdateDepositDetails(uint32 depositId,uint256 originChainId,int64 updatedRelayerFeePct,address updatedRecipient,bytes updatedMessage)"
-//         );
-// 
-//     bytes32 public constant UPDATE_V3_DEPOSIT_DETAILS_HASH =
-//         keccak256(
-//             "UpdateDepositDetails(uint32 depositId,uint256 originChainId,uint256 updatedOutputAmount,address updatedRecipient,bytes updatedMessage)"
-//         );
-// 
-//     // Default chain Id used to signify that no repayment is requested, for example when executing a slow fill.
-//     uint256 public constant EMPTY_REPAYMENT_CHAIN_ID = 0;
-//     // Default address used to signify that no relayer should be credited with a refund, for example
-//     // when executing a slow fill.
-//     address public constant EMPTY_RELAYER = address(0);
-//     // This is the magic value that signals to the off-chain validator
-//     // that this deposit can never expire. A deposit with this fill deadline should always be eligible for a
-//     // slow fill, meaning that its output token and input token must be "equivalent". Therefore, this value is only
-//     // used as a fillDeadline in deposit(), a soon to be deprecated function that also hardcodes outputToken to
-//     // the zero address, which forces the off-chain validator to replace the output token with the equivalent
-//     // token for the input token. By using this magic value, off-chain validators do not have to keep
-//     // this event in their lookback window when querying for expired deposts.
-//     uint32 public constant INFINITE_FILL_DEADLINE = type(uint32).max;
-//     /****************************************
-//      *                EVENTS                *
-//      ****************************************/
-//     event SetXDomainAdmin(address indexed newAdmin);
-//     event SetHubPool(address indexed newHubPool);
-//     event EnabledDepositRoute(address indexed originToken, uint256 indexed destinationChainId, bool enabled);
-//     /// @custom:audit FOLLOWING EVENT TO BE DEPRECATED
-//     event FundsDeposited(
-//         uint256 amount,
-//         uint256 originChainId,
-//         uint256 indexed destinationChainId,
-//         int64 relayerFeePct,
-//         uint32 indexed depositId,
-//         uint32 quoteTimestamp,
-//         address originToken,
-//         address recipient,
-//         address indexed depositor,
-//         bytes message
-//     );
-//     /// @custom:audit FOLLOWING EVENT TO BE DEPRECATED
-//     event RequestedSpeedUpDeposit(
-//         int64 newRelayerFeePct,
-//         uint32 indexed depositId,
-//         address indexed depositor,
-//         address updatedRecipient,
-//         bytes updatedMessage,
-//         bytes depositorSignature
-//     );
-//     /// @custom:audit FOLLOWING EVENT TO BE DEPRECATED
-//     event FilledRelay(
-//         uint256 amount,
-//         uint256 totalFilledAmount,
-//         uint256 fillAmount,
-//         uint256 repaymentChainId,
-//         uint256 indexed originChainId,
-//         uint256 destinationChainId,
-//         int64 relayerFeePct,
-//         int64 realizedLpFeePct,
-//         uint32 indexed depositId,
-//         address destinationToken,
-//         address relayer,
-//         address indexed depositor,
-//         address recipient,
-//         bytes message,
-//         RelayExecutionInfo updatableRelayData
-//     );
-//     event RelayedRootBundle(
-//         uint32 indexed rootBundleId,
-//         bytes32 indexed relayerRefundRoot,
-//         bytes32 indexed slowRelayRoot
-//     );
-//     event ExecutedRelayerRefundRoot(
-//         uint256 amountToReturn,
-//         uint256 indexed chainId,
-//         uint256[] refundAmounts,
-//         uint32 indexed rootBundleId,
-//         uint32 indexed leafId,
-//         address l2TokenAddress,
-//         address[] refundAddresses,
-//         address caller
-//     );
-//     event TokensBridged(
-//         uint256 amountToReturn,
-//         uint256 indexed chainId,
-//         uint32 indexed leafId,
-//         address indexed l2TokenAddress,
-//         address caller
-//     );
-//     event EmergencyDeleteRootBundle(uint256 indexed rootBundleId);
-//     event PausedDeposits(bool isPaused);
-//     event PausedFills(bool isPaused);
-// 
-//     /**
-//      * @notice Represents data used to fill a deposit.
-//      * @param relay Relay containing original data linked to deposit. Contains fields that can be
-//      * overridden by other parameters in the RelayExecution struct.
-//      * @param relayHash Hash of the relay data.
-//      * @param updatedRelayerFeePct Actual relayer fee pct to use for this relay.
-//      * @param updatedRecipient Actual recipient to use for this relay.
-//      * @param updatedMessage Actual message to use for this relay.
-//      * @param repaymentChainId Chain ID of the network that the relayer will receive refunds on.
-//      * @param maxTokensToSend Max number of tokens to pull from relayer.
-//      * @param maxCount Max count to protect the relayer from frontrunning.
-//      * @param slowFill Whether this is a slow fill.
-//      * @param payoutAdjustmentPct Adjustment to the payout amount. Can be used to increase or decrease the payout to
-//      * allow for rewards or penalties. Used in slow fills.
-//      */
-//     /// @custom:audit FOLLOWING STRUCT TO BE DEPRECATED
-//     struct RelayExecution {
-//         RelayData relay;
-//         bytes32 relayHash;
-//         int64 updatedRelayerFeePct;
-//         address updatedRecipient;
-//         bytes updatedMessage;
-//         uint256 repaymentChainId;
-//         uint256 maxTokensToSend;
-//         uint256 maxCount;
-//         bool slowFill;
-//         int256 payoutAdjustmentPct;
-//     }
-// 
-//     /**
-//      * @notice Packs together information to include in FilledRelay event.
-//      * @dev This struct is emitted as opposed to its constituent parameters due to the limit on number of
-//      * parameters in an event.
-//      * @param recipient Recipient of the relayed funds.
-//      * @param message Message included in the relay.
-//      * @param relayerFeePct Relayer fee pct used for this relay.
-//      * @param isSlowRelay Whether this is a slow relay.
-//      * @param payoutAdjustmentPct Adjustment to the payout amount.
-//      */
-//     /// @custom:audit FOLLOWING STRUCT TO BE DEPRECATED
-//     struct RelayExecutionInfo {
-//         address recipient;
-//         bytes message;
-//         int64 relayerFeePct;
-//         bool isSlowRelay;
-//         int256 payoutAdjustmentPct;
-//     }
-// 
-//     /**
-//      * @notice Construct the SpokePool. Normally, logic contracts used in upgradeable proxies shouldn't
-//      * have constructors since the following code will be executed within the logic contract's state, not the
-//      * proxy contract's state. However, if we restrict the constructor to setting only immutable variables, then
-//      * we are safe because immutable variables are included in the logic contract's bytecode rather than its storage.
-//      * @dev Do not leave an implementation contract uninitialized. An uninitialized implementation contract can be
-//      * taken over by an attacker, which may impact the proxy. To prevent the implementation contract from being
-//      * used, you should invoke the _disableInitializers function in the constructor to automatically lock it when
-//      * it is deployed:
-//      * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
-//      * @param _depositQuoteTimeBuffer depositQuoteTimeBuffer to set. Quote timestamps can't be set more than this amount
-//      * into the past from the block time of the deposit.
-//      * @param _fillDeadlineBuffer fillDeadlineBuffer to set. Fill deadlines can't be set more than this amount
-//      * into the future from the block time of the deposit.
-//      */
-//     /// @custom:oz-upgrades-unsafe-allow constructor
-//     constructor(
-//         address _wrappedNativeTokenAddress,
-//         uint32 _depositQuoteTimeBuffer,
-//         uint32 _fillDeadlineBuffer
-//     ) {
-//         wrappedNativeToken = WETH9Interface(_wrappedNativeTokenAddress);
-//         depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
-//         fillDeadlineBuffer = _fillDeadlineBuffer;
-//         _disableInitializers();
-//     }
-// 
-//     /**
-//      * @notice Construct the base SpokePool.
-//      * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
-//      * relay hash collisions.
-//      * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
-//      * @param _hubPool Hub pool address to set. Can be changed by admin.
-//      */
-//     function __SpokePool_init(
-//         uint32 _initialDepositId,
-//         address _crossDomainAdmin,
-//         address _hubPool
-//     ) public onlyInitializing {
-//         numberOfDeposits = _initialDepositId;
-//         __EIP712_init("ACROSS-V2", "1.0.0");
-//         __UUPSUpgradeable_init();
-//         __ReentrancyGuard_init();
-//         _setCrossDomainAdmin(_crossDomainAdmin);
-//         _setHubPool(_hubPool);
-//     }
-// 
-//     /****************************************
-//      *               MODIFIERS              *
-//      ****************************************/
-// 
-//     /**
-//      * @dev Function that should revert when `msg.sender` is not authorized to upgrade the contract. Called by
-//      * {upgradeTo} and {upgradeToAndCall}.
-//      * @dev This should be set to cross domain admin for specific SpokePool.
-//      */
-//     modifier onlyAdmin() {
-//         _requireAdminSender();
-//         _;
-//     }
-// 
-//     modifier unpausedDeposits() {
-//         require(!pausedDeposits, "Paused deposits");
-//         _;
-//     }
-// 
-//     modifier unpausedFills() {
-//         require(!pausedFills, "Paused fills");
-//         _;
-//     }
-// 
-//     /**************************************
-//      *          ADMIN FUNCTIONS           *
-//      **************************************/
-// 
-//     // Allows cross domain admin to upgrade UUPS proxy implementation.
+
+    // Address of the L1 contract that acts as the owner of this SpokePool. This should normally be set to the HubPool
+    // address. The crossDomainAdmin address is unused when the SpokePool is deployed to the same chain as the HubPool.
+    address public crossDomainAdmin;
+
+    // Address of the L1 contract that will send tokens to and receive tokens from this contract to fund relayer
+    // refunds and slow relays.
+    address public hubPool;
+
+    // Note: The following two storage variables prefixed with DEPRECATED used to be variables that could be set by
+    // the cross-domain admin. Admins ended up not changing these in production, so to reduce
+    // gas in deposit/fill functions, we are converting them to private variables to maintain the contract
+    // storage layout and replacing them with immutable or constant variables, because retrieving a constant
+    // value is cheaper than retrieving a storage variable. Please see out the immutable/constant variable section.
+    WETH9Interface private DEPRECATED_wrappedNativeToken;
+    uint32 private DEPRECATED_depositQuoteTimeBuffer;
+
+    // Count of deposits is used to construct a unique deposit identifier for this spoke pool.
+    uint32 public numberOfDeposits;
+
+    // Whether deposits and fills are disabled.
+    bool public pausedFills;
+    bool public pausedDeposits;
+
+    // This contract can store as many root bundles as the HubPool chooses to publish here.
+    RootBundle[] public rootBundles;
+
+    // Origin token to destination token routings can be turned on or off, which can enable or disable deposits.
+    mapping(address => mapping(uint256 => bool)) public enabledDepositRoutes;
+
+    // Each relay is associated with the hash of parameters that uniquely identify the original deposit and a relay
+    // attempt for that deposit. The relay itself is just represented as the amount filled so far. The total amount to
+    // relay, the fees, and the agents are all parameters included in the hash key.
+    mapping(bytes32 => uint256) private DEPRECATED_relayFills;
+
+    // Note: We will likely un-deprecate the fill and deposit counters to implement a better
+    // dynamic LP fee mechanism but for now we'll deprecate it to reduce bytecode
+    // in deposit/fill functions. These counters are designed to implement a fee mechanism that is based on a
+    // canonical history of deposit and fill events and how they update a virtual running balance of liabilities and
+    // assets, which then determines the LP fee charged to relays.
+
+    // This keeps track of the worst-case liabilities due to fills.
+    // It is never reset. Users should only rely on it to determine the worst-case increase in liabilities between
+    // two points. This is used to provide frontrunning protection to ensure the relayer's assumptions about the state
+    // upon which their expected repayments are based will not change before their transaction is mined.
+    mapping(address => uint256) private DEPRECATED_fillCounter;
+
+    // This keeps track of the total running deposits for each token. This allows depositors to protect themselves from
+    // frontrunning that might change their worst-case quote.
+    mapping(address => uint256) private DEPRECATED_depositCounter;
+
+    // This tracks the number of identical refunds that have been requested.
+    // The intention is to allow an off-chain system to know when this could be a duplicate and ensure that the other
+    // requests are known and accounted for.
+    mapping(bytes32 => uint256) private DEPRECATED_refundsRequested;
+
+    // Mapping of V3 relay hashes to fill statuses. Distinguished from relayFills
+    // to eliminate any chance of collision between pre and post V3 relay hashes.
+    mapping(bytes32 => uint256) public fillStatuses;
+
+   /**************************************************************
+    *                CONSTANT/IMMUTABLE VARIABLES                *
+    **************************************************************/
+   // Constant and immutable variables do not take up storage slots and are instead added to the contract bytecode
+   // at compile time. The difference between them is that constant variables must be declared inline, meaning
+   // that they cannot be changed in production without changing the contract code, while immutable variables
+   // can be set in the constructor. Therefore we use the immutable keyword for variables that we might want to be
+   // different for each child contract (one obvious example of this is the wrappedNativeToken) or that we might
+   // want to update in the future like depositQuoteTimeBuffer. Constants are unlikely to ever be changed.
+
+   // Address of wrappedNativeToken contract for this network. If an origin token matches this, then the caller can
+   // optionally instruct this contract to wrap native tokens when depositing (ie ETH->WETH or MATIC->WMATIC).
+   /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+   WETH9Interface public immutable wrappedNativeToken;
+
+   // Any deposit quote times greater than or less than this value to the current contract time is blocked. Forces
+   // caller to use an approximately "current" realized fee.
+   /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+   uint32 public immutable depositQuoteTimeBuffer;
+
+   // The fill deadline can only be set this far into the future from the timestamp of the deposit on this contract.
+   /// @custom:oz-upgrades-unsafe-allow state-variable-immutable
+   uint32 public immutable fillDeadlineBuffer;
+
+   uint256 public constant MAX_TRANSFER_SIZE = 1e36;
+
+   // Note: this needs to be larger than the max transfer size to ensure that all slow fills are fillable, even if
+   // their fees are negative.
+   // It's important that it isn't too large, however, as it should be multipliable by ~2e18 without overflowing.
+   // 1e40 * 2e18 = 2e58 << 2^255 ~= 5e76
+   /// @custom:audit FOLLOWING VARIABLE TO BE DEPRECATED
+   uint256 public constant SLOW_FILL_MAX_TOKENS_TO_SEND = 1e40;
+
+   // Set max payout adjustment to something
+   /// @custom:audit FOLLOWING VARIABLE TO BE DEPRECATED
+   bytes32 public constant UPDATE_DEPOSIT_DETAILS_HASH =
+       keccak256(
+           "UpdateDepositDetails(uint32 depositId,uint256 originChainId,int64 updatedRelayerFeePct,address updatedRecipient,bytes updatedMessage)"
+       );
+
+   bytes32 public constant UPDATE_V3_DEPOSIT_DETAILS_HASH =
+       keccak256(
+           "UpdateDepositDetails(uint32 depositId,uint256 originChainId,uint256 updatedOutputAmount,address updatedRecipient,bytes updatedMessage)"
+       );
+
+   // Default chain Id used to signify that no repayment is requested, for example when executing a slow fill.
+   uint256 public constant EMPTY_REPAYMENT_CHAIN_ID = 0;
+    // Default address used to signify that no relayer should be credited with a refund, for example
+    // when executing a slow fill.
+    address public constant EMPTY_RELAYER = address(0);
+    // This is the magic value that signals to the off-chain validator
+    // that this deposit can never expire. A deposit with this fill deadline should always be eligible for a
+    // slow fill, meaning that its output token and input token must be "equivalent". Therefore, this value is only
+    // used as a fillDeadline in deposit(), a soon to be deprecated function that also hardcodes outputToken to
+    // the zero address, which forces the off-chain validator to replace the output token with the equivalent
+    // token for the input token. By using this magic value, off-chain validators do not have to keep
+    // this event in their lookback window when querying for expired deposts.
+    uint32 public constant INFINITE_FILL_DEADLINE = type(uint32).max;
+    /****************************************
+     *                EVENTS                *
+     ****************************************/
+    event SetXDomainAdmin(address indexed newAdmin);
+    event SetHubPool(address indexed newHubPool);
+    event EnabledDepositRoute(address indexed originToken, uint256 indexed destinationChainId, bool enabled);
+    /// @custom:audit FOLLOWING EVENT TO BE DEPRECATED
+    event FundsDeposited(
+        uint256 amount,
+        uint256 originChainId,
+        uint256 indexed destinationChainId,
+        int64 relayerFeePct,
+        uint32 indexed depositId,
+        uint32 quoteTimestamp,
+        address originToken,
+        address recipient,
+        address indexed depositor,
+        bytes message
+    );
+    /// @custom:audit FOLLOWING EVENT TO BE DEPRECATED
+    event RequestedSpeedUpDeposit(
+        int64 newRelayerFeePct,
+        uint32 indexed depositId,
+        address indexed depositor,
+        address updatedRecipient,
+        bytes updatedMessage,
+        bytes depositorSignature
+    );
+    /// @custom:audit FOLLOWING EVENT TO BE DEPRECATED
+    event FilledRelay(
+        uint256 amount,
+        uint256 totalFilledAmount,
+        uint256 fillAmount,
+        uint256 repaymentChainId,
+        uint256 indexed originChainId,
+        uint256 destinationChainId,
+        int64 relayerFeePct,
+        int64 realizedLpFeePct,
+        uint32 indexed depositId,
+        address destinationToken,
+        address relayer,
+        address indexed depositor,
+        address recipient,
+        bytes message,
+        RelayExecutionInfo updatableRelayData
+    );
+    event RelayedRootBundle(
+        uint32 indexed rootBundleId,
+        bytes32 indexed relayerRefundRoot,
+        bytes32 indexed slowRelayRoot
+    );
+    event ExecutedRelayerRefundRoot(
+        uint256 amountToReturn,
+        uint256 indexed chainId,
+        uint256[] refundAmounts,
+        uint32 indexed rootBundleId,
+        uint32 indexed leafId,
+        address l2TokenAddress,
+        address[] refundAddresses,
+        address caller
+    );
+    event TokensBridged(
+        uint256 amountToReturn,
+        uint256 indexed chainId,
+        uint32 indexed leafId,
+        address indexed l2TokenAddress,
+        address caller
+    );
+    event EmergencyDeleteRootBundle(uint256 indexed rootBundleId);
+    event PausedDeposits(bool isPaused);
+    event PausedFills(bool isPaused);
+
+    /**
+     * @notice Represents data used to fill a deposit.
+     * @param relay Relay containing original data linked to deposit. Contains fields that can be
+     * overridden by other parameters in the RelayExecution struct.
+     * @param relayHash Hash of the relay data.
+     * @param updatedRelayerFeePct Actual relayer fee pct to use for this relay.
+     * @param updatedRecipient Actual recipient to use for this relay.
+     * @param updatedMessage Actual message to use for this relay.
+     * @param repaymentChainId Chain ID of the network that the relayer will receive refunds on.
+     * @param maxTokensToSend Max number of tokens to pull from relayer.
+     * @param maxCount Max count to protect the relayer from frontrunning.
+     * @param slowFill Whether this is a slow fill.
+     * @param payoutAdjustmentPct Adjustment to the payout amount. Can be used to increase or decrease the payout to
+     * allow for rewards or penalties. Used in slow fills.
+     */
+    /// @custom:audit FOLLOWING STRUCT TO BE DEPRECATED
+    struct RelayExecution {
+        RelayData relay;
+        bytes32 relayHash;
+        int64 updatedRelayerFeePct;
+        address updatedRecipient;
+        bytes updatedMessage;
+        uint256 repaymentChainId;
+        uint256 maxTokensToSend;
+        uint256 maxCount;
+        bool slowFill;
+        int256 payoutAdjustmentPct;
+    }
+
+    /**
+     * @notice Packs together information to include in FilledRelay event.
+     * @dev This struct is emitted as opposed to its constituent parameters due to the limit on number of
+     * parameters in an event.
+     * @param recipient Recipient of the relayed funds.
+     * @param message Message included in the relay.
+     * @param relayerFeePct Relayer fee pct used for this relay.
+     * @param isSlowRelay Whether this is a slow relay.
+     * @param payoutAdjustmentPct Adjustment to the payout amount.
+     */
+    /// @custom:audit FOLLOWING STRUCT TO BE DEPRECATED
+    struct RelayExecutionInfo {
+        address recipient;
+        bytes message;
+        int64 relayerFeePct;
+        bool isSlowRelay;
+        int256 payoutAdjustmentPct;
+    }
+
+    /**
+     * @notice Construct the SpokePool. Normally, logic contracts used in upgradeable proxies shouldn't
+     * have constructors since the following code will be executed within the logic contract's state, not the
+     * proxy contract's state. However, if we restrict the constructor to setting only immutable variables, then
+     * we are safe because immutable variables are included in the logic contract's bytecode rather than its storage.
+     * @dev Do not leave an implementation contract uninitialized. An uninitialized implementation contract can be
+     * taken over by an attacker, which may impact the proxy. To prevent the implementation contract from being
+     * used, you should invoke the _disableInitializers function in the constructor to automatically lock it when
+     * it is deployed:
+     * @param _wrappedNativeTokenAddress wrappedNativeToken address for this network to set.
+     * @param _depositQuoteTimeBuffer depositQuoteTimeBuffer to set. Quote timestamps can't be set more than this amount
+     * into the past from the block time of the deposit.
+     * @param _fillDeadlineBuffer fillDeadlineBuffer to set. Fill deadlines can't be set more than this amount
+     * into the future from the block time of the deposit.
+     */
+    /// @custom:oz-upgrades-unsafe-allow constructor
+    constructor(
+        address _wrappedNativeTokenAddress,
+        uint32 _depositQuoteTimeBuffer,
+        uint32 _fillDeadlineBuffer
+    ) {
+        wrappedNativeToken = WETH9Interface(_wrappedNativeTokenAddress);
+        depositQuoteTimeBuffer = _depositQuoteTimeBuffer;
+        fillDeadlineBuffer = _fillDeadlineBuffer;
+        _disableInitializers();
+    }
+
+    /**
+     * @notice Construct the base SpokePool.
+     * @param _initialDepositId Starting deposit ID. Set to 0 unless this is a re-deployment in order to mitigate
+     * relay hash collisions.
+     * @param _crossDomainAdmin Cross domain admin to set. Can be changed by admin.
+     * @param _hubPool Hub pool address to set. Can be changed by admin.
+     */
+//    function __SpokePool_init(
+//        uint32 _initialDepositId,
+//        address _crossDomainAdmin,
+//        address _hubPool
+//    ) public onlyInitializing {
+//        numberOfDeposits = _initialDepositId;
+//        __EIP712_init("ACROSS-V2", "1.0.0");
+//        __UUPSUpgradeable_init();
+//        __ReentrancyGuard_init();
+//        _setCrossDomainAdmin(_crossDomainAdmin);
+//        _setHubPool(_hubPool);
+//    }
+
+   /****************************************
+    *               MODIFIERS              *
+    ****************************************/
+
+   /**
+    * @dev Function that should revert when `msg.sender` is not authorized to upgrade the contract. Called by
+    * {upgradeTo} and {upgradeToAndCall}.
+    * @dev This should be set to cross domain admin for specific SpokePool.
+    */
+   modifier onlyAdmin() {
+       _requireAdminSender();
+       _;
+   }
+
+   modifier unpausedDeposits() {
+       require(!pausedDeposits, "Paused deposits");
+       _;
+   }
+
+   modifier unpausedFills() {
+       require(!pausedFills, "Paused fills");
+       _;
+   }
+
+   /**************************************
+    *          ADMIN FUNCTIONS           *
+    **************************************/
+
+   // Allows cross domain admin to upgrade UUPS proxy implementation.
 //     function _authorizeUpgrade(address newImplementation) internal override onlyAdmin {}
 // 
 //     /**
@@ -6301,4 +6300,4 @@ interface AcrossMessageHandler {
 //     // affecting the storage layout of child contracts. Decrement the size of __gap whenever state variables
 //     // are added. This is at bottom of contract to make sure it's always at the end of storage.
 //     uint256[999] private __gap;
-// }
+}

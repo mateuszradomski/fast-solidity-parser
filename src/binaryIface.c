@@ -558,8 +558,26 @@ pushContractDefinition(Serializer *s, ASTNode *node) {
 
     ASTNodeContractDefintion *contract = &node->contractDefintionNode;
     l += pushTokenStringById(s, contract->name);
-    l += pushU32(s, contract->elements.count);
 
+    l += pushU32(s, contract->baseContracts.count);
+    ASTNodeLink *baseContract = contract->baseContracts.head;
+    for(u32 i = 0; i < contract->baseContracts.count; i++, baseContract = baseContract->next) {
+        ASTNodeInheritanceSpecifier *inheritance = &baseContract->node.inheritanceSpecifierNode;
+
+        l += pushU32(s, inheritance->identifiers.count);
+        for(u32 i = 0; i < inheritance->identifiers.count; i++) {
+            TokenId part = listGetTokenId(&inheritance->identifiers, i);
+            l += pushTokenStringById(s, part);
+        }
+
+        l += pushU32(s, inheritance->arguments.count);
+        ASTNodeLink *argument = inheritance->arguments.head;
+        for(u32 i = 0; i < inheritance->arguments.count; i++, argument = argument->next) {
+            l += pushExpression(s, &argument->node);
+        }
+    }
+
+    l += pushU32(s, contract->elements.count);
     ASTNodeLink *element = contract->elements.head;
     for(u32 i = 0; i < contract->elements.count; i++, element = element->next) {
         l += pushASTNode(s, &element->node);
@@ -622,9 +640,10 @@ pushASTNode(Serializer *s, ASTNode *node) {
         case ASTNodeType_ModifierDefinition: {
             l = pushModifierDefinition(s, node);
         } break;
-        case ASTNodeType_InterfaceDefinition:
         case ASTNodeType_LibraryDefinition:
-        case ASTNodeType_ContractDefinition: {
+        case ASTNodeType_ContractDefinition:
+        case ASTNodeType_InterfaceDefinition:
+        case ASTNodeType_AbstractContractDefinition: {
             l = pushContractDefinition(s, node);
         } break;
         default: {

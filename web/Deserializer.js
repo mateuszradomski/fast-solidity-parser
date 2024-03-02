@@ -50,6 +50,7 @@ const ASTNodeType_EmitStatement = 49
 const ASTNodeType_ConstructorDefinition = 50
 const ASTNodeType_NamedParametersExpression = 51
 const ASTNodeType_InterfaceDefinition = 52
+const ASTNodeType_AbstractContractDefinition = 53
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -867,17 +868,46 @@ class Deserializer {
 
     popContractDefinition() {
         const name = this.popString();
-        const count = this.popU32();
+        const baseContractCount = this.popU32();
+        const baseContracts = []
+
+        for(let i = 0; i < baseContractCount; i++) {
+            const identifiersCount = this.popU32();
+            let path = ""
+            for(let i = 0; i < identifiersCount; i++) {
+                path += this.popString();
+                if(i < identifiersCount - 1) {
+                    path += ".";
+                }
+            }
+
+            const argCount = this.popU32();
+            const args = []
+            for(let k = 0; k < argCount; k++) {
+                args.push(this.popExpression());
+            }
+
+            baseContracts.push({
+                               type: "InheritanceSpecifier",
+                               baseName: {
+                                   type: "UserDefinedTypeName",
+                                   namePath: path,
+                               },
+                               arguments: args,
+            });
+        }
+
+        const subNodeCount = this.popU32();
         const subNodes = []
 
-        for(let i = 0; i < count; i++) {
+        for(let i = 0; i < subNodeCount; i++) {
             subNodes.push(this.popASTNode());
         }
 
         return {
             type: "ContractDefinition",
             name,
-            baseContracts: [],
+            baseContracts,
             subNodes,
             kind: "contract"
         }
@@ -951,6 +981,10 @@ class Deserializer {
         } else if(type === ASTNodeType_InterfaceDefinition) {
             const result = this.popContractDefinition();
             result.kind = "interface"
+            return result
+        } else if(type === ASTNodeType_AbstractContractDefinition) {
+            const result = this.popContractDefinition();
+            result.kind = "abstract"
             return result
         } else if(type === ASTNodeType_ConstructorDefinition) {
             return this.popConstructorDefinition();
