@@ -1565,32 +1565,29 @@ parseFunction(Parser *parser, ASTNode *node) {
         expectToken(parser, TokenType_RParen);
     }
 
-    if(acceptToken(parser, TokenType_Internal)) {
-        function->visibility = 1;
-    } else if(acceptToken(parser, TokenType_External)) {
-        function->visibility = 2;
-    } else if(acceptToken(parser, TokenType_Private)) {
-        function->visibility = 3;
-    } else if(acceptToken(parser, TokenType_Public)) {
-        function->visibility = 4;
-    } else {
-        function->visibility = 0;
-    }
-
-    if(acceptToken(parser, TokenType_Pure)) {
-        function->stateMutability = 1;
-    } else if(acceptToken(parser, TokenType_View)) {
-        function->stateMutability = 2;
-    } else if(acceptToken(parser, TokenType_Payable)) {
-        function->stateMutability = 3;
-    } else {
-        function->stateMutability = 0;
-    }
-
-    if(acceptToken(parser, TokenType_Virtual)) {
-        function->virtual = 1;
-    } else {
-        function->virtual = 0;
+    function->visibility = 0;
+    function->stateMutability = 0;
+    function->virtual = 0;
+    for(;;) {
+        if (acceptToken(parser, TokenType_Internal)) {
+            function->visibility = 1;
+        } else if (acceptToken(parser, TokenType_External)) {
+            function->visibility = 2;
+        } else if (acceptToken(parser, TokenType_Private)) {
+            function->visibility = 3;
+        } else if (acceptToken(parser, TokenType_Public)) {
+            function->visibility = 4;
+        } else if (acceptToken(parser, TokenType_Pure)) {
+            function->stateMutability = 1;
+        } else if (acceptToken(parser, TokenType_View)) {
+            function->stateMutability = 2;
+        } else if (acceptToken(parser, TokenType_Payable)) {
+            function->stateMutability = 3;
+        } else if (acceptToken(parser, TokenType_Virtual)) {
+            function->virtual = 1;
+        } else {
+            break;
+        }
     }
 
     if(acceptToken(parser, TokenType_Returns)) {

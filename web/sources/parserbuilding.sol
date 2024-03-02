@@ -4254,15 +4254,15 @@ contract userDefinedTypesAsMappingKeys {
 //  modifier bar() override {_;}
 //}
 
-//contract Base1
-//{
-//    function foo() virtual public {}
-//}
-//
-//contract Base2
-//{
-//    function foo() virtual public {}
-//}
+contract Base1
+{
+    function foo() virtual public {}
+}
+
+contract Base2
+{
+    function foo() virtual public {}
+}
 
 //contract Inherited is Base1, Base2
 //{
