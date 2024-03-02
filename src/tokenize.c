@@ -1,70 +1,3 @@
-static const String LIBRARY_TOKEN = LIT_TO_STR("library");
-static const String CONTRACT_TOKEN = LIT_TO_STR("contract");
-static const String ABSTRACT_TOKEN = LIT_TO_STR("abstract");
-static const String INTERFACE_TOKEN = LIT_TO_STR("interface");
-static const String STRUCT_TOKEN = LIT_TO_STR("struct");
-static const String PRIVATE_TOKEN = LIT_TO_STR("private");
-static const String IMMUTABLE_TOKEN = LIT_TO_STR("immutable");
-static const String CONSTANT_TOKEN = LIT_TO_STR("constant");
-static const String FUNCTION_TOKEN = LIT_TO_STR("function");
-static const String INTERNAL_TOKEN = LIT_TO_STR("internal");
-static const String PURE_TOKEN = LIT_TO_STR("pure");
-static const String PAYABLE_TOKEN = LIT_TO_STR("payable");
-static const String RETURN_TOKEN = LIT_TO_STR("return");
-static const String RETURNS_TOKEN = LIT_TO_STR("returns");
-static const String MEMORY_TOKEN = LIT_TO_STR("memory");
-static const String WHILE_TOKEN = LIT_TO_STR("while");
-static const String FOR_TOKEN = LIT_TO_STR("for");
-static const String NEW_TOKEN = LIT_TO_STR("new");
-static const String IMPORT_TOKEN = LIT_TO_STR("import");
-static const String AS_TOKEN = LIT_TO_STR("as");
-static const String IS_TOKEN = LIT_TO_STR("is");
-static const String FROM_TOKEN = LIT_TO_STR("from");
-static const String EXTERNAL_TOKEN = LIT_TO_STR("external");
-static const String VIEW_TOKEN = LIT_TO_STR("view");
-static const String PUBLIC_TOKEN = LIT_TO_STR("public");
-static const String OVERRIDE_TOKEN = LIT_TO_STR("override");
-static const String VIRTUAL_TOKEN = LIT_TO_STR("virtual");
-static const String MODIFIER_TOKEN = LIT_TO_STR("modifier");
-static const String FALLBACK_TOKEN = LIT_TO_STR("fallback");
-static const String RECEIVE_TOKEN = LIT_TO_STR("receive");
-static const String ENUM_TOKEN = LIT_TO_STR("enum");
-static const String TYPE_TOKEN = LIT_TO_STR("type");
-static const String INDEXED_TOKEN = LIT_TO_STR("indexed");
-static const String EVENT_TOKEN = LIT_TO_STR("event");
-static const String ANONYMOUS_TOKEN = LIT_TO_STR("anonymous");
-static const String ERROR_TOKEN = LIT_TO_STR("error");
-static const String USING_TOKEN = LIT_TO_STR("using");
-static const String GLOBAL_TOKEN = LIT_TO_STR("global");
-static const String DELETE_TOKEN = LIT_TO_STR("delete");
-static const String TRUE_TOKEN = LIT_TO_STR("true");
-static const String FALSE_TOKEN = LIT_TO_STR("false");
-static const String UNCHECKED_TOKEN = LIT_TO_STR("unchecked");
-static const String IF_TOKEN = LIT_TO_STR("if");
-static const String ELSE_TOKEN = LIT_TO_STR("else");
-static const String DO_TOKEN = LIT_TO_STR("do");
-static const String CONTINUE_TOKEN = LIT_TO_STR("continue");
-static const String BREAK_TOKEN = LIT_TO_STR("break");
-static const String TRY_TOKEN = LIT_TO_STR("try");
-static const String CATCH_TOKEN = LIT_TO_STR("catch");
-static const String EMIT_TOKEN = LIT_TO_STR("emit");
-static const String REVERT_TOKEN = LIT_TO_STR("revert");
-static const String ASSEMBLY_TOKEN = LIT_TO_STR("assembly");
-static const String PRAGMA_TOKEN = LIT_TO_STR("pragma");
-static const String MAPPING_TOKEN = LIT_TO_STR("mapping");
-static const String STORAGE_TOKEN = LIT_TO_STR("storage");
-static const String CALLDATA_TOKEN = LIT_TO_STR("calldata");
-static const String WEI_TOKEN = LIT_TO_STR("wei");
-static const String GWEI_TOKEN = LIT_TO_STR("gwei");
-static const String ETHER_TOKEN = LIT_TO_STR("ether");
-static const String SECONDS_TOKEN = LIT_TO_STR("seconds");
-static const String MINUTES_TOKEN = LIT_TO_STR("minutes");
-static const String HOURS_TOKEN = LIT_TO_STR("hours");
-static const String DAYS_TOKEN = LIT_TO_STR("days");
-static const String WEEKS_TOKEN = LIT_TO_STR("weeks");
-static const String YEARS_TOKEN = LIT_TO_STR("years");
-static const String CONSTRUCTOR_TOKEN = LIT_TO_STR("constructor");
-
 typedef enum TokenType {
     TokenType_None,
     TokenType_Library,
@@ -439,14 +372,15 @@ tokenizeNumberLiteral(ByteConsumer *c, u8 byte) {
     if(byte == '0' && (nextByte == 'x' || nextByte == 'X')) {
         String symbol = { .data = c->head - 1, .size = 2 };
         consumeByte(c);
+
         while(consumerGood(c)) {
             u8 nextByte = peekByte(c);
-            if(isHexDigit(nextByte) || nextByte == '_') {
-                symbol.size += 1;
-                consumeByte(c);
-            } else {
+            if(!(isHexDigit(nextByte) || nextByte == '_')) {
                 break;
             }
+
+            symbol.size += 1;
+            consumeByte(c);
         }
 
         return (Token) {
@@ -508,6 +442,108 @@ tokenizeNumberLiteral(ByteConsumer *c, u8 byte) {
     }
 }
 
+static TokenType
+categorizeSymbol(String symbol) {
+    switch(symbol.size) {
+        case 2: {
+            if(stringMatch(symbol, LIT_TO_STR("as"))) return TokenType_As;
+            if(stringMatch(symbol, LIT_TO_STR("do"))) return TokenType_Do;
+            if(stringMatch(symbol, LIT_TO_STR("if"))) return TokenType_If;
+            if(stringMatch(symbol, LIT_TO_STR("is"))) return TokenType_Is;
+            return TokenType_Symbol;
+        }break;
+        case 3: {
+            if(stringMatch(symbol, LIT_TO_STR("for"))) return TokenType_For;
+            if(stringMatch(symbol, LIT_TO_STR("new"))) return TokenType_New;
+            if(stringMatch(symbol, LIT_TO_STR("try"))) return TokenType_Try;
+            if(stringMatch(symbol, LIT_TO_STR("wei"))) return TokenType_Wei;
+            return TokenType_Symbol;
+        } break;
+        case 4: {
+            if(stringMatch(symbol, LIT_TO_STR("days"))) return TokenType_Days;
+            if(stringMatch(symbol, LIT_TO_STR("else"))) return TokenType_Else;
+            if(stringMatch(symbol, LIT_TO_STR("emit"))) return TokenType_Emit;
+            if(stringMatch(symbol, LIT_TO_STR("enum"))) return TokenType_Enum;
+            if(stringMatch(symbol, LIT_TO_STR("from"))) return TokenType_From;
+            if(stringMatch(symbol, LIT_TO_STR("gwei"))) return TokenType_Gwei;
+            if(stringMatch(symbol, LIT_TO_STR("pure"))) return TokenType_Pure;
+            if(stringMatch(symbol, LIT_TO_STR("true"))) return TokenType_True;
+            if(stringMatch(symbol, LIT_TO_STR("type"))) return TokenType_Type;
+            if(stringMatch(symbol, LIT_TO_STR("view"))) return TokenType_View;
+            return TokenType_Symbol;
+        } break;
+        case 5: {
+            if(stringMatch(symbol, LIT_TO_STR("break"))) return TokenType_Break;
+            if(stringMatch(symbol, LIT_TO_STR("catch"))) return TokenType_Catch;
+            if(stringMatch(symbol, LIT_TO_STR("error"))) return TokenType_Error;
+            if(stringMatch(symbol, LIT_TO_STR("ether"))) return TokenType_Ether;
+            if(stringMatch(symbol, LIT_TO_STR("event"))) return TokenType_Event;
+            if(stringMatch(symbol, LIT_TO_STR("false"))) return TokenType_False;
+            if(stringMatch(symbol, LIT_TO_STR("hours"))) return TokenType_Hours;
+            if(stringMatch(symbol, LIT_TO_STR("using"))) return TokenType_Using;
+            if(stringMatch(symbol, LIT_TO_STR("weeks"))) return TokenType_Weeks;
+            if(stringMatch(symbol, LIT_TO_STR("while"))) return TokenType_While;
+            if(stringMatch(symbol, LIT_TO_STR("years"))) return TokenType_Years;
+            return TokenType_Symbol;
+        } break;
+        case 6: {
+            if(stringMatch(symbol, LIT_TO_STR("delete"))) return TokenType_Delete;
+            if(stringMatch(symbol, LIT_TO_STR("global"))) return TokenType_Global;
+            if(stringMatch(symbol, LIT_TO_STR("import"))) return TokenType_Import;
+            if(stringMatch(symbol, LIT_TO_STR("memory"))) return TokenType_Memory;
+            if(stringMatch(symbol, LIT_TO_STR("pragma"))) return TokenType_Pragma;
+            if(stringMatch(symbol, LIT_TO_STR("public"))) return TokenType_Public;
+            if(stringMatch(symbol, LIT_TO_STR("return"))) return TokenType_Return;
+            if(stringMatch(symbol, LIT_TO_STR("revert"))) return TokenType_Revert;
+            if(stringMatch(symbol, LIT_TO_STR("struct"))) return TokenType_Struct;
+            return TokenType_Symbol;
+        } break;
+        case 7: {
+            if(stringMatch(symbol, LIT_TO_STR("indexed"))) return TokenType_Indexed;
+            if(stringMatch(symbol, LIT_TO_STR("library"))) return TokenType_Library;
+            if(stringMatch(symbol, LIT_TO_STR("mapping"))) return TokenType_Mapping;
+            if(stringMatch(symbol, LIT_TO_STR("minutes"))) return TokenType_Minutes;
+            if(stringMatch(symbol, LIT_TO_STR("payable"))) return TokenType_Payable;
+            if(stringMatch(symbol, LIT_TO_STR("private"))) return TokenType_Private;
+            if(stringMatch(symbol, LIT_TO_STR("receive"))) return TokenType_Receive;
+            if(stringMatch(symbol, LIT_TO_STR("returns"))) return TokenType_Returns;
+            if(stringMatch(symbol, LIT_TO_STR("seconds"))) return TokenType_Seconds;
+            if(stringMatch(symbol, LIT_TO_STR("storage"))) return TokenType_Storage;
+            if(stringMatch(symbol, LIT_TO_STR("virtual"))) return TokenType_Virtual;
+            return TokenType_Symbol;
+        } break;
+        case 8: {
+            if(stringMatch(symbol, LIT_TO_STR("abstract"))) return TokenType_Abstract;
+            if(stringMatch(symbol, LIT_TO_STR("assembly"))) return TokenType_Assembly;
+            if(stringMatch(symbol, LIT_TO_STR("calldata"))) return TokenType_Calldata;
+            if(stringMatch(symbol, LIT_TO_STR("constant"))) return TokenType_Constant;
+            if(stringMatch(symbol, LIT_TO_STR("continue"))) return TokenType_Continue;
+            if(stringMatch(symbol, LIT_TO_STR("contract"))) return TokenType_Contract;
+            if(stringMatch(symbol, LIT_TO_STR("external"))) return TokenType_External;
+            if(stringMatch(symbol, LIT_TO_STR("fallback"))) return TokenType_Fallback;
+            if(stringMatch(symbol, LIT_TO_STR("function"))) return TokenType_Function;
+            if(stringMatch(symbol, LIT_TO_STR("internal"))) return TokenType_Internal;
+            if(stringMatch(symbol, LIT_TO_STR("modifier"))) return TokenType_Modifier;
+            if(stringMatch(symbol, LIT_TO_STR("override"))) return TokenType_Override;
+            return TokenType_Symbol;
+        } break;
+        case 9:  {
+            if(stringMatch(symbol, LIT_TO_STR("anonymous"))) return TokenType_Anonymous;
+            if(stringMatch(symbol, LIT_TO_STR("immutable"))) return TokenType_Immutable;
+            if(stringMatch(symbol, LIT_TO_STR("interface"))) return TokenType_Interface;
+            if(stringMatch(symbol, LIT_TO_STR("unchecked"))) return TokenType_Unchecked;
+            return TokenType_Symbol;
+        }break;
+        case 11: {
+            if(stringMatch(symbol, LIT_TO_STR("constructor"))) return TokenType_Constructor;
+            return TokenType_Symbol;
+        } break;
+        default: {
+            return TokenType_Symbol;
+        }
+    }
+}
+
 static TokenizeResult
 tokenize(String source, Arena *arena) {
     TokenizeResult result = allocateTokenSpace(arena, source.size);
@@ -535,141 +571,8 @@ tokenize(String source, Arena *arena) {
                 }
             }
 
-            if(stringMatch(symbol, LIBRARY_TOKEN)) {
-                pushToken(&result, TokenType_Library, symbol);
-            } else if(stringMatch(symbol, CONTRACT_TOKEN)) {
-                pushToken(&result, TokenType_Contract, symbol);
-            } else if(stringMatch(symbol, ABSTRACT_TOKEN)) {
-                pushToken(&result, TokenType_Abstract, symbol);
-            } else if(stringMatch(symbol, INTERFACE_TOKEN)) {
-                pushToken(&result, TokenType_Interface, symbol);
-            } else if(stringMatch(symbol, STRUCT_TOKEN)) {
-                pushToken(&result, TokenType_Struct, symbol);
-            } else if(stringMatch(symbol, PRIVATE_TOKEN)) {
-                pushToken(&result, TokenType_Private, symbol);
-            } else if(stringMatch(symbol, IMMUTABLE_TOKEN)) {
-                pushToken(&result, TokenType_Immutable, symbol);
-            } else if(stringMatch(symbol, CONSTANT_TOKEN)) {
-                pushToken(&result, TokenType_Constant, symbol);
-            } else if(stringMatch(symbol, FUNCTION_TOKEN)) {
-                pushToken(&result, TokenType_Function, symbol);
-            } else if(stringMatch(symbol, INTERNAL_TOKEN)) {
-                pushToken(&result, TokenType_Internal, symbol);
-            } else if(stringMatch(symbol, PURE_TOKEN)) {
-                pushToken(&result, TokenType_Pure, symbol);
-            } else if(stringMatch(symbol, PAYABLE_TOKEN)) {
-                pushToken(&result, TokenType_Payable, symbol);
-            } else if(stringMatch(symbol, RETURN_TOKEN)) {
-                pushToken(&result, TokenType_Return, symbol);
-            } else if(stringMatch(symbol, RETURNS_TOKEN)) {
-                pushToken(&result, TokenType_Returns, symbol);
-            } else if(stringMatch(symbol, MEMORY_TOKEN)) {
-                pushToken(&result, TokenType_Memory, symbol);
-            } else if(stringMatch(symbol, WHILE_TOKEN)) {
-                pushToken(&result, TokenType_While, symbol);
-            } else if(stringMatch(symbol, FOR_TOKEN)) {
-                pushToken(&result, TokenType_For, symbol);
-            } else if(stringMatch(symbol, NEW_TOKEN)) {
-                pushToken(&result, TokenType_New, symbol);
-            } else if(stringMatch(symbol, IMPORT_TOKEN)) {
-                pushToken(&result, TokenType_Import, symbol);
-            } else if(stringMatch(symbol, AS_TOKEN)) {
-                pushToken(&result, TokenType_As, symbol);
-            } else if(stringMatch(symbol, IS_TOKEN)) {
-                pushToken(&result, TokenType_Is, symbol);
-            } else if(stringMatch(symbol, FROM_TOKEN)) {
-                pushToken(&result, TokenType_From, symbol);
-            } else if(stringMatch(symbol, EXTERNAL_TOKEN)) {
-                pushToken(&result, TokenType_External, symbol);
-            } else if(stringMatch(symbol, VIEW_TOKEN)) {
-                pushToken(&result, TokenType_View, symbol);
-            } else if(stringMatch(symbol, PUBLIC_TOKEN)) {
-                pushToken(&result, TokenType_Public, symbol);
-            } else if(stringMatch(symbol, OVERRIDE_TOKEN)) {
-                pushToken(&result, TokenType_Override, symbol);
-            } else if(stringMatch(symbol, VIRTUAL_TOKEN)) {
-                pushToken(&result, TokenType_Virtual, symbol);
-            } else if(stringMatch(symbol, MODIFIER_TOKEN)) {
-                pushToken(&result, TokenType_Modifier, symbol);
-            } else if(stringMatch(symbol, FALLBACK_TOKEN)) {
-                pushToken(&result, TokenType_Fallback, symbol);
-            } else if(stringMatch(symbol, RECEIVE_TOKEN)) {
-                pushToken(&result, TokenType_Receive, symbol);
-            } else if(stringMatch(symbol, ENUM_TOKEN)) {
-                pushToken(&result, TokenType_Enum, symbol);
-            } else if(stringMatch(symbol, TYPE_TOKEN)) {
-                pushToken(&result, TokenType_Type, symbol);
-            } else if(stringMatch(symbol, INDEXED_TOKEN)) {
-                pushToken(&result, TokenType_Indexed, symbol);
-            } else if(stringMatch(symbol, EVENT_TOKEN)) {
-                pushToken(&result, TokenType_Event, symbol);
-            } else if(stringMatch(symbol, ANONYMOUS_TOKEN)) {
-                pushToken(&result, TokenType_Anonymous, symbol);
-            } else if(stringMatch(symbol, ERROR_TOKEN)) {
-                pushToken(&result, TokenType_Error, symbol);
-            } else if(stringMatch(symbol, USING_TOKEN)) {
-                pushToken(&result, TokenType_Using, symbol);
-            } else if(stringMatch(symbol, GLOBAL_TOKEN)) {
-                pushToken(&result, TokenType_Global, symbol);
-            } else if(stringMatch(symbol, DELETE_TOKEN)) {
-                pushToken(&result, TokenType_Delete, symbol);
-            } else if(stringMatch(symbol, TRUE_TOKEN)) {
-                pushToken(&result, TokenType_True, symbol);
-            } else if(stringMatch(symbol, FALSE_TOKEN)) {
-                pushToken(&result, TokenType_False, symbol);
-            } else if(stringMatch(symbol, UNCHECKED_TOKEN)) {
-                pushToken(&result, TokenType_Unchecked, symbol);
-            } else if(stringMatch(symbol, IF_TOKEN)) {
-                pushToken(&result, TokenType_If, symbol);
-            } else if(stringMatch(symbol, ELSE_TOKEN)) {
-                pushToken(&result, TokenType_Else, symbol);
-            } else if(stringMatch(symbol, DO_TOKEN)) {
-                pushToken(&result, TokenType_Do, symbol);
-            } else if(stringMatch(symbol, CONTINUE_TOKEN)) {
-                pushToken(&result, TokenType_Continue, symbol);
-            } else if(stringMatch(symbol, BREAK_TOKEN)) {
-                pushToken(&result, TokenType_Break, symbol);
-            } else if(stringMatch(symbol, TRY_TOKEN)) {
-                pushToken(&result, TokenType_Try, symbol);
-            } else if(stringMatch(symbol, CATCH_TOKEN)) {
-                pushToken(&result, TokenType_Catch, symbol);
-            } else if(stringMatch(symbol, EMIT_TOKEN)) {
-                pushToken(&result, TokenType_Emit, symbol);
-            } else if(stringMatch(symbol, REVERT_TOKEN)) {
-                pushToken(&result, TokenType_Revert, symbol);
-            } else if(stringMatch(symbol, ASSEMBLY_TOKEN)) {
-                pushToken(&result, TokenType_Assembly, symbol);
-            } else if(stringMatch(symbol, PRAGMA_TOKEN)) {
-                pushToken(&result, TokenType_Pragma, symbol);
-            } else if(stringMatch(symbol, MAPPING_TOKEN)) {
-                pushToken(&result, TokenType_Mapping, symbol);
-            } else if(stringMatch(symbol, STORAGE_TOKEN)) {
-                pushToken(&result, TokenType_Storage, symbol);
-            } else if(stringMatch(symbol, CALLDATA_TOKEN)) {
-                pushToken(&result, TokenType_Calldata, symbol);
-            } else if(stringMatch(symbol, WEI_TOKEN)) {
-                pushToken(&result, TokenType_Wei, symbol);
-            } else if(stringMatch(symbol, GWEI_TOKEN)) {
-                pushToken(&result, TokenType_Gwei, symbol);
-            } else if(stringMatch(symbol, ETHER_TOKEN)) {
-                pushToken(&result, TokenType_Ether, symbol);
-            } else if(stringMatch(symbol, SECONDS_TOKEN)) {
-                pushToken(&result, TokenType_Seconds, symbol);
-            } else if(stringMatch(symbol, MINUTES_TOKEN)) {
-                pushToken(&result, TokenType_Minutes, symbol);
-            } else if(stringMatch(symbol, HOURS_TOKEN)) {
-                pushToken(&result, TokenType_Hours, symbol);
-            } else if(stringMatch(symbol, DAYS_TOKEN)) {
-                pushToken(&result, TokenType_Days, symbol);
-            } else if(stringMatch(symbol, WEEKS_TOKEN)) {
-                pushToken(&result, TokenType_Weeks, symbol);
-            } else if(stringMatch(symbol, YEARS_TOKEN)) {
-                pushToken(&result, TokenType_Years, symbol);
-            } else if(stringMatch(symbol, CONSTRUCTOR_TOKEN)) {
-                pushToken(&result, TokenType_Constructor, symbol);
-            } else {
-                pushToken(&result, TokenType_Symbol, symbol);
-            }
+            TokenType tokenType = categorizeSymbol(symbol);
+            pushToken(&result, tokenType, symbol);
         } else if(byte == '/') {
             u8 nextByte = peekByte(&c);
 
