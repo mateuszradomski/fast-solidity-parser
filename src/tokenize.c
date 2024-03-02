@@ -182,7 +182,6 @@ typedef enum TokenType {
     TokenType_StringLit,
     TokenType_NumberLit,
     TokenType_HexNumberLit,
-    TokenType_BinNumberLit,
     TokenType_Comment,
     TokenType_Constructor,
     TokenType_EOF,
@@ -334,7 +333,6 @@ tokenTypeToString(TokenType tokenType) {
         case TokenType_StringLit: return LIT_TO_STR("StringLit");
         case TokenType_NumberLit: return LIT_TO_STR("NumberLit");
         case TokenType_HexNumberLit: return LIT_TO_STR("HexNumberLit");
-        case TokenType_BinNumberLit: return LIT_TO_STR("BinNumberLit");
         case TokenType_Comment: return LIT_TO_STR("Comment");
         case TokenType_Constructor: return LIT_TO_STR("Constructor");
         case TokenType_Count: return LIT_TO_STR("Count");
@@ -453,23 +451,6 @@ tokenizeNumberLiteral(ByteConsumer *c, u8 byte) {
 
         return (Token) {
             .type = TokenType_HexNumberLit,
-            .string = symbol,
-        };
-    } else if(byte == '0' && nextByte == 'b') {
-        String symbol = { .data = c->head - 1, .size = 2 };
-        consumeByte(c);
-        while(consumerGood(c)) {
-            u8 nextByte = peekByte(c);
-            if(isBinDigit(nextByte)) {
-                symbol.size += 1;
-                consumeByte(c);
-            } else {
-                break;
-            }
-        }
-
-        return (Token) {
-            .type = TokenType_BinNumberLit,
             .string = symbol,
         };
     } else {
