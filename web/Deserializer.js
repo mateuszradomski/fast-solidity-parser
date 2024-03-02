@@ -748,8 +748,9 @@ class Deserializer {
     popFunctionDefinition() {
         const name = this.popString();
         const parameters = this.popFunctionParameters();
-        const visibility = this.popU32();
-        const stateMutability = this.popU32();
+        const visibility = this.popU16();
+        const stateMutability = this.popU16();
+        const isVirtual = this.popU16();
         const returnParameters = this.popFunctionParameters();
         const hasBody = this.popU32();
 
@@ -770,7 +771,7 @@ class Deserializer {
             isConstructor: false,
             isReceiveEther: false,
             isFallback: false,
-            isVirtual: false,
+            isVirtual: isVirtual == 1,
             stateMutability: this.stateMutabilityString[stateMutability]
         }
     }

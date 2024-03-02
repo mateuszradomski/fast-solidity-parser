@@ -184,8 +184,9 @@ typedef struct ASTNodeTerneryExpression {
 typedef struct ASTNodeFunctionDefinition {
     TokenId name;
     FunctionParameterList parameters;
-    u16 visibility;
-    u16 stateMutability;
+    u8 visibility;
+    u8 stateMutability;
+    u8 virtual;
     FunctionParameterList returnParameters;
     ASTNode *body;
 } ASTNodeFunctionDefinition;
@@ -1586,6 +1587,12 @@ parseFunction(Parser *parser, ASTNode *node) {
         function->stateMutability = 0;
     }
 
+    if(acceptToken(parser, TokenType_Virtual)) {
+        function->virtual = 1;
+    } else {
+        function->virtual = 0;
+    }
+
     if(acceptToken(parser, TokenType_Returns)) {
         expectToken(parser, TokenType_LParen);
         do {
@@ -1681,10 +1688,6 @@ parseLibrary(Parser *parser, ASTNode *node) {
     ASTNodeLibraryDefintion *library = &node->libraryDefintionNode;
 
     library->name = parseIdentifier(parser);
-
-    if(acceptToken(parser, TokenType_Is)) {
-        assert(0);
-    }
 
     expectToken(parser, TokenType_LBrace);
     while(!acceptToken(parser, TokenType_RBrace)) {

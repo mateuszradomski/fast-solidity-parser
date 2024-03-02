@@ -484,8 +484,9 @@ pushFunctionDefinition(Serializer *s, ASTNode *node) {
     l += pushTokenStringById(s, function->name);
 
     l += pushFunctionParameters(s, &function->parameters);
-    l += pushU32(s, function->visibility);
-    l += pushU32(s, function->stateMutability);
+    l += pushU16(s, function->visibility);
+    l += pushU16(s, function->stateMutability);
+    l += pushU16(s, function->virtual);
     l += pushFunctionParameters(s, &function->returnParameters);
     l += pushU32(s, function->body != 0x0);
 

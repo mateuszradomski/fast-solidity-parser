@@ -4208,13 +4208,13 @@ contract PayableAddress {
 //         emit MyEvent("from A");
 //     }
 // }
-// 
-// contract VirtualB {
-//     function funA() public virtual {
-//         //does nothing
-//     }
-// }
-// 
+
+contract VirtualB {
+    function funA() public virtual {
+        //does nothing
+    }
+}
+
 // contract VirtualOverdide is VirtualA, VirtualB {
 //     function funA() public override(VirtualB,VirtualA) {
 //         emit MyEvent("from B");
