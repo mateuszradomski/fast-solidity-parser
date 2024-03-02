@@ -1791,11 +1791,7 @@ parseContract(Parser *parser, ASTNode *node) {
         } else {
             ASTNode *type = structPush(parser->arena, ASTNode);
             parseType(parser, type);
-            if(acceptToken(parser, TokenType_Constant)) {
-                parseConstVariable(parser, &element->node, type);
-            } else {
-                parseStateVariableDeclaration(parser, &element->node, type);
-            }
+            parseStateVariableDeclaration(parser, &element->node, type);
         }
 
         SLL_QUEUE_PUSH(contract->elements.head, contract->elements.last, element);
