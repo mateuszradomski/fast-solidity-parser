@@ -42,6 +42,15 @@ pushU32(Serializer *s, u32 value) {
 }
 
 static u32
+popU32(Serializer *s) {
+    if(s->head) {
+        *s->head -= sizeof(u32);
+    }
+
+    return -sizeof(u32);
+}
+
+static u32
 pushTokenStringById(Serializer *s, TokenId token) {
     if(s->head) {
         if(token == INVALID_TOKEN_ID) {
@@ -165,7 +174,18 @@ pushExpression(Serializer *s, ASTNode *node) {
             }
         } break;
         case ASTNodeType_BaseType: {
-            l += pushType(s, node);
+            Token token = getToken(s->tokens, node->baseTypeNode.typeName);
+
+            // NOTE(radomski): @HACK: the solidity parser when parsing
+            // `address(this)` will not return the address as a type name but
+            // as an identifier.
+            if(stringMatch(token.string, LIT_TO_STR("address"))) {
+                l += popU32(s);
+                l += pushU32(s, ASTNodeType_IdentifierExpression);
+                l += pushTokenStringById(s, node->baseTypeNode.typeName);
+            } else {
+                l += pushType(s, node);
+            }
         } break;
         case ASTNodeType_MemberAccessExpression: {
             ASTNodeMemberAccessExpression *member = &node->memberAccessExpressionNode;

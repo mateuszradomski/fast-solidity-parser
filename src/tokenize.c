@@ -666,12 +666,12 @@ tokenize(String source, Arena *arena) {
         } else if(isDigit(byte)) {
             u8 nextByte = peekByte(&c);
 
-            if(byte == '0' && nextByte == 'x') {
+            if(byte == '0' && (nextByte == 'x' || nextByte == 'X')) {
                 String symbol = { .data = c.head - 1, .size = 2 };
                 consumeByte(&c);
                 while(consumerGood(&c)) {
                     u8 nextByte = peekByte(&c);
-                    if(isHexDigit(nextByte)) {
+                    if(isHexDigit(nextByte) || nextByte == '_') {
                         symbol.size += 1;
                         consumeByte(&c);
                     } else {

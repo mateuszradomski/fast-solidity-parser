@@ -83,6 +83,7 @@ class Deserializer {
         this.offset = 0;
 
         this.operatorStrings = {
+            39: "delete",
             66: "!",
             67: "+",
             68: "-",

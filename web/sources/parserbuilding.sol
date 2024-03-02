@@ -3911,3 +3911,154 @@ contract C {
         (uint256 a) = 3;
     }
 }
+
+contract test {
+  function fun() {
+    uint x = new uint64[](3);
+  }
+}
+contract test {
+    function f() {
+        uint a = +10;
+        a--;
+
+        a = ~a;
+        delete a;
+
+        bool b = !true;
+    }
+}
+
+// contract C {
+//     struct s { uint a; }
+//     using Lib for uint;
+//     using Lib for *;
+//     using Lib for s;
+// 
+//     function f() {
+//     }
+// }
+
+contract test {
+    function fun(uint256 a) {
+        uint256 c;
+        mapping(address=>bytes32) d;
+    }
+}
+contract test {
+    function fun(uint256 a) {
+        uint256 c = 0x87;
+        uint256 d = 0X78;
+        mapping(address=>bytes32) d;
+        bytes32 name = "Solidity";
+    }
+}
+contract c {
+    uint private a;
+    uint internal b;
+    uint public c;
+    uint d;
+    function f() {}
+    function f_priv() private {}
+    function f_public() public {}
+    function f_internal() internal {}
+}
+contract test {
+    function fun(uint256 a) {
+        while (true) { uint256 x = 1; break; continue; } x = 9;
+    }
+}
+contract test {
+  function f() view {
+    return 2;
+  }
+  function g() pure {
+    return 2;
+  }
+}
+
+contract test {
+  function f() {
+    uint256 a = 2.3e5;
+    uint256 a = 230e-1;
+  }
+}
+
+//contract test {
+//  function f() {
+//    uint256 a;
+//    (a,) = g();
+//    (,) = g();
+//    () = ();
+//  }
+//}
+
+// contract test {
+//     function() {
+//         emit EventCalled(1, 2, 3);
+//     }
+// }
+// 
+// contract test {
+//     constructor(uint a, uint b) withModifier {}
+// }
+// 
+// contract test {
+//     constructor(uint a, uint b) withModifier public {}
+// }
+
+contract test {
+  function asjdf () payable {
+    (bytes32 a, uint b) = foo();
+  }
+}
+
+// contract test {
+//   uint x = 0.1 ether;
+// }
+
+contract test {
+  function asd() {
+    type(Proxy).creationCode;
+  }
+}
+
+contract test {
+  uint x = 1000000;
+  int x2 = -1000000;
+  int x3 = -1000000 * 200;
+  //uint y = .25;
+  //uint y2 = 0.25;
+  //uint y3 = 10.25;
+  //uint y4 = 100.25;
+  //uint y5 = 0.0025 * 1e18;
+  uint y6 = 1000000e-2;
+  uint z = 0x11_22;
+  uint z2 = 0x1122;
+}
+
+contract test {
+  function _finalization() internal {
+    if (goalReached()) {
+      _escrow.close();
+      _escrow.beneficiaryWithdraw();
+    } else {
+      _escrow.enableRefunds();
+    }
+
+    super._finalization();
+  }
+}
+
+contract Sharer {
+    function sendHalf(address payable addr) public payable returns (uint balance) {
+        require(msg.value % 2 == 0, "Even value required.");
+        uint balanceBeforeTransfer = address(this).balance;
+        addr.transfer(msg.value / 2);
+        // Since transfer throws an exception on failure and
+        // cannot call back here, there should be no way for us to
+        // still have half of the money.
+        assert(address(this).balance == balanceBeforeTransfer - msg.value / 2);
+        return address(this).balance;
+    }
+}

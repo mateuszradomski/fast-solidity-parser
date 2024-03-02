@@ -1056,6 +1056,7 @@ isUnaryOperator(TokenType type) {
         case TokenType_New:
         case TokenType_Exclamation:
         case TokenType_Minus:
+        case TokenType_Plus:
         case TokenType_Tylde:
         case TokenType_PlusPlus:
         case TokenType_MinusMinus:
@@ -1070,6 +1071,7 @@ getUnaryOperatorPrecedence(TokenType type) {
         case TokenType_New: return -1;
         case TokenType_Exclamation:
         case TokenType_Minus:
+        case TokenType_Plus:
         case TokenType_Tylde:
         case TokenType_PlusPlus:
         case TokenType_MinusMinus:
