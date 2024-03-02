@@ -46,6 +46,7 @@ const ASTNodeType_UncheckedBlockStatement = 45
 const ASTNodeType_ModifierDefinition = 46
 const ASTNodeType_FallbackFunction = 47
 const ASTNodeType_ReceiveFunction = 48
+const ASTNodeType_EmitStatement = 49
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -554,6 +555,13 @@ class Deserializer {
             return {
                 type: "RevertStatement",
                 revertCall,
+            }
+        } else if(type === ASTNodeType_EmitStatement) {
+            const eventCall = this.popExpression();
+
+            return {
+                type: "EmitStatement",
+                eventCall,
             }
         } else {
             throw new Error("Unknown/Unsupported statement kind " + type)

@@ -4027,12 +4027,12 @@ contract test {
 //  }
 //}
 
-// contract test {
-//     function() {
-//         emit EventCalled(1, 2, 3);
-//     }
-// }
-// 
+contract test {
+    function f() {
+        emit EventCalled(1, 2, 3);
+    }
+}
+
 // contract test {
 //     constructor(uint a, uint b) withModifier {}
 // }
@@ -4214,13 +4214,13 @@ contract PayableAddress {
     }
 }
 
-// contract VirtualA {
-//     GlobalBaseStruct base;
-//     event MyEvent(string _myString);
-//     function funA() public virtual {
-//         emit MyEvent("from A");
-//     }
-// }
+contract VirtualA {
+    GlobalBaseStruct base;
+    event MyEvent(string _myString);
+    function funA() public virtual {
+        emit MyEvent("from A");
+    }
+}
 
 contract VirtualB {
     function funA() public virtual {

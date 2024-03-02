@@ -48,6 +48,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_ModifierDefinition,
     ASTNodeType_FallbackFunction,
     ASTNodeType_ReceiveFunction,
+    ASTNodeType_EmitStatement,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -264,6 +265,10 @@ typedef struct ASTNodeRevertStatement {
     ASTNodeList argumentNames;
 } ASTNodeRevertStatement;
 
+typedef struct ASTNodeEmitStatement {
+    ASTNode *expression;
+} ASTNodeEmitStatement;
+
 typedef struct ASTNode {
     ASTNodeType type;
 
@@ -319,6 +324,7 @@ typedef struct ASTNode {
         ASTNodeLibraryDefintion libraryDefintionNode;
         ASTNodeRevertStatement revertStatementNode;
         ASTNodeForStatement forStatementNode;
+        ASTNodeEmitStatement emitStatementNode;
     };
 } ASTNode;
 
@@ -1486,6 +1492,12 @@ parseStatement(Parser *parser, ASTNode *node) {
         expectToken(parser, TokenType_Semicolon);
     } else if(acceptToken(parser, TokenType_Continue)) {
         node->type = ASTNodeType_ContinueStatement;
+        expectToken(parser, TokenType_Semicolon);
+    } else if(acceptToken(parser, TokenType_Emit)) {
+        node->type = ASTNodeType_EmitStatement;
+        node->emitStatementNode.expression = structPush(parser->arena, ASTNode);
+        parseExpression(parser, node->emitStatementNode.expression);
+        assert(node->emitStatementNode.expression->type == ASTNodeType_FunctionCallExpression);
         expectToken(parser, TokenType_Semicolon);
     } else if(acceptToken(parser, TokenType_Comment)) {
         return false;

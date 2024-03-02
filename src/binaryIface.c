@@ -330,6 +330,11 @@ pushStatement(Serializer *s, ASTNode *node) {
 
             l += pushExpression(s, statement->expression);
         } break;
+        case ASTNodeType_EmitStatement: {
+            ASTNodeEmitStatement *statement = &node->emitStatementNode;
+
+            l += pushExpression(s, statement->expression);
+        } break;
         case ASTNodeType_BreakStatement:
         case ASTNodeType_ContinueStatement: {
         } break;
