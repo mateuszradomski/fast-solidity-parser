@@ -535,6 +535,12 @@ pushFunctionDefinition(Serializer *s, ASTNode *node) {
     }
 
     l += pushFunctionParameters(s, &function->returnParameters);
+    l += pushU32(s, function->modifiers.count);
+    ASTNodeLink *override = function->modifiers.head;
+    for(u32 i = 0; i < function->modifiers.count; i++, override = override->next) {
+        l += pushType(s, &override->node);
+    }
+
     l += pushU32(s, function->body != 0x0);
 
     if(function->body != 0x0) {

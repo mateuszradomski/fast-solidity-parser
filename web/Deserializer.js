@@ -831,10 +831,19 @@ class Deserializer {
             }
         }
 
-
         const returnParameters = this.popFunctionParameters();
-        const hasBody = this.popU32();
+        const modifierCount = this.popU32();
+        const modifiers = []
+        for(let i = 0; i < modifierCount; i++) {
+            const name = this.popType().namePath;
+            modifiers.push({
+               type: "ModifierInvocation",
+               name,
+               arguments: null
+            })
+        }
 
+        const hasBody = this.popU32();
         let body = null;
         if(hasBody) {
             body = this.popStatement();
@@ -847,7 +856,7 @@ class Deserializer {
             returnParameters,
             body,
             visibility: this.visibilityString[visibility],
-            modifiers: [],
+            modifiers,
             override,
             isConstructor: false,
             isReceiveEther: false,

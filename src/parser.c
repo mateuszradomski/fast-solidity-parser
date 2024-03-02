@@ -206,6 +206,7 @@ typedef struct ASTNodeFunctionDefinition {
     u8 virtual;
     u8 override;
     ASTNodeList overrides;
+    ASTNodeList modifiers;
     FunctionParameterList returnParameters;
     ASTNode *body;
 } ASTNodeFunctionDefinition;
@@ -1740,6 +1741,18 @@ parseFunction(Parser *parser, ASTNode *node) {
             function->override = 1;
             parseOverrideSpecifierArgs(parser, &function->overrides);
         } else {
+            ASTNode testExpression = { 0 };
+            bool isSuccess = parseType(parser, &testExpression);
+            if(isSuccess) {
+                assert(testExpression.type == ASTNodeType_IdentifierPath);
+                ASTNodeLink *link = structPush(parser->arena, ASTNodeLink);
+                link->node = testExpression;
+
+                SLL_QUEUE_PUSH(function->modifiers.head, function->modifiers.last, link);
+                function->modifiers.count += 1;
+                continue;
+            }
+
             break;
         }
     }
