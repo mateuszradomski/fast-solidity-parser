@@ -622,6 +622,7 @@ pushASTNode(Serializer *s, ASTNode *node) {
         case ASTNodeType_ModifierDefinition: {
             l = pushModifierDefinition(s, node);
         } break;
+        case ASTNodeType_InterfaceDefinition:
         case ASTNodeType_LibraryDefinition:
         case ASTNodeType_ContractDefinition: {
             l = pushContractDefinition(s, node);

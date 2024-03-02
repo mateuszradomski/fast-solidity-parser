@@ -49,6 +49,7 @@ const ASTNodeType_ReceiveFunction = 48
 const ASTNodeType_EmitStatement = 49
 const ASTNodeType_ConstructorDefinition = 50
 const ASTNodeType_NamedParametersExpression = 51
+const ASTNodeType_InterfaceDefinition = 52
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -946,6 +947,10 @@ class Deserializer {
         } else if(type === ASTNodeType_LibraryDefinition) {
             const result = this.popContractDefinition();
             result.kind = "library"
+            return result
+        } else if(type === ASTNodeType_InterfaceDefinition) {
+            const result = this.popContractDefinition();
+            result.kind = "interface"
             return result
         } else if(type === ASTNodeType_ConstructorDefinition) {
             return this.popConstructorDefinition();
