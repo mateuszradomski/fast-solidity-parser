@@ -4150,7 +4150,7 @@ contract C {
 
     function createAndEndowD(uint arg, uint amount) public payable {
         // Send ether along with the creation
-        // D newD = new D{value: amount}(arg);
+        D newD = new D{value: amount}(arg);
         newD.x();
     }
 }
@@ -4168,7 +4168,7 @@ contract C {
         /// can be pre-computed. It is just there for illustration.
         /// You actually only need ``new D{salt: salt}(arg)``.
         address predictedAddress = address(bytes20(keccak256(abi.encodePacked(
-            // byte(0xff), // this also is stupido!!
+            // byte(0xff), // TODO: this also is stupido!!
             address(0xff),
             address(this),
             salt,
@@ -4178,7 +4178,7 @@ contract C {
             ))
         ))));
 
-        // D d = new D{salt: salt}(arg);
+        D d = new D{salt: salt}(arg);
         require(address(d) == predictedAddress);
     }
 }
@@ -4300,14 +4300,15 @@ contract Base2
 //    // override it
 //    function foo() public override(Base1, Base2) {}
 //}
-//
-//contract CallWithNameValue {
-//  function foo() {
-//    recipient.call("");
-//    recipient.call{value: 1}("");
-//    recipient.call{value: 1, gas: 1000}("");
-//  }
-//}
+
+contract CallWithNameValue {
+  function foo() {
+    recipient.call("");
+    // recipient.call{}(""); // TODO(radomski): Is this valid solidity
+    recipient.call{value: 1}("");
+    recipient.call{value: 1, gas: 1000}("");
+  }
+}
 
 contract FunctionsNamedAsKeywords {
   function receive() {}

@@ -48,6 +48,7 @@ const ASTNodeType_FallbackFunction = 47
 const ASTNodeType_ReceiveFunction = 48
 const ASTNodeType_EmitStatement = 49
 const ASTNodeType_ConstructorDefinition = 50
+const ASTNodeType_NamedParametersExpression = 51
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -437,6 +438,30 @@ class Deserializer {
                 condition,
                 trueExpression,
                 falseExpression,
+            }
+        } else if(type === ASTNodeType_NamedParametersExpression) {
+            const expression = this.popExpression();
+            const count = this.popU32();
+
+            const names = []
+            const identifiers = []
+            const parameters = []
+            for(let i = 0; i < count; i++) {
+                const name = this.popString()
+                names.push(name);
+                identifiers.push(stringToIdentifier(name))
+                parameters.push(this.popExpression());
+            }
+
+            return {
+                type: "NameValueExpression",
+                expression,
+                arguments: {
+                    type: "NameValueList",
+                    names,
+                    identifiers,
+                    arguments: parameters,
+                }
             }
         } else {
             throw new Error(`Unknown/Unsupported expression type: ${type}`);

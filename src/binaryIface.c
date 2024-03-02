@@ -231,6 +231,17 @@ pushExpression(Serializer *s, ASTNode *node) {
             l += pushExpression(s, ternery->trueExpression);
             l += pushExpression(s, ternery->falseExpression);
         } break;
+        case ASTNodeType_NamedParameterExpression: {
+            ASTNodeNamedParametersExpression *named = &node->namedParametersExpressionNode;
+            l += pushExpression(s, named->expression);
+
+            l += pushU32(s, named->names.count);
+            ASTNodeLink *expression = named->expressions.head;
+            for(u32 i = 0; i < named->expressions.count; i++, expression = expression->next) {
+                l += pushTokenStringById(s, listGetTokenId(&named->names, i));
+                l += pushExpression(s, &expression->node);
+            }
+        } break;
         default: {
             javascriptPrintNumber(node->type);
             javascriptPrintString("here");

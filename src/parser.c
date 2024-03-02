@@ -50,6 +50,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_ReceiveFunction,
     ASTNodeType_EmitStatement,
     ASTNodeType_ConstructorDefinition,
+    ASTNodeType_NamedParameterExpression,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -278,6 +279,12 @@ typedef struct ASTNodeConstructorDefinition {
     ASTNode *body;
 } ASTNodeConstructorDefinition;
 
+typedef struct ASTNodeNamedParametersExpression {
+    ASTNode *expression;
+    TokenIdList names;
+    ASTNodeList expressions;
+} ASTNodeNamedParametersExpression;
+
 typedef struct ASTNode {
     ASTNodeType type;
 
@@ -319,6 +326,7 @@ typedef struct ASTNode {
         ASTNodeArrayAccessExpression arrayAccessExpressionNode;
         ASTNodeArraySliceExpression arraySliceExpressionNode;
         ASTNodeTerneryExpression terneryExpressionNode;
+        ASTNodeNamedParametersExpression namedParametersExpressionNode;
         ASTNodeFunctionDefinition functionDefinitionNode;
         ASTNodeBlockStatement blockStatementNode;
         ASTNodeUncheckedBlockStatement uncheckedBlockStatementNode;
@@ -1015,6 +1023,7 @@ isOperator(TokenType type) {
         case TokenType_MinusMinus:
         case TokenType_Dot:
         case TokenType_LParen:
+        case TokenType_LBrace:
         case TokenType_LBracket:
         case TokenType_StarStar:
         case TokenType_Star:
@@ -1059,6 +1068,7 @@ getOperatorPrecedence(TokenType type) {
         case TokenType_MinusMinus:
         case TokenType_Dot:
         case TokenType_LParen:
+        case TokenType_LBrace:
         case TokenType_LBracket: return -1;
         case TokenType_StarStar: return -3;
         case TokenType_Star:
@@ -1284,6 +1294,33 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
                 node->arraySliceExpressionNode.leftFenceExpression = firstExpression;
                 node->arraySliceExpressionNode.rightFenceExpression = secondExpression;
             }
+            continue;
+        } else if(type == TokenType_LBrace) {
+            ASTNode *expression = structPush(parser->arena, ASTNode);
+            *expression = *node;
+
+            memset(node, 0, sizeof(ASTNode));
+            node->type = ASTNodeType_NamedParameterExpression;
+            node->namedParametersExpressionNode.expression = expression;
+
+            //while(!acceptToken(parser, TokenType_RBrace)) {
+            do {
+                TokenId identifier = parseIdentifier(parser);
+                assert(identifier != INVALID_TOKEN_ID);
+                listPushTokenId(&node->namedParametersExpressionNode.names, identifier, parser->arena);
+
+                expectToken(parser, TokenType_Colon);
+
+                ASTNodeLink *expression = structPush(parser->arena, ASTNodeLink);
+                parseExpressionImpl(parser, &expression->node, 0);
+
+                SLL_QUEUE_PUSH(node->namedParametersExpressionNode.expressions.head,
+                               node->namedParametersExpressionNode.expressions.last,
+                               expression);
+                node->namedParametersExpressionNode.expressions.count += 1;
+            } while(acceptToken(parser, TokenType_Comma));
+
+            expectToken(parser, TokenType_RBrace);
             continue;
         } else if(type == TokenType_Dot) {
             ASTNode *expression = structPush(parser->arena, ASTNode);
