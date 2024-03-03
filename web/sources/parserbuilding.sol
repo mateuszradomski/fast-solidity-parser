@@ -3869,7 +3869,7 @@ contract c {
 contract c {
     modifier mod1(address a) { if (msg.sender == a) _; }
     modifier mod2 { if (msg.sender == 2) _; }
-    function f() mod2 { }
+    function f() mod1 mod2 { }
     // function f() mod1(7) mod2 { }
 }
 contract derived is foo(2), bar("abc", "def") {
@@ -3963,15 +3963,15 @@ contract test {
     }
 }
 
-// contract C {
-//     struct s { uint a; }
-//     using Lib for uint;
-//     using Lib for *;
-//     using Lib for s;
-// 
-//     function f() {
-//     }
-// }
+contract C {
+    struct s { uint a; }
+    // using Lib for uint;
+    // using Lib for *;
+    // using Lib for s;
+
+    function f() {
+    }
+}
 
 contract test {
     function fun(uint256 a) {
