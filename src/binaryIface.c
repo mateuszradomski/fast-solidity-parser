@@ -194,7 +194,10 @@ pushExpression(Serializer *s, ASTNode *node) {
             l += pushU32(s, tuple->elements.count);
             ASTNodeLink *element = tuple->elements.head;
             for(u32 i = 0; i < tuple->elements.count; i++, element = element->next) {
-                l += pushExpression(s, &element->node);
+                l += pushU16(s, element->node.type != ASTNodeType_None);
+                if(element->node.type != ASTNodeType_None) {
+                    l += pushExpression(s, &element->node);
+                }
             }
         } break;
         case ASTNodeType_UnaryExpression:

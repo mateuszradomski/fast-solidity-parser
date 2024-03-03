@@ -7754,7 +7754,6 @@ contract PolygonRollupManager is
         // batchFee * (multiplierBatchFee ** _MAX_BATCH_MULTIPLIER)-->
         // (< 70 bits) * (< 128 bits) = < 256 bits
 
-        // TODO(radomski: Lower has weird precedense errors
         // Since all the following operations cannot overflow, we can optimize this operations with unchecked
         unchecked {
             if (totalBatchesBelowTarget < totalBatchesAboveTarget) {
@@ -10703,11 +10702,10 @@ contract StakingInfo is Ownable {
 
     modifier onlyValidatorContract(uint256 validatorId) {
         address _contract;
-        // TODO(radomski): comma with parens
-        // (, , , , , , _contract, ) = IStakeManagerLocal(
-        //     registry.getStakeManagerAddress()
-        // )
-        //    .validators(validatorId);
+        (, , , , , , _contract, ) = IStakeManagerLocal(
+            registry.getStakeManagerAddress()
+        )
+           .validators(validatorId);
         require(_contract == msg.sender,
         "Invalid sender, not validator");
         _;
@@ -10716,10 +10714,9 @@ contract StakingInfo is Ownable {
     modifier StakeManagerOrValidatorContract(uint256 validatorId) {
         address _contract;
         address _stakeManager = registry.getStakeManagerAddress();
-        // TODO(radomski): comma with parens
-        //(, , , , , , _contract, ) = IStakeManagerLocal(_stakeManager).validators(
-        //    validatorId
-        //);
+        (, , , , , , _contract, ) = IStakeManagerLocal(_stakeManager).validators(
+            validatorId
+        );
         require(_contract == msg.sender || _stakeManager == msg.sender,
         "Invalid sender, not stake manager or validator contract");
         _;
@@ -10929,17 +10926,16 @@ contract StakingInfo is Ownable {
         );
         address _contract;
         IStakeManagerLocal.Status status;
-        // TODO(radomski): parens
-        //(
-        //    amount,
-        //    reward,
-        //    activationEpoch,
-        //    deactivationEpoch,
-        //    ,
-        //    signer,
-        //    _contract,
-        //    status
-        //) = stakeManager.validators(validatorId);
+        (
+            amount,
+            reward,
+            activationEpoch,
+            deactivationEpoch,
+            ,
+            signer,
+            _contract,
+            status
+        ) = stakeManager.validators(validatorId);
         _status = uint256(status);
         if (_contract != address(0x0)) {
             reward += IStakeManagerLocal(_contract).validatorRewards();
@@ -10952,11 +10948,10 @@ contract StakingInfo is Ownable {
         returns (uint256 validatorStake)
     {
         address contractAddress;
-        // TODO(radomski): parens
-        //(validatorStake, , , , , , contractAddress, ) = IStakeManagerLocal(
-        //    registry.getStakeManagerAddress()
-        //)
-        //    .validators(validatorId);
+        (validatorStake, , , , , , contractAddress, ) = IStakeManagerLocal(
+            registry.getStakeManagerAddress()
+        )
+            .validators(validatorId);
         if (contractAddress != address(0x0)) {
             validatorStake += IStakeManagerLocal(contractAddress).activeAmount();
         }
@@ -10976,11 +10971,10 @@ contract StakingInfo is Ownable {
         view
         returns (address ValidatorContract)
     {
-        // TODO(radomski): here
-        //(, , , , , , ValidatorContract, ) = IStakeManagerLocal(
-        //    registry.getStakeManagerAddress()
-        //)
-        //    .validators(validatorId);
+        (, , , , , , ValidatorContract, ) = IStakeManagerLocal(
+            registry.getStakeManagerAddress()
+        )
+            .validators(validatorId);
     }
 
     // validator Share contract logging func
@@ -11079,10 +11073,9 @@ contract EventsHub is Initializable {
 
     modifier onlyValidatorContract(uint256 validatorId) {
         address _contract;
-        // TODO(radomski): parens
-        //(, , , , , , _contract) = IStakeManagerEventsHub(registry.getStakeManagerAddress()).validators(validatorId);
-        //require(_contract == msg.sender, "not validator");
-        //_;
+        (, , , , , , _contract) = IStakeManagerEventsHub(registry.getStakeManagerAddress()).validators(validatorId);
+        require(_contract == msg.sender, "not validator");
+        _;
     }
 
     modifier onlyStakeManager() {

@@ -370,7 +370,12 @@ class Deserializer {
             const elementCount = this.popU32();
             const elements = []
             for(let i = 0; i < elementCount; i++) {
-                elements.push(this.popExpression());
+                const hasElement = this.popU16();
+                if(hasElement === 1) {
+                    elements.push(this.popExpression());
+                } else {
+                    elements.push(null);
+                }
             }
 
             return {

@@ -1268,9 +1268,11 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
         if(!acceptToken(parser, TokenType_RParen)) {
             do {
                 ASTNodeLink *element = structPush(parser->arena, ASTNodeLink);
+                element->node.type = ASTNodeType_None;
 
-                parseExpressionImpl(parser, &element->node, 0);
-
+                if(!nextTokenIs(parser, TokenType_RParen) && !nextTokenIs(parser, TokenType_Comma)) {
+                    parseExpressionImpl(parser, &element->node, 0);
+                }
                 SLL_QUEUE_PUSH(node->tupleExpressionNode.elements.head, node->tupleExpressionNode.elements.last, element);
                 node->tupleExpressionNode.elements.count += 1;
             } while (acceptToken(parser, TokenType_Comma));
