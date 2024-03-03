@@ -295,6 +295,7 @@ typedef struct ASTNodeConstructorDefinition {
     u8 visibility;
     u8 stateMutability;
     u8 virtual;
+    ASTNodeList modifiers;
     ASTNode *body;
 } ASTNodeConstructorDefinition;
 
@@ -1964,6 +1965,18 @@ parseConstructor(Parser *parser, ASTNode *node) {
         } else if (acceptToken(parser, TokenType_Public)) {
             constructor->visibility = 4;
         } else {
+            ASTNode testExpression = { 0 };
+            bool isSuccess = parseType(parser, &testExpression);
+            if(isSuccess) {
+                assert(testExpression.type == ASTNodeType_IdentifierPath);
+                ASTNodeLink *link = structPush(parser->arena, ASTNodeLink);
+                parseModifierInvocation(parser, &link->node, &testExpression);
+
+                SLL_QUEUE_PUSH(constructor->modifiers.head, constructor->modifiers.last, link);
+                constructor->modifiers.count += 1;
+                continue;
+            }
+
             break;
         }
     }

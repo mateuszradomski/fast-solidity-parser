@@ -680,6 +680,15 @@ pushConstructorDefinition(Serializer *s, ASTNode *node) {
     l += pushFunctionParameters(s, &constructor->parameters);
     l += pushU16(s, constructor->visibility);
     l += pushU16(s, constructor->stateMutability);
+
+    l += pushU32(s, constructor->modifiers.count);
+    ASTNodeLink *it = constructor->modifiers.head;
+    for(u32 i = 0; i < constructor->modifiers.count; i++, it = it->next) {
+        ASTNodeModifierInvocation *invocation = &it->node.modifierInvocationNode;
+        l += pushType(s, invocation->identifier);
+        l += pushCallArgumentList(s, &invocation->argumentsExpression, &invocation->argumentsName);
+    }
+
     l += pushStatement(s, constructor->body);
 
     return l;

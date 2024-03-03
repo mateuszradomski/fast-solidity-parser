@@ -4049,13 +4049,13 @@ contract test {
     }
 }
 
-// contract test {
-//     constructor(uint a, uint b) withModifier {}
-// }
+contract test {
+    constructor(uint a, uint b) withModifier {}
+}
 
-// contract test {
-//     constructor(uint a, uint b) withModifier public {}
-// }
+contract test {
+    constructor(uint a, uint b) withModifier public {}
+}
 
 contract test {
   function asjdf () payable {
@@ -10040,8 +10040,7 @@ contract Registry is Governable {
     event PredicateRemoved(address indexed predicate, address indexed from);
     event ContractMapUpdated(bytes32 indexed key, address indexed previousContract, address indexed newContract);
 
-    // TODO(radomski): Some weird something
-    // constructor(address _governance) public Governable(_governance) {}
+    constructor(address _governance) public Governable(_governance) {}
 
     function updateContractMap(bytes32 _key, address _address) external onlyGovernance {
         emit ContractMapUpdated(_key, contractMap[_key], _address);

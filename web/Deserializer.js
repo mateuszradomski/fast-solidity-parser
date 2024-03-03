@@ -990,6 +990,19 @@ class Deserializer {
         const parameters = this.popFunctionParameters();
         const visibility = this.popU16();
         const stateMutability = this.popU16();
+
+        const modifierCount = this.popU32();
+        const modifiers = []
+        for(let i = 0; i < modifierCount; i++) {
+            const name = this.popType().namePath;
+            const [args, names] = this.popCallArgumentList();
+
+            modifiers.push({
+               type: "ModifierInvocation",
+               name,
+               arguments: args
+            })
+        }
         const body = this.popStatement();
 
         return {
@@ -999,7 +1012,7 @@ class Deserializer {
             returnParameters: null,
             body,
             visibility: this.visibilityString[visibility],
-            modifiers: [],
+            modifiers,
             override: null,
             isConstructor: true,
             isReceiveEther: false,
