@@ -4,7 +4,7 @@ SRC = src/wasmMain.c src/parser.c src/tokenize.c src/utils.c src/jsonIface.c src
 INCLUDES = -I./
 WASM_FLAGS = --target=wasm32 -nostdlib -Wl,--no-entry -Wl,--export-all -Wl,--allow-undefined -Wl,-z,stack-size=8388608
 DEBUG_FLAGS = -g -O0
-RELEASE_FLAGS = -O2 -DNDEBUG
+RELEASE_FLAGS = -O2 -DNDEBUG -msimd128
 
 .PHONY: all debug release
 
