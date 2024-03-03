@@ -4034,14 +4034,14 @@ contract test {
   }
 }
 
-//contract test {
-//  function f() {
-//    uint256 a;
-//    (a,) = g();
-//    (,) = g();
-//    () = ();
-//  }
-//}
+contract test {
+  function f() {
+    uint256 a;
+    (a,) = g();
+    (,) = g();
+    //() = (); // TODO(radomski): Should be one element, but is zero
+  }
+}
 
 contract test {
     function f() {
