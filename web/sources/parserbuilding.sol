@@ -8236,6 +8236,3516 @@ contract PolygonRollupManager is
         return rollupIDToRollupData[rollupID].pendingStateTransitions[batchNum];
     }
 }
+
+// SPDX-License-Identifier: AGPL-3.0
+pragma solidity 0.8.17;
+
+import "@openzeppelin/contracts-upgradeable/token/ERC20/utils/SafeERC20Upgradeable.sol";
+import "./interfaces/IVerifierRollup.sol";
+import "./interfaces/IPolygonZkEVMGlobalExitRoot.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import "./interfaces/IPolygonZkEVMBridge.sol";
+import "./lib/EmergencyManager.sol";
+import "./interfaces/IPolygonZkEVMErrors.sol";
+
+/**
+ * Contract responsible for managing the states and the updates of L2 network.
+ * There will be a trusted sequencer, which is able to send transactions.
+ * Any user can force some transaction and the sequencer will have a timeout to add them in the queue.
+ * The sequenced state is deterministic and can be precalculated before it's actually verified by a zkProof.
+ * The aggregators will be able to verify the sequenced state with zkProofs and therefore make available the withdrawals from L2 network.
+ * To enter and exit of the L2 network will be used a PolygonZkEVMBridge smart contract that will be deployed in both networks.
+ */
+contract PolygonZkEVM is
+    OwnableUpgradeable,
+    EmergencyManager,
+    IPolygonZkEVMErrors
+{
+    // using SafeERC20Upgradeable for IERC20Upgradeable;
+
+    /**
+     * @notice Struct which will be used to call sequenceBatches
+     * @param transactions L2 ethereum transactions EIP-155 or pre-EIP-155 with signature:
+     * EIP-155: rlp(nonce, gasprice, gasLimit, to, value, data, chainid, 0, 0,) || v || r || s
+     * pre-EIP-155: rlp(nonce, gasprice, gasLimit, to, value, data) || v || r || s
+     * @param globalExitRoot Global exit root of the batch
+     * @param timestamp Sequenced timestamp of the batch
+     * @param minForcedTimestamp Minimum timestamp of the force batch data, empty when non forced batch
+     */
+    struct BatchData {
+        bytes transactions;
+        bytes32 globalExitRoot;
+        uint64 timestamp;
+        uint64 minForcedTimestamp;
+    }
+
+    /**
+     * @notice Struct which will be used to call sequenceForceBatches
+     * @param transactions L2 ethereum transactions EIP-155 or pre-EIP-155 with signature:
+     * EIP-155: rlp(nonce, gasprice, gasLimit, to, value, data, chainid, 0, 0,) || v || r || s
+     * pre-EIP-155: rlp(nonce, gasprice, gasLimit, to, value, data) || v || r || s
+     * @param globalExitRoot Global exit root of the batch
+     * @param minForcedTimestamp Indicates the minimum sequenced timestamp of the batch
+     */
+    struct ForcedBatchData {
+        bytes transactions;
+        bytes32 globalExitRoot;
+        uint64 minForcedTimestamp;
+    }
+
+    /**
+     * @notice Struct which will be stored for every batch sequence
+     * @param accInputHash Hash chain that contains all the information to process a batch:
+     *  keccak256(bytes32 oldAccInputHash, keccak256(bytes transactions), bytes32 globalExitRoot, uint64 timestamp, address seqAddress)
+     * @param sequencedTimestamp Sequenced timestamp
+     * @param previousLastBatchSequenced Previous last batch sequenced before the current one, this is used to properly calculate the fees
+     */
+    struct SequencedBatchData {
+        bytes32 accInputHash;
+        uint64 sequencedTimestamp;
+        uint64 previousLastBatchSequenced;
+    }
+
+    /**
+     * @notice Struct to store the pending states
+     * Pending state will be an intermediary state, that after a timeout can be consolidated, which means that will be added
+     * to the state root mapping, and the global exit root will be updated
+     * This is a protection mechanism against soundness attacks, that will be turned off in the future
+     * @param timestamp Timestamp where the pending state is added to the queue
+     * @param lastVerifiedBatch Last batch verified batch of this pending state
+     * @param exitRoot Pending exit root
+     * @param stateRoot Pending state root
+     */
+    struct PendingState {
+        uint64 timestamp;
+        uint64 lastVerifiedBatch;
+        bytes32 exitRoot;
+        bytes32 stateRoot;
+    }
+
+    /**
+     * @notice Struct to call initialize, this saves gas because pack the parameters and avoid stack too deep errors.
+     * @param admin Admin address
+     * @param trustedSequencer Trusted sequencer address
+     * @param pendingStateTimeout Pending state timeout
+     * @param trustedAggregator Trusted aggregator
+     * @param trustedAggregatorTimeout Trusted aggregator timeout
+     */
+    struct InitializePackedParameters {
+        address admin;
+        address trustedSequencer;
+        uint64 pendingStateTimeout;
+        address trustedAggregator;
+        uint64 trustedAggregatorTimeout;
+    }
+
+    // Modulus zkSNARK
+    uint256 internal constant _RFIELD =
+        21888242871839275222246405745257275088548364400416034343698204186575808495617;
+
+    // Max transactions bytes that can be added in a single batch
+    // Max keccaks circuit = (2**23 / 155286) * 44 = 2376
+    // Bytes per keccak = 136
+    // Minimum Static keccaks batch = 2
+    // Max bytes allowed = (2376 - 2) * 136 = 322864 bytes - 1 byte padding
+    // Rounded to 300000 bytes
+    // In order to process the transaction, the data is approximately hashed twice for ecrecover:
+    // 300000 bytes / 2 = 150000 bytes
+    // Since geth pool currently only accepts at maximum 128kb transactions:
+    // https://github.com/ethereum/go-ethereum/blob/master/core/txpool/txpool.go#L54
+    // We will limit this length to be compliant with the geth restrictions since our node will use it
+    // We let 8kb as a sanity margin
+    uint256 internal constant _MAX_TRANSACTIONS_BYTE_LENGTH = 120000;
+
+    // Max force batch transaction length
+    // This is used to avoid huge calldata attacks, where the attacker call force batches from another contract
+    uint256 internal constant _MAX_FORCE_BATCH_BYTE_LENGTH = 5000;
+
+    // If a sequenced batch exceeds this timeout without being verified, the contract enters in emergency mode
+    uint64 internal constant _HALT_AGGREGATION_TIMEOUT = 1 weeks;
+
+    // Maximum batches that can be verified in one call. It depends on our current metrics
+    // This should be a protection against someone that tries to generate huge chunk of invalid batches, and we can't prove otherwise before the pending timeout expires
+    uint64 internal constant _MAX_VERIFY_BATCHES = 1000;
+
+    // Max batch multiplier per verification
+    uint256 internal constant _MAX_BATCH_MULTIPLIER = 12;
+
+    // Max batch fee value
+    uint256 internal constant _MAX_BATCH_FEE = 1000 ether;
+
+    // Min value batch fee
+    uint256 internal constant _MIN_BATCH_FEE = 1 gwei;
+
+    // Goldilocks prime field
+    uint256 internal constant _GOLDILOCKS_PRIME_FIELD = 0xFFFFFFFF00000001; // 2 ** 64 - 2 ** 32 + 1
+
+    // Max uint64
+    uint256 internal constant _MAX_UINT_64 = type(uint64).max; // 0xFFFFFFFFFFFFFFFF
+
+    // MATIC token address
+    IERC20Upgradeable public immutable matic;
+
+    // Rollup verifier interface
+    IVerifierRollup public immutable rollupVerifier;
+
+    // Global Exit Root interface
+    IPolygonZkEVMGlobalExitRoot public immutable globalExitRootManager;
+
+    // PolygonZkEVM Bridge Address
+    IPolygonZkEVMBridge public immutable bridgeAddress;
+
+    // L2 chain identifier
+    uint64 public immutable chainID;
+
+    // L2 chain identifier
+    uint64 public immutable forkID;
+
+    // Time target of the verification of a batch
+    // Adaptatly the batchFee will be updated to achieve this target
+    uint64 public verifyBatchTimeTarget;
+
+    // Batch fee multiplier with 3 decimals that goes from 1000 - 1023
+    uint16 public multiplierBatchFee;
+
+    // Trusted sequencer address
+    address public trustedSequencer;
+
+    // Current matic fee per batch sequenced
+    uint256 public batchFee;
+
+    // Queue of forced batches with their associated data
+    // ForceBatchNum --> hashedForcedBatchData
+    // hashedForcedBatchData: hash containing the necessary information to force a batch:
+    // keccak256(keccak256(bytes transactions), bytes32 globalExitRoot, unint64 minForcedTimestamp)
+    mapping(uint64 => bytes32) public forcedBatches;
+
+    // Queue of batches that defines the virtual state
+    // SequenceBatchNum --> SequencedBatchData
+    mapping(uint64 => SequencedBatchData) public sequencedBatches;
+
+    // Last sequenced timestamp
+    uint64 public lastTimestamp;
+
+    // Last batch sent by the sequencers
+    uint64 public lastBatchSequenced;
+
+    // Last forced batch included in the sequence
+    uint64 public lastForceBatchSequenced;
+
+    // Last forced batch
+    uint64 public lastForceBatch;
+
+    // Last batch verified by the aggregators
+    uint64 public lastVerifiedBatch;
+
+    // Trusted aggregator address
+    address public trustedAggregator;
+
+    // State root mapping
+    // BatchNum --> state root
+    mapping(uint64 => bytes32) public batchNumToStateRoot;
+
+    // Trusted sequencer URL
+    string public trustedSequencerURL;
+
+    // L2 network name
+    string public networkName;
+
+    // Pending state mapping
+    // pendingStateNumber --> PendingState
+    mapping(uint256 => PendingState) public pendingStateTransitions;
+
+    // Last pending state
+    uint64 public lastPendingState;
+
+    // Last pending state consolidated
+    uint64 public lastPendingStateConsolidated;
+
+    // Once a pending state exceeds this timeout it can be consolidated
+    uint64 public pendingStateTimeout;
+
+    // Trusted aggregator timeout, if a sequence is not verified in this time frame,
+    // everyone can verify that sequence
+    uint64 public trustedAggregatorTimeout;
+
+    // Address that will be able to adjust contract parameters or stop the emergency state
+    address public admin;
+
+    // This account will be able to accept the admin role
+    address public pendingAdmin;
+
+    // Force batch timeout
+    uint64 public forceBatchTimeout;
+
+    // Indicates if forced batches are disallowed
+    bool public isForcedBatchDisallowed;
+
+    /**
+     * @dev Emitted when the trusted sequencer sends a new batch of transactions
+     */
+    event SequenceBatches(uint64 indexed numBatch);
+
+    /**
+     * @dev Emitted when a batch is forced
+     */
+    event ForceBatch(
+        uint64 indexed forceBatchNum,
+        bytes32 lastGlobalExitRoot,
+        address sequencer,
+        bytes transactions
+    );
+
+    /**
+     * @dev Emitted when forced batches are sequenced by not the trusted sequencer
+     */
+    event SequenceForceBatches(uint64 indexed numBatch);
+
+    /**
+     * @dev Emitted when a aggregator verifies batches
+     */
+    event VerifyBatches(
+        uint64 indexed numBatch,
+        bytes32 stateRoot,
+        address indexed aggregator
+    );
+
+    /**
+     * @dev Emitted when the trusted aggregator verifies batches
+     */
+    event VerifyBatchesTrustedAggregator(
+        uint64 indexed numBatch,
+        bytes32 stateRoot,
+        address indexed aggregator
+    );
+
+    /**
+     * @dev Emitted when pending state is consolidated
+     */
+    event ConsolidatePendingState(
+        uint64 indexed numBatch,
+        bytes32 stateRoot,
+        uint64 indexed pendingStateNum
+    );
+
+    /**
+     * @dev Emitted when the admin updates the trusted sequencer address
+     */
+    event SetTrustedSequencer(address newTrustedSequencer);
+
+    /**
+     * @dev Emitted when the admin updates the sequencer URL
+     */
+    event SetTrustedSequencerURL(string newTrustedSequencerURL);
+
+    /**
+     * @dev Emitted when the admin updates the trusted aggregator timeout
+     */
+    event SetTrustedAggregatorTimeout(uint64 newTrustedAggregatorTimeout);
+
+    /**
+     * @dev Emitted when the admin updates the pending state timeout
+     */
+    event SetPendingStateTimeout(uint64 newPendingStateTimeout);
+
+    /**
+     * @dev Emitted when the admin updates the trusted aggregator address
+     */
+    event SetTrustedAggregator(address newTrustedAggregator);
+
+    /**
+     * @dev Emitted when the admin updates the multiplier batch fee
+     */
+    event SetMultiplierBatchFee(uint16 newMultiplierBatchFee);
+
+    /**
+     * @dev Emitted when the admin updates the verify batch timeout
+     */
+    event SetVerifyBatchTimeTarget(uint64 newVerifyBatchTimeTarget);
+
+    /**
+     * @dev Emitted when the admin update the force batch timeout
+     */
+    event SetForceBatchTimeout(uint64 newforceBatchTimeout);
+
+    /**
+     * @dev Emitted when activate force batches
+     */
+    event ActivateForceBatches();
+
+    /**
+     * @dev Emitted when the admin starts the two-step transfer role setting a new pending admin
+     */
+    event TransferAdminRole(address newPendingAdmin);
+
+    /**
+     * @dev Emitted when the pending admin accepts the admin role
+     */
+    event AcceptAdminRole(address newAdmin);
+
+    /**
+     * @dev Emitted when is proved a different state given the same batches
+     */
+    event ProveNonDeterministicPendingState(
+        bytes32 storedStateRoot,
+        bytes32 provedStateRoot
+    );
+
+    /**
+     * @dev Emitted when the trusted aggregator overrides pending state
+     */
+    event OverridePendingState(
+        uint64 indexed numBatch,
+        bytes32 stateRoot,
+        address indexed aggregator
+    );
+
+    /**
+     * @dev Emitted everytime the forkID is updated, this includes the first initialization of the contract
+     * This event is intended to be emitted for every upgrade of the contract with relevant changes for the nodes
+     */
+    event UpdateZkEVMVersion(uint64 numBatch, uint64 forkID, string version);
+
+    /**
+     * @param _globalExitRootManager Global exit root manager address
+     * @param _matic MATIC token address
+     * @param _rollupVerifier Rollup verifier address
+     * @param _bridgeAddress Bridge address
+     * @param _chainID L2 chainID
+     * @param _forkID Fork Id
+     */
+    constructor(
+        IPolygonZkEVMGlobalExitRoot _globalExitRootManager,
+        IERC20Upgradeable _matic,
+        IVerifierRollup _rollupVerifier,
+        IPolygonZkEVMBridge _bridgeAddress,
+        uint64 _chainID,
+        uint64 _forkID
+    ) {
+        globalExitRootManager = _globalExitRootManager;
+        matic = _matic;
+        rollupVerifier = _rollupVerifier;
+        bridgeAddress = _bridgeAddress;
+        chainID = _chainID;
+        forkID = _forkID;
+    }
+
+    /**
+     * @param initializePackedParameters Struct to save gas and avoid stack too deep errors
+     * @param genesisRoot Rollup genesis root
+     * @param _trustedSequencerURL Trusted sequencer URL
+     * @param _networkName L2 network name
+     */
+    function initialize(
+        InitializePackedParameters calldata initializePackedParameters,
+        bytes32 genesisRoot,
+        string memory _trustedSequencerURL,
+        string memory _networkName,
+        string calldata _version
+    ) external initializer {
+        admin = initializePackedParameters.admin;
+        trustedSequencer = initializePackedParameters.trustedSequencer;
+        trustedAggregator = initializePackedParameters.trustedAggregator;
+        batchNumToStateRoot[0] = genesisRoot;
+        trustedSequencerURL = _trustedSequencerURL;
+        networkName = _networkName;
+
+        // Check initialize parameters
+        if (
+            initializePackedParameters.pendingStateTimeout >
+            _HALT_AGGREGATION_TIMEOUT
+        ) {
+            revert PendingStateTimeoutExceedHaltAggregationTimeout();
+        }
+        pendingStateTimeout = initializePackedParameters.pendingStateTimeout;
+
+        if (
+            initializePackedParameters.trustedAggregatorTimeout >
+            _HALT_AGGREGATION_TIMEOUT
+        ) {
+            revert TrustedAggregatorTimeoutExceedHaltAggregationTimeout();
+        }
+
+        trustedAggregatorTimeout = initializePackedParameters
+            .trustedAggregatorTimeout;
+
+        // Constant deployment variables
+        batchFee = 0.1 ether; // 0.1 Matic
+        verifyBatchTimeTarget = 30 minutes;
+        multiplierBatchFee = 1002;
+        forceBatchTimeout = 5 days;
+        isForcedBatchDisallowed = true;
+
+        // Initialize OZ contracts
+        __Ownable_init_unchained();
+
+        // emit version event
+        emit UpdateZkEVMVersion(0, forkID, _version);
+    }
+
+    modifier onlyAdmin() {
+        if (admin != msg.sender) {
+            revert OnlyAdmin();
+        }
+        _;
+    }
+
+    modifier onlyTrustedSequencer() {
+        if (trustedSequencer != msg.sender) {
+            revert OnlyTrustedSequencer();
+        }
+        _;
+    }
+
+    modifier onlyTrustedAggregator() {
+        if (trustedAggregator != msg.sender) {
+            revert OnlyTrustedAggregator();
+        }
+        _;
+    }
+
+    modifier isForceBatchAllowed() {
+        if (isForcedBatchDisallowed) {
+            revert ForceBatchNotAllowed();
+        }
+        _;
+    }
+
+    /////////////////////////////////////
+    // Sequence/Verify batches functions
+    ////////////////////////////////////
+
+    /**
+     * @notice Allows a sequencer to send multiple batches
+     * @param batches Struct array which holds the necessary data to append new batches to the sequence
+     * @param l2Coinbase Address that will receive the fees from L2
+     */
+    function sequenceBatches(
+        BatchData[] calldata batches,
+        address l2Coinbase
+    ) external ifNotEmergencyState onlyTrustedSequencer {
+        uint256 batchesNum = batches.length;
+        if (batchesNum == 0) {
+            revert SequenceZeroBatches();
+        }
+
+        if (batchesNum > _MAX_VERIFY_BATCHES) {
+            revert ExceedMaxVerifyBatches();
+        }
+
+        // Store storage variables in memory, to save gas, because will be overrided multiple times
+        uint64 currentTimestamp = lastTimestamp;
+        uint64 currentBatchSequenced = lastBatchSequenced;
+        uint64 currentLastForceBatchSequenced = lastForceBatchSequenced;
+        bytes32 currentAccInputHash = sequencedBatches[currentBatchSequenced]
+            .accInputHash;
+
+        // Store in a temporal variable, for avoid access again the storage slot
+        uint64 initLastForceBatchSequenced = currentLastForceBatchSequenced;
+
+        for (uint256 i = 0; i < batchesNum; i++) {
+            // Load current sequence
+            BatchData memory currentBatch = batches[i];
+
+            // Store the current transactions hash since can be used more than once for gas saving
+            bytes32 currentTransactionsHash = keccak256(
+                currentBatch.transactions
+            );
+
+            // Check if it's a forced batch
+            if (currentBatch.minForcedTimestamp > 0) {
+                currentLastForceBatchSequenced++;
+
+                // Check forced data matches
+                bytes32 hashedForcedBatchData = keccak256(
+                    abi.encodePacked(
+                        currentTransactionsHash,
+                        currentBatch.globalExitRoot,
+                        currentBatch.minForcedTimestamp
+                    )
+                );
+
+                if (
+                    hashedForcedBatchData !=
+                    forcedBatches[currentLastForceBatchSequenced]
+                ) {
+                    revert ForcedDataDoesNotMatch();
+                }
+
+                // Delete forceBatch data since won't be used anymore
+                delete forcedBatches[currentLastForceBatchSequenced];
+
+                // Check timestamp is bigger than min timestamp
+                if (currentBatch.timestamp < currentBatch.minForcedTimestamp) {
+                    revert SequencedTimestampBelowForcedTimestamp();
+                }
+            } else {
+                // Check global exit root exists with proper batch length. These checks are already done in the forceBatches call
+                // Note that the sequencer can skip setting a global exit root putting zeros
+                if (
+                    currentBatch.globalExitRoot != bytes32(0) &&
+                    globalExitRootManager.globalExitRootMap(
+                        currentBatch.globalExitRoot
+                    ) ==
+                    0
+                ) {
+                    revert GlobalExitRootNotExist();
+                }
+
+                if (
+                    currentBatch.transactions.length >
+                    _MAX_TRANSACTIONS_BYTE_LENGTH
+                ) {
+                    revert TransactionsLengthAboveMax();
+                }
+            }
+
+            // Check Batch timestamps are correct
+            if (
+                currentBatch.timestamp < currentTimestamp ||
+                currentBatch.timestamp > block.timestamp
+            ) {
+                revert SequencedTimestampInvalid();
+            }
+
+            // Calculate next accumulated input hash
+            currentAccInputHash = keccak256(
+                abi.encodePacked(
+                    currentAccInputHash,
+                    currentTransactionsHash,
+                    currentBatch.globalExitRoot,
+                    currentBatch.timestamp,
+                    l2Coinbase
+                )
+            );
+
+            // Update timestamp
+            currentTimestamp = currentBatch.timestamp;
+        }
+        // Update currentBatchSequenced
+        currentBatchSequenced += uint64(batchesNum);
+
+        // Sanity check, should be unreachable
+        if (currentLastForceBatchSequenced > lastForceBatch) {
+            revert ForceBatchesOverflow();
+        }
+
+        uint256 nonForcedBatchesSequenced = batchesNum -
+            (currentLastForceBatchSequenced - initLastForceBatchSequenced);
+
+        // Update sequencedBatches mapping
+        sequencedBatches[currentBatchSequenced] = SequencedBatchData({
+            accInputHash: currentAccInputHash,
+            sequencedTimestamp: uint64(block.timestamp),
+            previousLastBatchSequenced: lastBatchSequenced
+        });
+
+        // Store back the storage variables
+        lastTimestamp = currentTimestamp;
+        lastBatchSequenced = currentBatchSequenced;
+
+        if (currentLastForceBatchSequenced != initLastForceBatchSequenced)
+            lastForceBatchSequenced = currentLastForceBatchSequenced;
+
+        // Pay collateral for every non-forced batch submitted
+        matic.safeTransferFrom(
+            msg.sender,
+            address(this),
+            batchFee * nonForcedBatchesSequenced
+        );
+
+        // Consolidate pending state if possible
+        _tryConsolidatePendingState();
+
+        // Update global exit root if there are new deposits
+        bridgeAddress.updateGlobalExitRoot();
+
+        emit SequenceBatches(currentBatchSequenced);
+    }
+
+    /**
+     * @notice Allows an aggregator to verify multiple batches
+     * @param pendingStateNum Init pending state, 0 if consolidated state is used
+     * @param initNumBatch Batch which the aggregator starts the verification
+     * @param finalNewBatch Last batch aggregator intends to verify
+     * @param newLocalExitRoot  New local exit root once the batch is processed
+     * @param newStateRoot New State root once the batch is processed
+     * @param proof fflonk proof
+     */
+    function verifyBatches(
+        uint64 pendingStateNum,
+        uint64 initNumBatch,
+        uint64 finalNewBatch,
+        bytes32 newLocalExitRoot,
+        bytes32 newStateRoot,
+        bytes calldata proof
+    ) external ifNotEmergencyState {
+        // Check if the trusted aggregator timeout expired,
+        // Note that the sequencedBatches struct must exists for this finalNewBatch, if not newAccInputHash will be 0
+        if (
+            sequencedBatches[finalNewBatch].sequencedTimestamp +
+                trustedAggregatorTimeout >
+            block.timestamp
+        ) {
+            revert TrustedAggregatorTimeoutNotExpired();
+        }
+
+        if (finalNewBatch - initNumBatch > _MAX_VERIFY_BATCHES) {
+            revert ExceedMaxVerifyBatches();
+        }
+
+        _verifyAndRewardBatches(
+            pendingStateNum,
+            initNumBatch,
+            finalNewBatch,
+            newLocalExitRoot,
+            newStateRoot,
+            proof
+        );
+
+        // Update batch fees
+        _updateBatchFee(finalNewBatch);
+
+        if (pendingStateTimeout == 0) {
+            // Consolidate state
+            lastVerifiedBatch = finalNewBatch;
+            batchNumToStateRoot[finalNewBatch] = newStateRoot;
+
+            // Clean pending state if any
+            if (lastPendingState > 0) {
+                lastPendingState = 0;
+                lastPendingStateConsolidated = 0;
+            }
+
+            // Interact with globalExitRootManager
+            globalExitRootManager.updateExitRoot(newLocalExitRoot);
+        } else {
+            // Consolidate pending state if possible
+            _tryConsolidatePendingState();
+
+            // Update pending state
+            lastPendingState++;
+            pendingStateTransitions[lastPendingState] = PendingState({
+                timestamp: uint64(block.timestamp),
+                lastVerifiedBatch: finalNewBatch,
+                exitRoot: newLocalExitRoot,
+                stateRoot: newStateRoot
+            });
+        }
+
+        emit VerifyBatches(finalNewBatch, newStateRoot, msg.sender);
+    }
+
+    /**
+     * @notice Allows an aggregator to verify multiple batches
+     * @param pendingStateNum Init pending state, 0 if consolidated state is used
+     * @param initNumBatch Batch which the aggregator starts the verification
+     * @param finalNewBatch Last batch aggregator intends to verify
+     * @param newLocalExitRoot  New local exit root once the batch is processed
+     * @param newStateRoot New State root once the batch is processed
+     * @param proof fflonk proof
+     */
+    function verifyBatchesTrustedAggregator(
+        uint64 pendingStateNum,
+        uint64 initNumBatch,
+        uint64 finalNewBatch,
+        bytes32 newLocalExitRoot,
+        bytes32 newStateRoot,
+        bytes calldata proof
+    ) external onlyTrustedAggregator {
+        _verifyAndRewardBatches(
+            pendingStateNum,
+            initNumBatch,
+            finalNewBatch,
+            newLocalExitRoot,
+            newStateRoot,
+            proof
+        );
+
+        // Consolidate state
+        lastVerifiedBatch = finalNewBatch;
+        batchNumToStateRoot[finalNewBatch] = newStateRoot;
+
+        // Clean pending state if any
+        if (lastPendingState > 0) {
+            lastPendingState = 0;
+            lastPendingStateConsolidated = 0;
+        }
+
+        // Interact with globalExitRootManager
+        globalExitRootManager.updateExitRoot(newLocalExitRoot);
+
+        emit VerifyBatchesTrustedAggregator(
+            finalNewBatch,
+            newStateRoot,
+            msg.sender
+        );
+    }
+
+    /**
+     * @notice Verify and reward batches internal function
+     * @param pendingStateNum Init pending state, 0 if consolidated state is used
+     * @param initNumBatch Batch which the aggregator starts the verification
+     * @param finalNewBatch Last batch aggregator intends to verify
+     * @param newLocalExitRoot  New local exit root once the batch is processed
+     * @param newStateRoot New State root once the batch is processed
+     * @param proof fflonk proof
+     */
+    function _verifyAndRewardBatches(
+        uint64 pendingStateNum,
+        uint64 initNumBatch,
+        uint64 finalNewBatch,
+        bytes32 newLocalExitRoot,
+        bytes32 newStateRoot,
+        bytes calldata proof
+    ) internal {
+        bytes32 oldStateRoot;
+        uint64 currentLastVerifiedBatch = getLastVerifiedBatch();
+
+        // Use pending state if specified, otherwise use consolidated state
+        if (pendingStateNum != 0) {
+            // Check that pending state exist
+            // Already consolidated pending states can be used aswell
+            if (pendingStateNum > lastPendingState) {
+                revert PendingStateDoesNotExist();
+            }
+
+            // Check choosen pending state
+            PendingState storage currentPendingState = pendingStateTransitions[
+                pendingStateNum
+            ];
+
+            // Get oldStateRoot from pending batch
+            oldStateRoot = currentPendingState.stateRoot;
+
+            // Check initNumBatch matches the pending state
+            if (initNumBatch != currentPendingState.lastVerifiedBatch) {
+                revert InitNumBatchDoesNotMatchPendingState();
+            }
+        } else {
+            // Use consolidated state
+            oldStateRoot = batchNumToStateRoot[initNumBatch];
+
+            if (oldStateRoot == bytes32(0)) {
+                revert OldStateRootDoesNotExist();
+            }
+
+            // Check initNumBatch is inside the range, sanity check
+            if (initNumBatch > currentLastVerifiedBatch) {
+                revert InitNumBatchAboveLastVerifiedBatch();
+            }
+        }
+
+        // Check final batch
+        if (finalNewBatch <= currentLastVerifiedBatch) {
+            revert FinalNumBatchBelowLastVerifiedBatch();
+        }
+
+        // Get snark bytes
+        bytes memory snarkHashBytes = getInputSnarkBytes(
+            initNumBatch,
+            finalNewBatch,
+            newLocalExitRoot,
+            oldStateRoot,
+            newStateRoot
+        );
+
+        // Calulate the snark input
+        uint256 inputSnark = uint256(sha256(snarkHashBytes)) % _RFIELD;
+        // Verify proof
+        // if (!rollupVerifier.verifyProof(proof, [inputSnark])) {
+        //     revert InvalidProof();
+        // }
+
+        // Get MATIC reward
+        matic.safeTransfer(
+            msg.sender,
+            calculateRewardPerBatch() *
+                (finalNewBatch - currentLastVerifiedBatch)
+        );
+    }
+
+    /**
+     * @notice Internal function to consolidate the state automatically once sequence or verify batches are called
+     * It tries to consolidate the first and the middle pending state in the queue
+     */
+    function _tryConsolidatePendingState() internal {
+        // Check if there's any state to consolidate
+        if (lastPendingState > lastPendingStateConsolidated) {
+            // Check if it's possible to consolidate the next pending state
+            uint64 nextPendingState = lastPendingStateConsolidated + 1;
+            if (isPendingStateConsolidable(nextPendingState)) {
+                // Check middle pending state ( binary search of 1 step)
+                uint64 middlePendingState = nextPendingState +
+                    (lastPendingState - nextPendingState) /
+                    2;
+
+                // Try to consolidate it, and if not, consolidate the nextPendingState
+                if (isPendingStateConsolidable(middlePendingState)) {
+                    _consolidatePendingState(middlePendingState);
+                } else {
+                    _consolidatePendingState(nextPendingState);
+                }
+            }
+        }
+    }
+
+    /**
+     * @notice Allows to consolidate any pending state that has already exceed the pendingStateTimeout
+     * Can be called by the trusted aggregator, which can consolidate any state without the timeout restrictions
+     * @param pendingStateNum Pending state to consolidate
+     */
+    function consolidatePendingState(uint64 pendingStateNum) external {
+        // Check if pending state can be consolidated
+        // If trusted aggregator is the sender, do not check the timeout or the emergency state
+        if (msg.sender != trustedAggregator) {
+            if (isEmergencyState) {
+                revert OnlyNotEmergencyState();
+            }
+
+            if (!isPendingStateConsolidable(pendingStateNum)) {
+                revert PendingStateNotConsolidable();
+            }
+        }
+        _consolidatePendingState(pendingStateNum);
+    }
+
+    /**
+     * @notice Internal function to consolidate any pending state that has already exceed the pendingStateTimeout
+     * @param pendingStateNum Pending state to consolidate
+     */
+    function _consolidatePendingState(uint64 pendingStateNum) internal {
+        // Check if pendingStateNum is in correct range
+        // - not consolidated (implicity checks that is not 0)
+        // - exist ( has been added)
+        if (
+            pendingStateNum <= lastPendingStateConsolidated ||
+            pendingStateNum > lastPendingState
+        ) {
+            revert PendingStateInvalid();
+        }
+
+        PendingState storage currentPendingState = pendingStateTransitions[
+            pendingStateNum
+        ];
+
+        // Update state
+        uint64 newLastVerifiedBatch = currentPendingState.lastVerifiedBatch;
+        lastVerifiedBatch = newLastVerifiedBatch;
+        batchNumToStateRoot[newLastVerifiedBatch] = currentPendingState
+            .stateRoot;
+
+        // Update pending state
+        lastPendingStateConsolidated = pendingStateNum;
+
+        // Interact with globalExitRootManager
+        globalExitRootManager.updateExitRoot(currentPendingState.exitRoot);
+
+        emit ConsolidatePendingState(
+            newLastVerifiedBatch,
+            currentPendingState.stateRoot,
+            pendingStateNum
+        );
+    }
+
+    /**
+     * @notice Function to update the batch fee based on the new verified batches
+     * The batch fee will not be updated when the trusted aggregator verifies batches
+     * @param newLastVerifiedBatch New last verified batch
+     */
+    function _updateBatchFee(uint64 newLastVerifiedBatch) internal {
+        uint64 currentLastVerifiedBatch = getLastVerifiedBatch();
+        uint64 currentBatch = newLastVerifiedBatch;
+
+        uint256 totalBatchesAboveTarget;
+        uint256 newBatchesVerified = newLastVerifiedBatch -
+            currentLastVerifiedBatch;
+
+        uint256 targetTimestamp = block.timestamp - verifyBatchTimeTarget;
+
+        while (currentBatch != currentLastVerifiedBatch) {
+            // Load sequenced batchdata
+            SequencedBatchData
+                storage currentSequencedBatchData = sequencedBatches[
+                    currentBatch
+                ];
+
+            // Check if timestamp is below the verifyBatchTimeTarget
+            if (
+                targetTimestamp < currentSequencedBatchData.sequencedTimestamp
+            ) {
+                // update currentBatch
+                currentBatch = currentSequencedBatchData
+                    .previousLastBatchSequenced;
+            } else {
+                // The rest of batches will be above
+                totalBatchesAboveTarget =
+                    currentBatch -
+                    currentLastVerifiedBatch;
+                break;
+            }
+        }
+
+        uint256 totalBatchesBelowTarget = newBatchesVerified -
+            totalBatchesAboveTarget;
+
+        // _MAX_BATCH_FEE --> (< 70 bits)
+        // multiplierBatchFee --> (< 10 bits)
+        // _MAX_BATCH_MULTIPLIER = 12
+        // multiplierBatchFee ** _MAX_BATCH_MULTIPLIER --> (< 128 bits)
+        // batchFee * (multiplierBatchFee ** _MAX_BATCH_MULTIPLIER)-->
+        // (< 70 bits) * (< 128 bits) = < 256 bits
+
+        // Since all the following operations cannot overflow, we can optimize this operations with unchecked
+        unchecked {
+            if (totalBatchesBelowTarget < totalBatchesAboveTarget) {
+                // There are more batches above target, fee is multiplied
+                uint256 diffBatches = totalBatchesAboveTarget -
+                    totalBatchesBelowTarget;
+
+                diffBatches = diffBatches > _MAX_BATCH_MULTIPLIER
+                    ? _MAX_BATCH_MULTIPLIER
+                    : diffBatches;
+
+                // For every multiplierBatchFee multiplication we must shift 3 zeroes since we have 3 decimals
+                batchFee =
+                    (batchFee * (uint256(multiplierBatchFee) ** diffBatches)) /
+                    (uint256(1000) ** diffBatches);
+            } else {
+                // There are more batches below target, fee is divided
+                uint256 diffBatches = totalBatchesBelowTarget -
+                    totalBatchesAboveTarget;
+
+                diffBatches = diffBatches > _MAX_BATCH_MULTIPLIER
+                    ? _MAX_BATCH_MULTIPLIER
+                    : diffBatches;
+
+                // For every multiplierBatchFee multiplication we must shift 3 zeroes since we have 3 decimals
+                uint256 accDivisor = (uint256(1 ether) *
+                    (uint256(multiplierBatchFee) ** diffBatches)) /
+                    (uint256(1000) ** diffBatches);
+
+                // multiplyFactor = multiplierBatchFee ** diffBatches / 10 ** (diffBatches * 3)
+                // accDivisor = 1E18 * multiplyFactor
+                // 1E18 * batchFee / accDivisor = batchFee / multiplyFactor
+                // < 60 bits * < 70 bits / ~60 bits --> overflow not possible
+                batchFee = (uint256(1 ether) * batchFee) / accDivisor;
+            }
+        }
+
+        // Batch fee must remain inside a range
+        if (batchFee > _MAX_BATCH_FEE) {
+            batchFee = _MAX_BATCH_FEE;
+        } else if (batchFee < _MIN_BATCH_FEE) {
+            batchFee = _MIN_BATCH_FEE;
+        }
+    }
+
+    ////////////////////////////
+    // Force batches functions
+    ////////////////////////////
+
+    /**
+     * @notice Allows a sequencer/user to force a batch of L2 transactions.
+     * This should be used only in extreme cases where the trusted sequencer does not work as expected
+     * Note The sequencer has certain degree of control on how non-forced and forced batches are ordered
+     * In order to assure that users force transactions will be processed properly, user must not sign any other transaction
+     * with the same nonce
+     * @param transactions L2 ethereum transactions EIP-155 or pre-EIP-155 with signature:
+     * @param maticAmount Max amount of MATIC tokens that the sender is willing to pay
+     */
+    function forceBatch(
+        bytes calldata transactions,
+        uint256 maticAmount
+    ) public isForceBatchAllowed ifNotEmergencyState {
+        // Calculate matic collateral
+        uint256 maticFee = getForcedBatchFee();
+
+        if (maticFee > maticAmount) {
+            revert NotEnoughMaticAmount();
+        }
+
+        if (transactions.length > _MAX_FORCE_BATCH_BYTE_LENGTH) {
+            revert TransactionsLengthAboveMax();
+        }
+
+        matic.safeTransferFrom(msg.sender, address(this), maticFee);
+
+        // Get globalExitRoot global exit root
+        bytes32 lastGlobalExitRoot = globalExitRootManager
+            .getLastGlobalExitRoot();
+
+        // Update forcedBatches mapping
+        lastForceBatch++;
+
+        forcedBatches[lastForceBatch] = keccak256(
+            abi.encodePacked(
+                keccak256(transactions),
+                lastGlobalExitRoot,
+                uint64(block.timestamp)
+            )
+        );
+
+        if (msg.sender == tx.origin) {
+            // Getting the calldata from an EOA is easy so no need to put the `transactions` in the event
+            emit ForceBatch(lastForceBatch, lastGlobalExitRoot, msg.sender, "");
+        } else {
+            // Getting internal transaction calldata is complicated (because it requires an archive node)
+            // Therefore it's worth it to put the `transactions` in the event, which is easy to query
+            emit ForceBatch(
+                lastForceBatch,
+                lastGlobalExitRoot,
+                msg.sender,
+                transactions
+            );
+        }
+    }
+
+    /**
+     * @notice Allows anyone to sequence forced Batches if the trusted sequencer has not done so in the timeout period
+     * @param batches Struct array which holds the necessary data to append force batches
+     */
+    function sequenceForceBatches(
+        ForcedBatchData[] calldata batches
+    ) external isForceBatchAllowed ifNotEmergencyState {
+        uint256 batchesNum = batches.length;
+
+        if (batchesNum == 0) {
+            revert SequenceZeroBatches();
+        }
+
+        if (batchesNum > _MAX_VERIFY_BATCHES) {
+            revert ExceedMaxVerifyBatches();
+        }
+
+        if (
+            uint256(lastForceBatchSequenced) + batchesNum >
+            uint256(lastForceBatch)
+        ) {
+            revert ForceBatchesOverflow();
+        }
+
+        // Store storage variables in memory, to save gas, because will be overrided multiple times
+        uint64 currentBatchSequenced = lastBatchSequenced;
+        uint64 currentLastForceBatchSequenced = lastForceBatchSequenced;
+        bytes32 currentAccInputHash = sequencedBatches[currentBatchSequenced]
+            .accInputHash;
+
+        // Sequence force batches
+        for (uint256 i = 0; i < batchesNum; i++) {
+            // Load current sequence
+            ForcedBatchData memory currentBatch = batches[i];
+            currentLastForceBatchSequenced++;
+
+            // Store the current transactions hash since it's used more than once for gas saving
+            bytes32 currentTransactionsHash = keccak256(
+                currentBatch.transactions
+            );
+
+            // Check forced data matches
+            bytes32 hashedForcedBatchData = keccak256(
+                abi.encodePacked(
+                    currentTransactionsHash,
+                    currentBatch.globalExitRoot,
+                    currentBatch.minForcedTimestamp
+                )
+            );
+
+            if (
+                hashedForcedBatchData !=
+                forcedBatches[currentLastForceBatchSequenced]
+            ) {
+                revert ForcedDataDoesNotMatch();
+            }
+
+            // Delete forceBatch data since won't be used anymore
+            delete forcedBatches[currentLastForceBatchSequenced];
+
+            if (i == (batchesNum - 1)) {
+                // The last batch will have the most restrictive timestamp
+                if (
+                    currentBatch.minForcedTimestamp + forceBatchTimeout >
+                    block.timestamp
+                ) {
+                    revert ForceBatchTimeoutNotExpired();
+                }
+            }
+            // Calculate next acc input hash
+            currentAccInputHash = keccak256(
+                abi.encodePacked(
+                    currentAccInputHash,
+                    currentTransactionsHash,
+                    currentBatch.globalExitRoot,
+                    uint64(block.timestamp),
+                    msg.sender
+                )
+            );
+        }
+        // Update currentBatchSequenced
+        currentBatchSequenced += uint64(batchesNum);
+
+        lastTimestamp = uint64(block.timestamp);
+
+        // Store back the storage variables
+        sequencedBatches[currentBatchSequenced] = SequencedBatchData({
+            accInputHash: currentAccInputHash,
+            sequencedTimestamp: uint64(block.timestamp),
+            previousLastBatchSequenced: lastBatchSequenced
+        });
+        lastBatchSequenced = currentBatchSequenced;
+        lastForceBatchSequenced = currentLastForceBatchSequenced;
+
+        emit SequenceForceBatches(currentBatchSequenced);
+    }
+
+    //////////////////
+    // admin functions
+    //////////////////
+
+    /**
+     * @notice Allow the admin to set a new trusted sequencer
+     * @param newTrustedSequencer Address of the new trusted sequencer
+     */
+    function setTrustedSequencer(
+        address newTrustedSequencer
+    ) external onlyAdmin {
+        trustedSequencer = newTrustedSequencer;
+
+        emit SetTrustedSequencer(newTrustedSequencer);
+    }
+
+    /**
+     * @notice Allow the admin to set the trusted sequencer URL
+     * @param newTrustedSequencerURL URL of trusted sequencer
+     */
+    function setTrustedSequencerURL(
+        string memory newTrustedSequencerURL
+    ) external onlyAdmin {
+        trustedSequencerURL = newTrustedSequencerURL;
+
+        emit SetTrustedSequencerURL(newTrustedSequencerURL);
+    }
+
+    /**
+     * @notice Allow the admin to set a new trusted aggregator address
+     * @param newTrustedAggregator Address of the new trusted aggregator
+     */
+    function setTrustedAggregator(
+        address newTrustedAggregator
+    ) external onlyAdmin {
+        trustedAggregator = newTrustedAggregator;
+
+        emit SetTrustedAggregator(newTrustedAggregator);
+    }
+
+    /**
+     * @notice Allow the admin to set a new pending state timeout
+     * The timeout can only be lowered, except if emergency state is active
+     * @param newTrustedAggregatorTimeout Trusted aggregator timeout
+     */
+    function setTrustedAggregatorTimeout(
+        uint64 newTrustedAggregatorTimeout
+    ) external onlyAdmin {
+        if (newTrustedAggregatorTimeout > _HALT_AGGREGATION_TIMEOUT) {
+            revert TrustedAggregatorTimeoutExceedHaltAggregationTimeout();
+        }
+
+        if (!isEmergencyState) {
+            if (newTrustedAggregatorTimeout >= trustedAggregatorTimeout) {
+                revert NewTrustedAggregatorTimeoutMustBeLower();
+            }
+        }
+
+        trustedAggregatorTimeout = newTrustedAggregatorTimeout;
+        emit SetTrustedAggregatorTimeout(newTrustedAggregatorTimeout);
+    }
+
+    /**
+     * @notice Allow the admin to set a new trusted aggregator timeout
+     * The timeout can only be lowered, except if emergency state is active
+     * @param newPendingStateTimeout Trusted aggregator timeout
+     */
+    function setPendingStateTimeout(
+        uint64 newPendingStateTimeout
+    ) external onlyAdmin {
+        if (newPendingStateTimeout > _HALT_AGGREGATION_TIMEOUT) {
+            revert PendingStateTimeoutExceedHaltAggregationTimeout();
+        }
+
+        if (!isEmergencyState) {
+            if (newPendingStateTimeout >= pendingStateTimeout) {
+                revert NewPendingStateTimeoutMustBeLower();
+            }
+        }
+
+        pendingStateTimeout = newPendingStateTimeout;
+        emit SetPendingStateTimeout(newPendingStateTimeout);
+    }
+
+    /**
+     * @notice Allow the admin to set a new multiplier batch fee
+     * @param newMultiplierBatchFee multiplier batch fee
+     */
+    function setMultiplierBatchFee(
+        uint16 newMultiplierBatchFee
+    ) external onlyAdmin {
+        if (newMultiplierBatchFee < 1000 || newMultiplierBatchFee > 1023) {
+            revert InvalidRangeMultiplierBatchFee();
+        }
+
+        multiplierBatchFee = newMultiplierBatchFee;
+        emit SetMultiplierBatchFee(newMultiplierBatchFee);
+    }
+
+    /**
+     * @notice Allow the admin to set a new verify batch time target
+     * This value will only be relevant once the aggregation is decentralized, so
+     * the trustedAggregatorTimeout should be zero or very close to zero
+     * @param newVerifyBatchTimeTarget Verify batch time target
+     */
+    function setVerifyBatchTimeTarget(
+        uint64 newVerifyBatchTimeTarget
+    ) external onlyAdmin {
+        if (newVerifyBatchTimeTarget > 1 days) {
+            revert InvalidRangeBatchTimeTarget();
+        }
+        verifyBatchTimeTarget = newVerifyBatchTimeTarget;
+        emit SetVerifyBatchTimeTarget(newVerifyBatchTimeTarget);
+    }
+
+    /**
+     * @notice Allow the admin to set the forcedBatchTimeout
+     * The new value can only be lower, except if emergency state is active
+     * @param newforceBatchTimeout New force batch timeout
+     */
+    function setForceBatchTimeout(
+        uint64 newforceBatchTimeout
+    ) external onlyAdmin {
+        if (newforceBatchTimeout > _HALT_AGGREGATION_TIMEOUT) {
+            revert InvalidRangeForceBatchTimeout();
+        }
+
+        if (!isEmergencyState) {
+            if (newforceBatchTimeout >= forceBatchTimeout) {
+                revert InvalidRangeForceBatchTimeout();
+            }
+        }
+
+        forceBatchTimeout = newforceBatchTimeout;
+        emit SetForceBatchTimeout(newforceBatchTimeout);
+    }
+
+    /**
+     * @notice Allow the admin to turn on the force batches
+     * This action is not reversible
+     */
+    function activateForceBatches() external onlyAdmin {
+        if (!isForcedBatchDisallowed) {
+            revert ForceBatchesAlreadyActive();
+        }
+        isForcedBatchDisallowed = false;
+        emit ActivateForceBatches();
+    }
+
+    /**
+     * @notice Starts the admin role transfer
+     * This is a two step process, the pending admin must accepted to finalize the process
+     * @param newPendingAdmin Address of the new pending admin
+     */
+    function transferAdminRole(address newPendingAdmin) external onlyAdmin {
+        pendingAdmin = newPendingAdmin;
+        emit TransferAdminRole(newPendingAdmin);
+    }
+
+    /**
+     * @notice Allow the current pending admin to accept the admin role
+     */
+    function acceptAdminRole() external {
+        if (pendingAdmin != msg.sender) {
+            revert OnlyPendingAdmin();
+        }
+
+        admin = pendingAdmin;
+        emit AcceptAdminRole(pendingAdmin);
+    }
+
+    /////////////////////////////////
+    // Soundness protection functions
+    /////////////////////////////////
+
+    /**
+     * @notice Allows the trusted aggregator to override the pending state
+     * if it's possible to prove a different state root given the same batches
+     * @param initPendingStateNum Init pending state, 0 if consolidated state is used
+     * @param finalPendingStateNum Final pending state, that will be used to compare with the newStateRoot
+     * @param initNumBatch Batch which the aggregator starts the verification
+     * @param finalNewBatch Last batch aggregator intends to verify
+     * @param newLocalExitRoot  New local exit root once the batch is processed
+     * @param newStateRoot New State root once the batch is processed
+     * @param proof fflonk proof
+     */
+    function overridePendingState(
+        uint64 initPendingStateNum,
+        uint64 finalPendingStateNum,
+        uint64 initNumBatch,
+        uint64 finalNewBatch,
+        bytes32 newLocalExitRoot,
+        bytes32 newStateRoot,
+        bytes calldata proof
+    ) external onlyTrustedAggregator {
+        _proveDistinctPendingState(
+            initPendingStateNum,
+            finalPendingStateNum,
+            initNumBatch,
+            finalNewBatch,
+            newLocalExitRoot,
+            newStateRoot,
+            proof
+        );
+
+        // Consolidate state state
+        lastVerifiedBatch = finalNewBatch;
+        batchNumToStateRoot[finalNewBatch] = newStateRoot;
+
+        // Clean pending state if any
+        if (lastPendingState > 0) {
+            lastPendingState = 0;
+            lastPendingStateConsolidated = 0;
+        }
+
+        // Interact with globalExitRootManager
+        globalExitRootManager.updateExitRoot(newLocalExitRoot);
+
+        // Update trusted aggregator timeout to max
+        trustedAggregatorTimeout = _HALT_AGGREGATION_TIMEOUT;
+
+        emit OverridePendingState(finalNewBatch, newStateRoot, msg.sender);
+    }
+
+    /**
+     * @notice Allows to halt the PolygonZkEVM if its possible to prove a different state root given the same batches
+     * @param initPendingStateNum Init pending state, 0 if consolidated state is used
+     * @param finalPendingStateNum Final pending state, that will be used to compare with the newStateRoot
+     * @param initNumBatch Batch which the aggregator starts the verification
+     * @param finalNewBatch Last batch aggregator intends to verify
+     * @param newLocalExitRoot  New local exit root once the batch is processed
+     * @param newStateRoot New State root once the batch is processed
+     * @param proof fflonk proof
+     */
+    function proveNonDeterministicPendingState(
+        uint64 initPendingStateNum,
+        uint64 finalPendingStateNum,
+        uint64 initNumBatch,
+        uint64 finalNewBatch,
+        bytes32 newLocalExitRoot,
+        bytes32 newStateRoot,
+        bytes calldata proof
+    ) external ifNotEmergencyState {
+        _proveDistinctPendingState(
+            initPendingStateNum,
+            finalPendingStateNum,
+            initNumBatch,
+            finalNewBatch,
+            newLocalExitRoot,
+            newStateRoot,
+            proof
+        );
+
+        emit ProveNonDeterministicPendingState(
+            batchNumToStateRoot[finalNewBatch],
+            newStateRoot
+        );
+
+        // Activate emergency state
+        _activateEmergencyState();
+    }
+
+    /**
+     * @notice Internal function that proves a different state root given the same batches to verify
+     * @param initPendingStateNum Init pending state, 0 if consolidated state is used
+     * @param finalPendingStateNum Final pending state, that will be used to compare with the newStateRoot
+     * @param initNumBatch Batch which the aggregator starts the verification
+     * @param finalNewBatch Last batch aggregator intends to verify
+     * @param newLocalExitRoot  New local exit root once the batch is processed
+     * @param newStateRoot New State root once the batch is processed
+     * @param proof fflonk proof
+     */
+    function _proveDistinctPendingState(
+        uint64 initPendingStateNum,
+        uint64 finalPendingStateNum,
+        uint64 initNumBatch,
+        uint64 finalNewBatch,
+        bytes32 newLocalExitRoot,
+        bytes32 newStateRoot,
+        bytes calldata proof
+    ) internal view {
+        bytes32 oldStateRoot;
+
+        // Use pending state if specified, otherwise use consolidated state
+        if (initPendingStateNum != 0) {
+            // Check that pending state exist
+            // Already consolidated pending states can be used aswell
+            if (initPendingStateNum > lastPendingState) {
+                revert PendingStateDoesNotExist();
+            }
+
+            // Check choosen pending state
+            PendingState storage initPendingState = pendingStateTransitions[
+                initPendingStateNum
+            ];
+
+            // Get oldStateRoot from init pending state
+            oldStateRoot = initPendingState.stateRoot;
+
+            // Check initNumBatch matches the init pending state
+            if (initNumBatch != initPendingState.lastVerifiedBatch) {
+                revert InitNumBatchDoesNotMatchPendingState();
+            }
+        } else {
+            // Use consolidated state
+            oldStateRoot = batchNumToStateRoot[initNumBatch];
+            if (oldStateRoot == bytes32(0)) {
+                revert OldStateRootDoesNotExist();
+            }
+
+            // Check initNumBatch is inside the range, sanity check
+            if (initNumBatch > lastVerifiedBatch) {
+                revert InitNumBatchAboveLastVerifiedBatch();
+            }
+        }
+
+        // Assert final pending state num is in correct range
+        // - exist ( has been added)
+        // - bigger than the initPendingstate
+        // - not consolidated
+        if (
+            finalPendingStateNum > lastPendingState ||
+            finalPendingStateNum <= initPendingStateNum ||
+            finalPendingStateNum <= lastPendingStateConsolidated
+        ) {
+            revert FinalPendingStateNumInvalid();
+        }
+
+        // Check final num batch
+        if (
+            finalNewBatch !=
+            pendingStateTransitions[finalPendingStateNum].lastVerifiedBatch
+        ) {
+            revert FinalNumBatchDoesNotMatchPendingState();
+        }
+
+        // Get snark bytes
+        bytes memory snarkHashBytes = getInputSnarkBytes(
+            initNumBatch,
+            finalNewBatch,
+            newLocalExitRoot,
+            oldStateRoot,
+            newStateRoot
+        );
+
+        // Calulate the snark input
+        uint256 inputSnark = uint256(sha256(snarkHashBytes)) % _RFIELD;
+
+        // Verify proof
+        // if (!rollupVerifier.verifyProof(proof, [inputSnark])) {
+        //     revert InvalidProof();
+        // }
+
+        if (
+            pendingStateTransitions[finalPendingStateNum].stateRoot ==
+            newStateRoot
+        ) {
+            revert StoredRootMustBeDifferentThanNewRoot();
+        }
+    }
+
+    /**
+     * @notice Function to activate emergency state, which also enables the emergency mode on both PolygonZkEVM and PolygonZkEVMBridge contracts
+     * If not called by the owner must be provided a batcnNum that does not have been aggregated in a _HALT_AGGREGATION_TIMEOUT period
+     * @param sequencedBatchNum Sequenced batch number that has not been aggreagated in _HALT_AGGREGATION_TIMEOUT
+     */
+    function activateEmergencyState(uint64 sequencedBatchNum) external {
+        if (msg.sender != owner()) {
+            // Only check conditions if is not called by the owner
+            uint64 currentLastVerifiedBatch = getLastVerifiedBatch();
+
+            // Check that the batch has not been verified
+            if (sequencedBatchNum <= currentLastVerifiedBatch) {
+                revert BatchAlreadyVerified();
+            }
+
+            // Check that the batch has been sequenced and this was the end of a sequence
+            if (
+                sequencedBatchNum > lastBatchSequenced ||
+                sequencedBatches[sequencedBatchNum].sequencedTimestamp == 0
+            ) {
+                revert BatchNotSequencedOrNotSequenceEnd();
+            }
+
+            // Check that has been passed _HALT_AGGREGATION_TIMEOUT since it was sequenced
+            if (
+                sequencedBatches[sequencedBatchNum].sequencedTimestamp +
+                    _HALT_AGGREGATION_TIMEOUT >
+                block.timestamp
+            ) {
+                revert HaltTimeoutNotExpired();
+            }
+        }
+        _activateEmergencyState();
+    }
+
+    /**
+     * @notice Function to deactivate emergency state on both PolygonZkEVM and PolygonZkEVMBridge contracts
+     */
+    function deactivateEmergencyState() external onlyAdmin {
+        // Deactivate emergency state on PolygonZkEVMBridge
+        bridgeAddress.deactivateEmergencyState();
+
+        // Deactivate emergency state on this contract
+        super._deactivateEmergencyState();
+    }
+
+    /**
+     * @notice Internal function to activate emergency state on both PolygonZkEVM and PolygonZkEVMBridge contracts
+     */
+    function _activateEmergencyState() internal override {
+        // Activate emergency state on PolygonZkEVM Bridge
+        bridgeAddress.activateEmergencyState();
+
+        // Activate emergency state on this contract
+        super._activateEmergencyState();
+    }
+
+    ////////////////////////
+    // public/view functions
+    ////////////////////////
+
+    /**
+     * @notice Get forced batch fee
+     */
+    function getForcedBatchFee() public view returns (uint256) {
+        return batchFee * 100;
+    }
+
+    /**
+     * @notice Get the last verified batch
+     */
+    function getLastVerifiedBatch() public view returns (uint64) {
+        if (lastPendingState > 0) {
+            return pendingStateTransitions[lastPendingState].lastVerifiedBatch;
+        } else {
+            return lastVerifiedBatch;
+        }
+    }
+
+    /**
+     * @notice Returns a boolean that indicates if the pendingStateNum is or not consolidable
+     * Note that his function does not check if the pending state currently exists, or if it's consolidated already
+     */
+    function isPendingStateConsolidable(
+        uint64 pendingStateNum
+    ) public view returns (bool) {
+        return (pendingStateTransitions[pendingStateNum].timestamp +
+            pendingStateTimeout <=
+            block.timestamp);
+    }
+
+    /**
+     * @notice Function to calculate the reward to verify a single batch
+     */
+    function calculateRewardPerBatch() public view returns (uint256) {
+        uint256 currentBalance = matic.balanceOf(address(this));
+
+        // Total Sequenced Batches = forcedBatches to be sequenced (total forced Batches - sequenced Batches) + sequencedBatches
+        // Total Batches to be verified = Total Sequenced Batches - verified Batches
+        uint256 totalBatchesToVerify = ((lastForceBatch -
+            lastForceBatchSequenced) + lastBatchSequenced) -
+            getLastVerifiedBatch();
+
+        if (totalBatchesToVerify == 0) return 0;
+        return currentBalance / totalBatchesToVerify;
+    }
+
+    /**
+     * @notice Function to calculate the input snark bytes
+     * @param initNumBatch Batch which the aggregator starts the verification
+     * @param finalNewBatch Last batch aggregator intends to verify
+     * @param newLocalExitRoot New local exit root once the batch is processed
+     * @param oldStateRoot State root before batch is processed
+     * @param newStateRoot New State root once the batch is processed
+     */
+    function getInputSnarkBytes(
+        uint64 initNumBatch,
+        uint64 finalNewBatch,
+        bytes32 newLocalExitRoot,
+        bytes32 oldStateRoot,
+        bytes32 newStateRoot
+    ) public view returns (bytes memory) {
+        // sanity checks
+        bytes32 oldAccInputHash = sequencedBatches[initNumBatch].accInputHash;
+        bytes32 newAccInputHash = sequencedBatches[finalNewBatch].accInputHash;
+
+        if (initNumBatch != 0 && oldAccInputHash == bytes32(0)) {
+            revert OldAccInputHashDoesNotExist();
+        }
+
+        if (newAccInputHash == bytes32(0)) {
+            revert NewAccInputHashDoesNotExist();
+        }
+
+        // Check that new state root is inside goldilocks field
+        if (!checkStateRootInsidePrime(uint256(newStateRoot))) {
+            revert NewStateRootNotInsidePrime();
+        }
+
+        return
+            abi.encodePacked(
+                msg.sender,
+                oldStateRoot,
+                oldAccInputHash,
+                initNumBatch,
+                chainID,
+                forkID,
+                newStateRoot,
+                newAccInputHash,
+                newLocalExitRoot,
+                finalNewBatch
+            );
+    }
+
+    function checkStateRootInsidePrime(
+        uint256 newStateRoot
+    ) public pure returns (bool) {
+        if (
+            ((newStateRoot & _MAX_UINT_64) < _GOLDILOCKS_PRIME_FIELD) &&
+            (((newStateRoot >> 64) & _MAX_UINT_64) < _GOLDILOCKS_PRIME_FIELD) &&
+            (((newStateRoot >> 128) & _MAX_UINT_64) <
+                _GOLDILOCKS_PRIME_FIELD) &&
+            ((newStateRoot >> 192) < _GOLDILOCKS_PRIME_FIELD)
+        ) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+}
+
+// File: contracts/common/governance/IGovernance.sol
+
+pragma solidity ^0.5.2;
+
+interface IGovernance {
+    function update(address target, bytes calldata data) external;
+}
+
+// File: contracts/common/governance/Governable.sol
+
+pragma solidity ^0.5.2;
+
+
+contract Governable {
+    IGovernance public governance;
+
+    constructor(address _governance) public {
+        governance = IGovernance(_governance);
+    }
+
+    modifier onlyGovernance() {
+        _assertGovernance();
+        _;
+    }
+
+    function _assertGovernance() private view {
+        require(
+            msg.sender == address(governance),
+            "Only governance contract is authorized"
+        );
+    }
+}
+
+// File: contracts/root/withdrawManager/IWithdrawManager.sol
+
+pragma solidity ^0.5.2;
+
+contract IWithdrawManager {
+    function createExitQueue(address token) external;
+
+    function verifyInclusion(
+        bytes calldata data,
+        uint8 offset,
+        bool verifyTxInclusion
+    ) external view returns (uint256 age);
+
+    function addExitToQueue(
+        address exitor,
+        address childToken,
+        address rootToken,
+        uint256 exitAmountOrTokenId,
+        bytes32 txHash,
+        bool isRegularExit,
+        uint256 priority
+    ) external;
+
+    function addInput(
+        uint256 exitId,
+        uint256 age,
+        address utxoOwner,
+        address token
+    ) external;
+
+    function challengeExit(
+        uint256 exitId,
+        uint256 inputId,
+        bytes calldata challengeData,
+        address adjudicatorPredicate
+    ) external;
+}
+
+// File: contracts/common/Registry.sol
+
+pragma solidity ^0.5.2;
+
+
+
+
+contract Registry is Governable {
+    // @todo hardcode constants
+    bytes32 private constant WETH_TOKEN = keccak256("wethToken");
+    bytes32 private constant DEPOSIT_MANAGER = keccak256("depositManager");
+    bytes32 private constant STAKE_MANAGER = keccak256("stakeManager");
+    bytes32 private constant VALIDATOR_SHARE = keccak256("validatorShare");
+    bytes32 private constant WITHDRAW_MANAGER = keccak256("withdrawManager");
+    bytes32 private constant CHILD_CHAIN = keccak256("childChain");
+    bytes32 private constant STATE_SENDER = keccak256("stateSender");
+    bytes32 private constant SLASHING_MANAGER = keccak256("slashingManager");
+
+    address public erc20Predicate;
+    address public erc721Predicate;
+
+    mapping(bytes32 => address) public contractMap;
+    mapping(address => address) public rootToChildToken;
+    mapping(address => address) public childToRootToken;
+    mapping(address => bool) public proofValidatorContracts;
+    mapping(address => bool) public isERC721;
+
+    enum Type {Invalid, ERC20, ERC721, Custom}
+    struct Predicate {
+        Type _type;
+    }
+    mapping(address => Predicate) public predicates;
+
+    event TokenMapped(address indexed rootToken, address indexed childToken);
+    event ProofValidatorAdded(address indexed validator, address indexed from);
+    event ProofValidatorRemoved(address indexed validator, address indexed from);
+    event PredicateAdded(address indexed predicate, address indexed from);
+    event PredicateRemoved(address indexed predicate, address indexed from);
+    event ContractMapUpdated(bytes32 indexed key, address indexed previousContract, address indexed newContract);
+
+    // TODO(radomski): Some weird something
+    // constructor(address _governance) public Governable(_governance) {}
+
+    function updateContractMap(bytes32 _key, address _address) external onlyGovernance {
+        emit ContractMapUpdated(_key, contractMap[_key], _address);
+        contractMap[_key] = _address;
+    }
+
+    /**
+     * @dev Map root token to child token
+     * @param _rootToken Token address on the root chain
+     * @param _childToken Token address on the child chain
+     * @param _isERC721 Is the token being mapped ERC721
+     */
+    function mapToken(
+        address _rootToken,
+        address _childToken,
+        bool _isERC721
+    ) external onlyGovernance {
+        require(_rootToken != address(0x0) && _childToken != address(0x0), "INVALID_TOKEN_ADDRESS");
+        rootToChildToken[_rootToken] = _childToken;
+        childToRootToken[_childToken] = _rootToken;
+        isERC721[_rootToken] = _isERC721;
+        IWithdrawManager(contractMap[WITHDRAW_MANAGER]).createExitQueue(_rootToken);
+        emit TokenMapped(_rootToken, _childToken);
+    }
+
+    function addErc20Predicate(address predicate) public onlyGovernance {
+        require(predicate != address(0x0), "Can not add null address as predicate");
+        erc20Predicate = predicate;
+        addPredicate(predicate, Type.ERC20);
+    }
+
+    function addErc721Predicate(address predicate) public onlyGovernance {
+        erc721Predicate = predicate;
+        addPredicate(predicate, Type.ERC721);
+    }
+
+    function addPredicate(address predicate, Type _type) public onlyGovernance {
+        require(predicates[predicate]._type == Type.Invalid, "Predicate already added");
+        predicates[predicate]._type = _type;
+        emit PredicateAdded(predicate, msg.sender);
+    }
+
+    function removePredicate(address predicate) public onlyGovernance {
+        require(predicates[predicate]._type != Type.Invalid, "Predicate does not exist");
+        delete predicates[predicate];
+        emit PredicateRemoved(predicate, msg.sender);
+    }
+
+    function getValidatorShareAddress() public view returns (address) {
+        return contractMap[VALIDATOR_SHARE];
+    }
+
+    function getWethTokenAddress() public view returns (address) {
+        return contractMap[WETH_TOKEN];
+    }
+
+    function getDepositManagerAddress() public view returns (address) {
+        return contractMap[DEPOSIT_MANAGER];
+    }
+
+    function getStakeManagerAddress() public view returns (address) {
+        return contractMap[STAKE_MANAGER];
+    }
+
+    function getSlashingManagerAddress() public view returns (address) {
+        return contractMap[SLASHING_MANAGER];
+    }
+
+    function getWithdrawManagerAddress() public view returns (address) {
+        return contractMap[WITHDRAW_MANAGER];
+    }
+
+    function getChildChainAndStateSender() public view returns (address, address) {
+        return (contractMap[CHILD_CHAIN], contractMap[STATE_SENDER]);
+    }
+
+    function isTokenMapped(address _token) public view returns (bool) {
+        return rootToChildToken[_token] != address(0x0);
+    }
+
+    function isTokenMappedAndIsErc721(address _token) public view returns (bool) {
+        require(isTokenMapped(_token), "TOKEN_NOT_MAPPED");
+        return isERC721[_token];
+    }
+
+    function isTokenMappedAndGetPredicate(address _token) public view returns (address) {
+        if (isTokenMappedAndIsErc721(_token)) {
+            return erc721Predicate;
+        }
+        return erc20Predicate;
+    }
+
+    function isChildTokenErc721(address childToken) public view returns (bool) {
+        address rootToken = childToRootToken[childToken];
+        require(rootToken != address(0x0), "Child token is not mapped");
+        return isERC721[rootToken];
+    }
+}
+
+// File: openzeppelin-solidity/contracts/token/ERC20/IERC20.sol
+
+pragma solidity ^0.5.2;
+
+/**
+ * @title ERC20 interface
+ * @dev see https://eips.ethereum.org/EIPS/eip-20
+ */
+interface IERC20 {
+    function transfer(address to, uint256 value) external returns (bool);
+
+    function approve(address spender, uint256 value) external returns (bool);
+
+    function transferFrom(address from, address to, uint256 value) external returns (bool);
+
+    function totalSupply() external view returns (uint256);
+
+    function balanceOf(address who) external view returns (uint256);
+
+    function allowance(address owner, address spender) external view returns (uint256);
+
+    event Transfer(address indexed from, address indexed to, uint256 value);
+
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+}
+
+// File: openzeppelin-solidity/contracts/math/SafeMath.sol
+
+pragma solidity ^0.5.2;
+
+/**
+ * @title SafeMath
+ * @dev Unsigned math operations with safety checks that revert on error
+ */
+library SafeMath {
+    /**
+     * @dev Multiplies two unsigned integers, reverts on overflow.
+     */
+    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
+        // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
+        // benefit is lost if 'b' is also tested.
+        // See: https://github.com/OpenZeppelin/openzeppelin-solidity/pull/522
+        if (a == 0) {
+            return 0;
+        }
+
+        uint256 c = a * b;
+        require(c / a == b);
+
+        return c;
+    }
+
+    /**
+     * @dev Integer division of two unsigned integers truncating the quotient, reverts on division by zero.
+     */
+    function div(uint256 a, uint256 b) internal pure returns (uint256) {
+        // Solidity only automatically asserts when dividing by 0
+        require(b > 0);
+        uint256 c = a / b;
+        // assert(a == b * c + a % b); // There is no case in which this doesn't hold
+
+        return c;
+    }
+
+    /**
+     * @dev Subtracts two unsigned integers, reverts on overflow (i.e. if subtrahend is greater than minuend).
+     */
+    function sub(uint256 a, uint256 b) internal pure returns (uint256) {
+        require(b <= a);
+        uint256 c = a - b;
+
+        return c;
+    }
+
+    /**
+     * @dev Adds two unsigned integers, reverts on overflow.
+     */
+    function add(uint256 a, uint256 b) internal pure returns (uint256) {
+        uint256 c = a + b;
+        require(c >= a);
+
+        return c;
+    }
+
+    /**
+     * @dev Divides two unsigned integers and returns the remainder (unsigned integer modulo),
+     * reverts when dividing by zero.
+     */
+    function mod(uint256 a, uint256 b) internal pure returns (uint256) {
+        require(b != 0);
+        return a % b;
+    }
+}
+
+// File: openzeppelin-solidity/contracts/token/ERC20/ERC20.sol
+
+pragma solidity ^0.5.2;
+
+
+
+/**
+ * @title Standard ERC20 token
+ *
+ * @dev Implementation of the basic standard token.
+ * https://eips.ethereum.org/EIPS/eip-20
+ * Originally based on code by FirstBlood:
+ * https://github.com/Firstbloodio/token/blob/master/smart_contract/FirstBloodToken.sol
+ *
+ * This implementation emits additional Approval events, allowing applications to reconstruct the allowance status for
+ * all accounts just by listening to said events. Note that this isn't required by the specification, and other
+ * compliant implementations may not do it.
+ */
+contract ERC20 is IERC20 {
+    // TODO(radomski): using
+    // using SafeMath for uint256;
+
+    mapping (address => uint256) private _balances;
+
+    mapping (address => mapping (address => uint256)) private _allowed;
+
+    uint256 private _totalSupply;
+
+    /**
+     * @dev Total number of tokens in existence
+     */
+    function totalSupply() public view returns (uint256) {
+        return _totalSupply;
+    }
+
+    /**
+     * @dev Gets the balance of the specified address.
+     * @param owner The address to query the balance of.
+     * @return A uint256 representing the amount owned by the passed address.
+     */
+    function balanceOf(address owner) public view returns (uint256) {
+        return _balances[owner];
+    }
+
+    /**
+     * @dev Function to check the amount of tokens that an owner allowed to a spender.
+     * @param owner address The address which owns the funds.
+     * @param spender address The address which will spend the funds.
+     * @return A uint256 specifying the amount of tokens still available for the spender.
+     */
+    function allowance(address owner, address spender) public view returns (uint256) {
+        return _allowed[owner][spender];
+    }
+
+    /**
+     * @dev Transfer token to a specified address
+     * @param to The address to transfer to.
+     * @param value The amount to be transferred.
+     */
+    function transfer(address to, uint256 value) public returns (bool) {
+        _transfer(msg.sender, to, value);
+        return true;
+    }
+
+    /**
+     * @dev Approve the passed address to spend the specified amount of tokens on behalf of msg.sender.
+     * Beware that changing an allowance with this method brings the risk that someone may use both the old
+     * and the new allowance by unfortunate transaction ordering. One possible solution to mitigate this
+     * race condition is to first reduce the spender's allowance to 0 and set the desired value afterwards:
+     * https://github.com/ethereum/EIPs/issues/20#issuecomment-263524729
+     * @param spender The address which will spend the funds.
+     * @param value The amount of tokens to be spent.
+     */
+    function approve(address spender, uint256 value) public returns (bool) {
+        _approve(msg.sender, spender, value);
+        return true;
+    }
+
+    /**
+     * @dev Transfer tokens from one address to another.
+     * Note that while this function emits an Approval event, this is not required as per the specification,
+     * and other compliant implementations may not emit the event.
+     * @param from address The address which you want to send tokens from
+     * @param to address The address which you want to transfer to
+     * @param value uint256 the amount of tokens to be transferred
+     */
+    function transferFrom(address from, address to, uint256 value) public returns (bool) {
+        _transfer(from, to, value);
+        _approve(from, msg.sender, _allowed[from][msg.sender].sub(value));
+        return true;
+    }
+
+    /**
+     * @dev Increase the amount of tokens that an owner allowed to a spender.
+     * approve should be called when _allowed[msg.sender][spender] == 0. To increment
+     * allowed value is better to use this function to avoid 2 calls (and wait until
+     * the first transaction is mined)
+     * From MonolithDAO Token.sol
+     * Emits an Approval event.
+     * @param spender The address which will spend the funds.
+     * @param addedValue The amount of tokens to increase the allowance by.
+     */
+    function increaseAllowance(address spender, uint256 addedValue) public returns (bool) {
+        _approve(msg.sender, spender, _allowed[msg.sender][spender].add(addedValue));
+        return true;
+    }
+
+    /**
+     * @dev Decrease the amount of tokens that an owner allowed to a spender.
+     * approve should be called when _allowed[msg.sender][spender] == 0. To decrement
+     * allowed value is better to use this function to avoid 2 calls (and wait until
+     * the first transaction is mined)
+     * From MonolithDAO Token.sol
+     * Emits an Approval event.
+     * @param spender The address which will spend the funds.
+     * @param subtractedValue The amount of tokens to decrease the allowance by.
+     */
+    function decreaseAllowance(address spender, uint256 subtractedValue) public returns (bool) {
+        _approve(msg.sender, spender, _allowed[msg.sender][spender].sub(subtractedValue));
+        return true;
+    }
+
+    /**
+     * @dev Transfer token for a specified addresses
+     * @param from The address to transfer from.
+     * @param to The address to transfer to.
+     * @param value The amount to be transferred.
+     */
+    function _transfer(address from, address to, uint256 value) internal {
+        require(to != address(0));
+
+        _balances[from] = _balances[from].sub(value);
+        _balances[to] = _balances[to].add(value);
+        emit Transfer(from, to, value);
+    }
+
+    /**
+     * @dev Internal function that mints an amount of the token and assigns it to
+     * an account. This encapsulates the modification of balances such that the
+     * proper events are emitted.
+     * @param account The account that will receive the created tokens.
+     * @param value The amount that will be created.
+     */
+    function _mint(address account, uint256 value) internal {
+        require(account != address(0));
+
+        _totalSupply = _totalSupply.add(value);
+        _balances[account] = _balances[account].add(value);
+        emit Transfer(address(0), account, value);
+    }
+
+    /**
+     * @dev Internal function that burns an amount of the token of a given
+     * account.
+     * @param account The account whose tokens will be burnt.
+     * @param value The amount that will be burnt.
+     */
+    function _burn(address account, uint256 value) internal {
+        require(account != address(0));
+
+        _totalSupply = _totalSupply.sub(value);
+        _balances[account] = _balances[account].sub(value);
+        emit Transfer(account, address(0), value);
+    }
+
+    /**
+     * @dev Approve an address to spend another addresses' tokens.
+     * @param owner The address that owns the tokens.
+     * @param spender The address that will spend the tokens.
+     * @param value The number of tokens that can be spent.
+     */
+    function _approve(address owner, address spender, uint256 value) internal {
+        require(spender != address(0));
+        require(owner != address(0));
+
+        _allowed[owner][spender] = value;
+        emit Approval(owner, spender, value);
+    }
+
+    /**
+     * @dev Internal function that burns an amount of the token of a given
+     * account, deducting from the sender's allowance for said account. Uses the
+     * internal burn function.
+     * Emits an Approval event (reflecting the reduced allowance).
+     * @param account The account whose tokens will be burnt.
+     * @param value The amount that will be burnt.
+     */
+    function _burnFrom(address account, uint256 value) internal {
+        _burn(account, value);
+        _approve(account, msg.sender, _allowed[account][msg.sender].sub(value));
+    }
+}
+
+// File: contracts/common/tokens/ERC20NonTradable.sol
+
+pragma solidity ^0.5.2;
+
+
+// TODO(radomski): Versioning?
+//contract ERC20NonTradable is ERC20 {
+//    function _approve(
+//        address owner,
+//        address spender,
+//        uint256 value
+//    ) internal {
+//        revert("disabled");
+//    }
+//}
+
+// File: openzeppelin-solidity/contracts/ownership/Ownable.sol
+
+pragma solidity ^0.5.2;
+
+/**
+ * @title Ownable
+ * @dev The Ownable contract has an owner address, and provides basic authorization control
+ * functions, this simplifies the implementation of "user permissions".
+ */
+contract Ownable {
+    address private _owner;
+
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+
+    /**
+     * @dev The Ownable constructor sets the original `owner` of the contract to the sender
+     * account.
+     */
+    constructor () internal {
+        _owner = msg.sender;
+        emit OwnershipTransferred(address(0), _owner);
+    }
+
+    /**
+     * @return the address of the owner.
+     */
+    function owner() public view returns (address) {
+        return _owner;
+    }
+
+    /**
+     * @dev Throws if called by any account other than the owner.
+     */
+    modifier onlyOwner() {
+        require(isOwner());
+        _;
+    }
+
+    /**
+     * @return true if `msg.sender` is the owner of the contract.
+     */
+    function isOwner() public view returns (bool) {
+        return msg.sender == _owner;
+    }
+
+    /**
+     * @dev Allows the current owner to relinquish control of the contract.
+     * It will not be possible to call the functions with the `onlyOwner`
+     * modifier anymore.
+     * @notice Renouncing ownership will leave the contract without an owner,
+     * thereby removing any functionality that is only available to the owner.
+     */
+    function renounceOwnership() public onlyOwner {
+        emit OwnershipTransferred(_owner, address(0));
+        _owner = address(0);
+    }
+
+    /**
+     * @dev Allows the current owner to transfer control of the contract to a newOwner.
+     * @param newOwner The address to transfer ownership to.
+     */
+    function transferOwnership(address newOwner) public onlyOwner {
+        _transferOwnership(newOwner);
+    }
+
+    /**
+     * @dev Transfers control of the contract to a newOwner.
+     * @param newOwner The address to transfer ownership to.
+     */
+    function _transferOwnership(address newOwner) internal {
+        require(newOwner != address(0));
+        emit OwnershipTransferred(_owner, newOwner);
+        _owner = newOwner;
+    }
+}
+
+// File: contracts/staking/StakingInfo.sol
+
+pragma solidity ^0.5.2;
+
+
+
+
+
+// dummy interface to avoid cyclic dependency
+contract IStakeManagerLocal {
+    enum Status {Inactive, Active, Locked, Unstaked}
+
+    struct Validator {
+        uint256 amount;
+        uint256 reward;
+        uint256 activationEpoch;
+        uint256 deactivationEpoch;
+        uint256 jailTime;
+        address signer;
+        address contractAddress;
+        Status status;
+    }
+
+    mapping(uint256 => Validator) public validators;
+    bytes32 public accountStateRoot;
+    uint256 public activeAmount; // delegation amount from validator contract
+    uint256 public validatorRewards;
+
+    function currentValidatorSetTotalStake() public view returns (uint256);
+
+    // signer to Validator mapping
+    function signerToValidator(address validatorAddress)
+        public
+        view
+        returns (uint256);
+
+    function isValidator(uint256 validatorId) public view returns (bool);
+}
+
+contract StakingInfo is Ownable {
+    // TODO(radomski): using
+    // using SafeMath for uint256;
+    mapping(uint256 => uint256) public validatorNonce;
+
+    /// @dev Emitted when validator stakes in '_stakeFor()' in StakeManager.
+    /// @param signer validator address.
+    /// @param validatorId unique integer to identify a validator.
+    /// @param nonce to synchronize the events in heimdal.
+    /// @param activationEpoch validator's first epoch as proposer.
+    /// @param amount staking amount.
+    /// @param total total staking amount.
+    /// @param signerPubkey public key of the validator
+    event Staked(
+        address indexed signer,
+        uint256 indexed validatorId,
+        uint256 nonce,
+        uint256 indexed activationEpoch,
+        uint256 amount,
+        uint256 total,
+        bytes signerPubkey
+    );
+
+    /// @dev Emitted when validator unstakes in 'unstakeClaim()'
+    /// @param user address of the validator.
+    /// @param validatorId unique integer to identify a validator.
+    /// @param amount staking amount.
+    /// @param total total staking amount.
+    event Unstaked(
+        address indexed user,
+        uint256 indexed validatorId,
+        uint256 amount,
+        uint256 total
+    );
+
+    /// @dev Emitted when validator unstakes in '_unstake()'.
+    /// @param user address of the validator.
+    /// @param validatorId unique integer to identify a validator.
+    /// @param nonce to synchronize the events in heimdal.
+    /// @param deactivationEpoch last epoch for validator.
+    /// @param amount staking amount.
+    event UnstakeInit(
+        address indexed user,
+        uint256 indexed validatorId,
+        uint256 nonce,
+        uint256 deactivationEpoch,
+        uint256 indexed amount
+    );
+
+    /// @dev Emitted when the validator public key is updated in 'updateSigner()'.
+    /// @param validatorId unique integer to identify a validator.
+    /// @param nonce to synchronize the events in heimdal.
+    /// @param oldSigner old address of the validator.
+    /// @param newSigner new address of the validator.
+    /// @param signerPubkey public key of the validator.
+    event SignerChange(
+        uint256 indexed validatorId,
+        uint256 nonce,
+        address indexed oldSigner,
+        address indexed newSigner,
+        bytes signerPubkey
+    );
+    event Restaked(uint256 indexed validatorId, uint256 amount, uint256 total);
+    event Jailed(
+        uint256 indexed validatorId,
+        uint256 indexed exitEpoch,
+        address indexed signer
+    );
+    event UnJailed(uint256 indexed validatorId, address indexed signer);
+    event Slashed(uint256 indexed nonce, uint256 indexed amount);
+    event ThresholdChange(uint256 newThreshold, uint256 oldThreshold);
+    event DynastyValueChange(uint256 newDynasty, uint256 oldDynasty);
+    event ProposerBonusChange(
+        uint256 newProposerBonus,
+        uint256 oldProposerBonus
+    );
+
+    event RewardUpdate(uint256 newReward, uint256 oldReward);
+
+    /// @dev Emitted when validator confirms the auction bid and at the time of restaking in confirmAuctionBid() and restake().
+    /// @param validatorId unique integer to identify a validator.
+    /// @param nonce to synchronize the events in heimdal.
+    /// @param newAmount the updated stake amount.
+    event StakeUpdate(
+        uint256 indexed validatorId,
+        uint256 indexed nonce,
+        uint256 indexed newAmount
+    );
+    event ClaimRewards(
+        uint256 indexed validatorId,
+        uint256 indexed amount,
+        uint256 indexed totalAmount
+    );
+    event StartAuction(
+        uint256 indexed validatorId,
+        uint256 indexed amount,
+        uint256 indexed auctionAmount
+    );
+    event ConfirmAuction(
+        uint256 indexed newValidatorId,
+        uint256 indexed oldValidatorId,
+        uint256 indexed amount
+    );
+    event TopUpFee(address indexed user, uint256 indexed fee);
+    event ClaimFee(address indexed user, uint256 indexed fee);
+    // Delegator events
+    event ShareMinted(
+        uint256 indexed validatorId,
+        address indexed user,
+        uint256 indexed amount,
+        uint256 tokens
+    );
+    event ShareBurned(
+        uint256 indexed validatorId,
+        address indexed user,
+        uint256 indexed amount,
+        uint256 tokens
+    );
+    event DelegatorClaimedRewards(
+        uint256 indexed validatorId,
+        address indexed user,
+        uint256 indexed rewards
+    );
+    event DelegatorRestaked(
+        uint256 indexed validatorId,
+        address indexed user,
+        uint256 indexed totalStaked
+    );
+    event DelegatorUnstaked(
+        uint256 indexed validatorId,
+        address indexed user,
+        uint256 amount
+    );
+    event UpdateCommissionRate(
+        uint256 indexed validatorId,
+        uint256 indexed newCommissionRate,
+        uint256 indexed oldCommissionRate
+    );
+
+    Registry public registry;
+
+    modifier onlyValidatorContract(uint256 validatorId) {
+        address _contract;
+        // TODO(radomski): comma with parens
+        // (, , , , , , _contract, ) = IStakeManagerLocal(
+        //     registry.getStakeManagerAddress()
+        // )
+        //    .validators(validatorId);
+        require(_contract == msg.sender,
+        "Invalid sender, not validator");
+        _;
+    }
+
+    modifier StakeManagerOrValidatorContract(uint256 validatorId) {
+        address _contract;
+        address _stakeManager = registry.getStakeManagerAddress();
+        // TODO(radomski): comma with parens
+        //(, , , , , , _contract, ) = IStakeManagerLocal(_stakeManager).validators(
+        //    validatorId
+        //);
+        require(_contract == msg.sender || _stakeManager == msg.sender,
+        "Invalid sender, not stake manager or validator contract");
+        _;
+    }
+
+    modifier onlyStakeManager() {
+        require(registry.getStakeManagerAddress() == msg.sender,
+        "Invalid sender, not stake manager");
+        _;
+    }
+    modifier onlySlashingManager() {
+        require(registry.getSlashingManagerAddress() == msg.sender,
+        "Invalid sender, not slashing manager");
+        _;
+    }
+
+    constructor(address _registry) public {
+        registry = Registry(_registry);
+    }
+
+    function updateNonce(
+        uint256[] calldata validatorIds,
+        uint256[] calldata nonces
+    ) external onlyOwner {
+        require(validatorIds.length == nonces.length, "args length mismatch");
+
+        for (uint256 i = 0; i < validatorIds.length; ++i) {
+            validatorNonce[validatorIds[i]] = nonces[i];
+        }
+    } 
+
+    function logStaked(
+        address signer,
+        bytes memory signerPubkey,
+        uint256 validatorId,
+        uint256 activationEpoch,
+        uint256 amount,
+        uint256 total
+    ) public onlyStakeManager {
+        validatorNonce[validatorId] = validatorNonce[validatorId].add(1);
+        emit Staked(
+            signer,
+            validatorId,
+            validatorNonce[validatorId],
+            activationEpoch,
+            amount,
+            total,
+            signerPubkey
+        );
+    }
+
+    function logUnstaked(
+        address user,
+        uint256 validatorId,
+        uint256 amount,
+        uint256 total
+    ) public onlyStakeManager {
+        emit Unstaked(user, validatorId, amount, total);
+    }
+
+    function logUnstakeInit(
+        address user,
+        uint256 validatorId,
+        uint256 deactivationEpoch,
+        uint256 amount
+    ) public onlyStakeManager {
+        validatorNonce[validatorId] = validatorNonce[validatorId].add(1);
+        emit UnstakeInit(
+            user,
+            validatorId,
+            validatorNonce[validatorId],
+            deactivationEpoch,
+            amount
+        );
+    }
+
+    function logSignerChange(
+        uint256 validatorId,
+        address oldSigner,
+        address newSigner,
+        bytes memory signerPubkey
+    ) public onlyStakeManager {
+        validatorNonce[validatorId] = validatorNonce[validatorId].add(1);
+        emit SignerChange(
+            validatorId,
+            validatorNonce[validatorId],
+            oldSigner,
+            newSigner,
+            signerPubkey
+        );
+    }
+
+    function logRestaked(uint256 validatorId, uint256 amount, uint256 total)
+        public
+        onlyStakeManager
+    {
+        emit Restaked(validatorId, amount, total);
+    }
+
+    function logJailed(uint256 validatorId, uint256 exitEpoch, address signer)
+        public
+        onlyStakeManager
+    {
+        emit Jailed(validatorId, exitEpoch, signer);
+    }
+
+    function logUnjailed(uint256 validatorId, address signer)
+        public
+        onlyStakeManager
+    {
+        emit UnJailed(validatorId, signer);
+    }
+
+    function logSlashed(uint256 nonce, uint256 amount)
+        public
+        onlySlashingManager
+    {
+        emit Slashed(nonce, amount);
+    }
+
+    function logThresholdChange(uint256 newThreshold, uint256 oldThreshold)
+        public
+        onlyStakeManager
+    {
+        emit ThresholdChange(newThreshold, oldThreshold);
+    }
+
+    function logDynastyValueChange(uint256 newDynasty, uint256 oldDynasty)
+        public
+        onlyStakeManager
+    {
+        emit DynastyValueChange(newDynasty, oldDynasty);
+    }
+
+    function logProposerBonusChange(
+        uint256 newProposerBonus,
+        uint256 oldProposerBonus
+    ) public onlyStakeManager {
+        emit ProposerBonusChange(newProposerBonus, oldProposerBonus);
+    }
+
+    function logRewardUpdate(uint256 newReward, uint256 oldReward)
+        public
+        onlyStakeManager
+    {
+        emit RewardUpdate(newReward, oldReward);
+    }
+
+    function logStakeUpdate(uint256 validatorId)
+        public
+        StakeManagerOrValidatorContract(validatorId)
+    {
+        validatorNonce[validatorId] = validatorNonce[validatorId].add(1);
+        emit StakeUpdate(
+            validatorId,
+            validatorNonce[validatorId],
+            totalValidatorStake(validatorId)
+        );
+    }
+
+    function logClaimRewards(
+        uint256 validatorId,
+        uint256 amount,
+        uint256 totalAmount
+    ) public onlyStakeManager {
+        emit ClaimRewards(validatorId, amount, totalAmount);
+    }
+
+    function logStartAuction(
+        uint256 validatorId,
+        uint256 amount,
+        uint256 auctionAmount
+    ) public onlyStakeManager {
+        emit StartAuction(validatorId, amount, auctionAmount);
+    }
+
+    function logConfirmAuction(
+        uint256 newValidatorId,
+        uint256 oldValidatorId,
+        uint256 amount
+    ) public onlyStakeManager {
+        emit ConfirmAuction(newValidatorId, oldValidatorId, amount);
+    }
+
+    function logTopUpFee(address user, uint256 fee) public onlyStakeManager {
+        emit TopUpFee(user, fee);
+    }
+
+    function logClaimFee(address user, uint256 fee) public onlyStakeManager {
+        emit ClaimFee(user, fee);
+    }
+
+    function getStakerDetails(uint256 validatorId)
+        public
+        view
+        returns (
+            uint256 amount,
+            uint256 reward,
+            uint256 activationEpoch,
+            uint256 deactivationEpoch,
+            address signer,
+            uint256 _status
+        )
+    {
+        IStakeManagerLocal stakeManager = IStakeManagerLocal(
+            registry.getStakeManagerAddress()
+        );
+        address _contract;
+        IStakeManagerLocal.Status status;
+        // TODO(radomski): parens
+        //(
+        //    amount,
+        //    reward,
+        //    activationEpoch,
+        //    deactivationEpoch,
+        //    ,
+        //    signer,
+        //    _contract,
+        //    status
+        //) = stakeManager.validators(validatorId);
+        _status = uint256(status);
+        if (_contract != address(0x0)) {
+            reward += IStakeManagerLocal(_contract).validatorRewards();
+        }
+    }
+
+    function totalValidatorStake(uint256 validatorId)
+        public
+        view
+        returns (uint256 validatorStake)
+    {
+        address contractAddress;
+        // TODO(radomski): parens
+        //(validatorStake, , , , , , contractAddress, ) = IStakeManagerLocal(
+        //    registry.getStakeManagerAddress()
+        //)
+        //    .validators(validatorId);
+        if (contractAddress != address(0x0)) {
+            validatorStake += IStakeManagerLocal(contractAddress).activeAmount();
+        }
+    }
+
+    function getAccountStateRoot()
+        public
+        view
+        returns (bytes32 accountStateRoot)
+    {
+        accountStateRoot = IStakeManagerLocal(registry.getStakeManagerAddress())
+            .accountStateRoot();
+    }
+
+    function getValidatorContractAddress(uint256 validatorId)
+        public
+        view
+        returns (address ValidatorContract)
+    {
+        // TODO(radomski): here
+        //(, , , , , , ValidatorContract, ) = IStakeManagerLocal(
+        //    registry.getStakeManagerAddress()
+        //)
+        //    .validators(validatorId);
+    }
+
+    // validator Share contract logging func
+    function logShareMinted(
+        uint256 validatorId,
+        address user,
+        uint256 amount,
+        uint256 tokens
+    ) public onlyValidatorContract(validatorId) {
+        emit ShareMinted(validatorId, user, amount, tokens);
+    }
+
+    function logShareBurned(
+        uint256 validatorId,
+        address user,
+        uint256 amount,
+        uint256 tokens
+    ) public onlyValidatorContract(validatorId) {
+        emit ShareBurned(validatorId, user, amount, tokens);
+    }
+
+    function logDelegatorClaimRewards(
+        uint256 validatorId,
+        address user,
+        uint256 rewards
+    ) public onlyValidatorContract(validatorId) {
+        emit DelegatorClaimedRewards(validatorId, user, rewards);
+    }
+
+    function logDelegatorRestaked(
+        uint256 validatorId,
+        address user,
+        uint256 totalStaked
+    ) public onlyValidatorContract(validatorId) {
+        emit DelegatorRestaked(validatorId, user, totalStaked);
+    }
+
+    function logDelegatorUnstaked(uint256 validatorId, address user, uint256 amount)
+        public
+        onlyValidatorContract(validatorId)
+    {
+        emit DelegatorUnstaked(validatorId, user, amount);
+    }
+
+    // deprecated
+    function logUpdateCommissionRate(
+        uint256 validatorId,
+        uint256 newCommissionRate,
+        uint256 oldCommissionRate
+    ) public onlyValidatorContract(validatorId) {
+        emit UpdateCommissionRate(
+            validatorId,
+            newCommissionRate,
+            oldCommissionRate
+        );
+    }
+}
+
+// File: contracts/common/mixin/Initializable.sol
+
+pragma solidity ^0.5.2;
+
+contract Initializable {
+    bool inited = false;
+
+    modifier initializer() {
+        require(!inited, "already inited");
+        inited = true;
+        
+        _;
+    }
+}
+
+// File: contracts/staking/EventsHub.sol
+
+pragma solidity ^0.5.2;
+
+
+
+contract IStakeManagerEventsHub {
+    struct Validator {
+        uint256 amount;
+        uint256 reward;
+        uint256 activationEpoch;
+        uint256 deactivationEpoch;
+        uint256 jailTime;
+        address signer;
+        address contractAddress;
+    }
+
+    mapping(uint256 => Validator) public validators;
+}
+
+contract EventsHub is Initializable {
+    Registry public registry;
+
+    modifier onlyValidatorContract(uint256 validatorId) {
+        address _contract;
+        // TODO(radomski): parens
+        //(, , , , , , _contract) = IStakeManagerEventsHub(registry.getStakeManagerAddress()).validators(validatorId);
+        //require(_contract == msg.sender, "not validator");
+        //_;
+    }
+
+    modifier onlyStakeManager() {
+        require(registry.getStakeManagerAddress() == msg.sender,
+        "Invalid sender, not stake manager");
+        _;
+    }
+
+    function initialize(Registry _registry) external initializer {
+        registry = _registry;
+    }
+
+    event ShareBurnedWithId(
+        uint256 indexed validatorId,
+        address indexed user,
+        uint256 indexed amount,
+        uint256 tokens,
+        uint256 nonce
+    );
+
+    function logShareBurnedWithId(
+        uint256 validatorId,
+        address user,
+        uint256 amount,
+        uint256 tokens,
+        uint256 nonce
+    ) public onlyValidatorContract(validatorId) {
+        emit ShareBurnedWithId(validatorId, user, amount, tokens, nonce);
+    }
+
+    event DelegatorUnstakeWithId(
+        uint256 indexed validatorId,
+        address indexed user,
+        uint256 amount,
+        uint256 nonce
+    );
+
+    function logDelegatorUnstakedWithId(
+        uint256 validatorId,
+        address user,
+        uint256 amount,
+        uint256 nonce
+    ) public onlyValidatorContract(validatorId) {
+        emit DelegatorUnstakeWithId(validatorId, user, amount, nonce);
+    }
+
+    event RewardParams(
+        uint256 rewardDecreasePerCheckpoint,
+        uint256 maxRewardedCheckpoints,
+        uint256 checkpointRewardDelta
+    );
+
+    function logRewardParams(
+        uint256 rewardDecreasePerCheckpoint,
+        uint256 maxRewardedCheckpoints,
+        uint256 checkpointRewardDelta
+    ) public onlyStakeManager {
+        emit RewardParams(rewardDecreasePerCheckpoint, maxRewardedCheckpoints, checkpointRewardDelta);
+    }
+
+    event UpdateCommissionRate(
+        uint256 indexed validatorId,
+        uint256 indexed newCommissionRate,
+        uint256 indexed oldCommissionRate
+    );
+
+    function logUpdateCommissionRate(
+        uint256 validatorId,
+        uint256 newCommissionRate,
+        uint256 oldCommissionRate
+    ) public onlyStakeManager {
+        emit UpdateCommissionRate(
+            validatorId,
+            newCommissionRate,
+            oldCommissionRate
+        );
+    }
+
+    event SharesTransfer(
+        uint256 indexed validatorId,
+        address indexed from,
+        address indexed to,
+        uint256 value
+    );
+
+    function logSharesTransfer(
+        uint256 validatorId,
+        address from,
+        address to,
+        uint256 value
+    ) public onlyValidatorContract(validatorId) {
+        emit SharesTransfer(validatorId, from, to, value);
+    }
+}
+
+// File: contracts/common/mixin/Lockable.sol
+
+pragma solidity ^0.5.2;
+
+contract Lockable {
+    bool public locked;
+
+    modifier onlyWhenUnlocked() {
+        _assertUnlocked();
+        _;
+    }
+
+    function _assertUnlocked() private view {
+        require(!locked, "locked");
+    }
+
+    function lock() public {
+        locked = true;
+    }
+
+    function unlock() public {
+        locked = false;
+    }
+}
+
+// File: contracts/common/mixin/OwnableLockable.sol
+
+pragma solidity ^0.5.2;
+
+
+
+contract OwnableLockable is Lockable, Ownable {
+    function lock() public onlyOwner {
+        super.lock();
+    }
+
+    function unlock() public onlyOwner {
+        super.unlock();
+    }
+}
+
+// File: contracts/staking/stakeManager/IStakeManager.sol
+
+pragma solidity 0.5.17;
+
+contract IStakeManager {
+    // validator replacement
+    function startAuction(
+        uint256 validatorId,
+        uint256 amount,
+        bool acceptDelegation,
+        bytes calldata signerPubkey
+    ) external;
+
+    function confirmAuctionBid(uint256 validatorId, uint256 heimdallFee) external;
+
+    function transferFunds(
+        uint256 validatorId,
+        uint256 amount,
+        address delegator
+    ) external returns (bool);
+
+    function delegationDeposit(
+        uint256 validatorId,
+        uint256 amount,
+        address delegator
+    ) external returns (bool);
+
+    function unstake(uint256 validatorId) external;
+
+    function totalStakedFor(address addr) external view returns (uint256);
+
+    function stakeFor(
+        address user,
+        uint256 amount,
+        uint256 heimdallFee,
+        bool acceptDelegation,
+        bytes memory signerPubkey
+    ) public;
+
+    function checkSignatures(
+        uint256 blockInterval,
+        bytes32 voteHash,
+        bytes32 stateRoot,
+        address proposer,
+        uint[3][] calldata sigs
+    ) external returns (uint256);
+
+    function updateValidatorState(uint256 validatorId, int256 amount) public;
+
+    function ownerOf(uint256 tokenId) public view returns (address);
+
+    function slash(bytes calldata slashingInfoList) external returns (uint256);
+
+    function validatorStake(uint256 validatorId) public view returns (uint256);
+
+    function epoch() public view returns (uint256);
+
+    function getRegistry() public view returns (address);
+
+    function withdrawalDelay() public view returns (uint256);
+
+    function delegatedAmount(uint256 validatorId) public view returns(uint256);
+
+    function decreaseValidatorDelegatedAmount(uint256 validatorId, uint256 amount) public;
+
+    function withdrawDelegatorsReward(uint256 validatorId) public returns(uint256);
+
+    function delegatorsReward(uint256 validatorId) public view returns(uint256);
+
+    function dethroneAndStake(
+        address auctionUser,
+        uint256 heimdallFee,
+        uint256 validatorId,
+        uint256 auctionAmount,
+        bool acceptDelegation,
+        bytes calldata signerPubkey
+    ) external;
+}
+
+// File: contracts/staking/validatorShare/IValidatorShare.sol
+
+pragma solidity 0.5.17;
+
+// note this contract interface is only for stakeManager use
+contract IValidatorShare {
+    function withdrawRewards() public;
+
+    function unstakeClaimTokens() public;
+
+    function getLiquidRewards(address user) public view returns (uint256);
+    
+    function owner() public view returns (address);
+
+    function restake() public returns(uint256, uint256);
+
+    function unlock() external;
+
+    function lock() external;
+
+    function drain(
+        address token,
+        address payable destination,
+        uint256 amount
+    ) external;
+
+    function slash(uint256 valPow, uint256 delegatedAmount, uint256 totalAmountToSlash) external returns (uint256);
+
+    function updateDelegation(bool delegation) external;
+
+    function migrateOut(address user, uint256 amount) external;
+
+    function migrateIn(address user, uint256 amount) external;
+}
+
+// File: contracts/staking/validatorShare/ValidatorShare.sol
+
+pragma solidity 0.5.17;
+
+
+
+
+
+
+
+
+
+
+contract ValidatorShare is IValidatorShare, ERC20NonTradable, OwnableLockable, Initializable {
+    struct DelegatorUnbond {
+        uint256 shares;
+        uint256 withdrawEpoch;
+    }
+
+    uint256 constant EXCHANGE_RATE_PRECISION = 100;
+    // maximum matic possible, even if rate will be 1 and all matic will be staken in one go, it will result in 10 ^ 58 shares
+    uint256 constant EXCHANGE_RATE_HIGH_PRECISION = 10**29;
+    uint256 constant MAX_COMMISION_RATE = 100;
+    uint256 constant REWARD_PRECISION = 10**25;
+
+    StakingInfo public stakingLogger;
+    IStakeManager public stakeManager;
+    uint256 public validatorId;
+    uint256 public validatorRewards_deprecated;
+    uint256 public commissionRate_deprecated;
+    uint256 public lastCommissionUpdate_deprecated;
+    uint256 public minAmount;
+
+    uint256 public totalStake_deprecated;
+    uint256 public rewardPerShare;
+    uint256 public activeAmount;
+
+    bool public delegation;
+
+    uint256 public withdrawPool;
+    uint256 public withdrawShares;
+
+    mapping(address => uint256) amountStaked_deprecated; // deprecated, keep for foundation delegators
+    mapping(address => DelegatorUnbond) public unbonds;
+    mapping(address => uint256) public initalRewardPerShare;
+
+    mapping(address => uint256) public unbondNonces;
+    mapping(address => mapping(uint256 => DelegatorUnbond)) public unbonds_new;
+
+    EventsHub public eventsHub;
+
+    // onlyOwner will prevent this contract from initializing, since it's owner is going to be 0x0 address
+    function initialize(
+        uint256 _validatorId,
+        address _stakingLogger,
+        address _stakeManager
+    ) external initializer {
+        validatorId = _validatorId;
+        stakingLogger = StakingInfo(_stakingLogger);
+        stakeManager = IStakeManager(_stakeManager);
+        _transferOwnership(_stakeManager);
+        _getOrCacheEventsHub();
+
+        minAmount = 10**18;
+        delegation = true;
+    }
+
+    /**
+        Public View Methods
+    */
+
+    function exchangeRate() public view returns (uint256) {
+        uint256 totalShares = totalSupply();
+        uint256 precision = _getRatePrecision();
+        return totalShares == 0 ? precision : stakeManager.delegatedAmount(validatorId).mul(precision).div(totalShares);
+    }
+
+    function getTotalStake(address user) public view returns (uint256, uint256) {
+        uint256 shares = balanceOf(user);
+        uint256 rate = exchangeRate();
+        if (shares == 0) {
+            return (0, rate);
+        }
+
+        return (rate.mul(shares).div(_getRatePrecision()), rate);
+    }
+
+    function withdrawExchangeRate() public view returns (uint256) {
+        uint256 precision = _getRatePrecision();
+        if (validatorId < 8) {
+            // fix of potentially broken withdrawals for future unbonding
+            // foundation validators have no slashing enabled and thus we can return default exchange rate
+            // because without slashing rate will stay constant
+            return precision;
+        }
+
+        uint256 _withdrawShares = withdrawShares;
+        return _withdrawShares == 0 ? precision : withdrawPool.mul(precision).div(_withdrawShares);
+    }
+
+    function getLiquidRewards(address user) public view returns (uint256) {
+        return _calculateReward(user, getRewardPerShare());
+    }
+
+    function getRewardPerShare() public view returns (uint256) {
+        return _calculateRewardPerShareWithRewards(stakeManager.delegatorsReward(validatorId));
+    }
+
+    /**
+        Public Methods
+     */
+
+    function buyVoucher(uint256 _amount, uint256 _minSharesToMint) public returns(uint256 amountToDeposit) {
+        _withdrawAndTransferReward(msg.sender);
+        
+        amountToDeposit = _buyShares(_amount, _minSharesToMint, msg.sender);
+        require(stakeManager.delegationDeposit(validatorId, amountToDeposit, msg.sender), "deposit failed");
+        
+        return amountToDeposit;
+    }
+
+    function restake() public returns(uint256, uint256) {
+        address user = msg.sender;
+        uint256 liquidReward = _withdrawReward(user);
+        uint256 amountRestaked;
+
+        require(liquidReward >= minAmount, "Too small rewards to restake");
+
+        if (liquidReward != 0) {
+            amountRestaked = _buyShares(liquidReward, 0, user);
+
+            if (liquidReward > amountRestaked) {
+                // return change to the user
+                require(
+                    stakeManager.transferFunds(validatorId, liquidReward - amountRestaked, user),
+                    "Insufficent rewards"
+                );
+                stakingLogger.logDelegatorClaimRewards(validatorId, user, liquidReward - amountRestaked);
+            }
+
+            (uint256 totalStaked, ) = getTotalStake(user);
+            stakingLogger.logDelegatorRestaked(validatorId, user, totalStaked);
+        }
+        
+        return (amountRestaked, liquidReward);
+    }
+
+    function sellVoucher(uint256 claimAmount, uint256 maximumSharesToBurn) public {
+        (uint256 shares, uint256 _withdrawPoolShare) = _sellVoucher(claimAmount, maximumSharesToBurn);
+
+        DelegatorUnbond memory unbond = unbonds[msg.sender];
+        unbond.shares = unbond.shares.add(_withdrawPoolShare);
+        // refresh undond period
+        unbond.withdrawEpoch = stakeManager.epoch();
+        unbonds[msg.sender] = unbond;
+
+        StakingInfo logger = stakingLogger;
+        logger.logShareBurned(validatorId, msg.sender, claimAmount, shares);
+        logger.logStakeUpdate(validatorId);
+    }
+
+    function withdrawRewards() public {
+        uint256 rewards = _withdrawAndTransferReward(msg.sender);
+        require(rewards >= minAmount, "Too small rewards amount");
+    }
+
+    function migrateOut(address user, uint256 amount) external onlyOwner {
+        _withdrawAndTransferReward(user);
+        (uint256 totalStaked, uint256 rate) = getTotalStake(user);
+        require(totalStaked >= amount, "Migrating too much");
+
+        uint256 precision = _getRatePrecision();
+        uint256 shares = amount.mul(precision).div(rate);
+        _burn(user, shares);
+
+        stakeManager.updateValidatorState(validatorId, -int256(amount));
+        activeAmount = activeAmount.sub(amount);
+
+        stakingLogger.logShareBurned(validatorId, user, amount, shares);
+        stakingLogger.logStakeUpdate(validatorId);
+        stakingLogger.logDelegatorUnstaked(validatorId, user, amount);
+    }
+
+    function migrateIn(address user, uint256 amount) external onlyOwner {
+        _withdrawAndTransferReward(user);
+        _buyShares(amount, 0, user);
+    }
+
+    function unstakeClaimTokens() public {
+        DelegatorUnbond memory unbond = unbonds[msg.sender];
+        uint256 amount = _unstakeClaimTokens(unbond);
+        delete unbonds[msg.sender];
+        stakingLogger.logDelegatorUnstaked(validatorId, msg.sender, amount);
+    }
+
+    function slash(
+        uint256 validatorStake,
+        uint256 delegatedAmount,
+        uint256 totalAmountToSlash
+    ) external onlyOwner returns (uint256) {
+        uint256 _withdrawPool = withdrawPool;
+        uint256 delegationAmount = delegatedAmount.add(_withdrawPool);
+        if (delegationAmount == 0) {
+            return 0;
+        }
+        // total amount to be slashed from delegation pool (active + inactive)
+        uint256 _amountToSlash = delegationAmount.mul(totalAmountToSlash).div(validatorStake.add(delegationAmount));
+        uint256 _amountToSlashWithdrawalPool = _withdrawPool.mul(_amountToSlash).div(delegationAmount);
+
+        // slash inactive pool
+        uint256 stakeSlashed = _amountToSlash.sub(_amountToSlashWithdrawalPool);
+        stakeManager.decreaseValidatorDelegatedAmount(validatorId, stakeSlashed);
+        activeAmount = activeAmount.sub(stakeSlashed);
+
+        withdrawPool = withdrawPool.sub(_amountToSlashWithdrawalPool);
+        return _amountToSlash;
+    }
+
+    function updateDelegation(bool _delegation) external onlyOwner {
+        delegation = _delegation;
+    }
+
+    function drain(
+        address token,
+        address payable destination,
+        uint256 amount
+    ) external onlyOwner {
+        if (token == address(0x0)) {
+            destination.transfer(amount);
+        } else {
+            require(ERC20(token).transfer(destination, amount), "Drain failed");
+        }
+    }
+
+    /**
+        New shares exit API
+     */
+
+    function sellVoucher_new(uint256 claimAmount, uint256 maximumSharesToBurn) public {
+        (uint256 shares, uint256 _withdrawPoolShare) = _sellVoucher(claimAmount, maximumSharesToBurn);
+
+        uint256 unbondNonce = unbondNonces[msg.sender].add(1);
+
+        DelegatorUnbond memory unbond = DelegatorUnbond({
+            shares: _withdrawPoolShare,
+            withdrawEpoch: stakeManager.epoch()
+        });
+        unbonds_new[msg.sender][unbondNonce] = unbond;
+        unbondNonces[msg.sender] = unbondNonce;
+
+        _getOrCacheEventsHub().logShareBurnedWithId(validatorId, msg.sender, claimAmount, shares, unbondNonce);
+        stakingLogger.logStakeUpdate(validatorId);
+    }
+
+    function unstakeClaimTokens_new(uint256 unbondNonce) public {
+        DelegatorUnbond memory unbond = unbonds_new[msg.sender][unbondNonce];
+        uint256 amount = _unstakeClaimTokens(unbond);
+        delete unbonds_new[msg.sender][unbondNonce];
+        _getOrCacheEventsHub().logDelegatorUnstakedWithId(validatorId, msg.sender, amount, unbondNonce);
+    }
+
+    /**
+        Private Methods
+     */
+
+    function _getOrCacheEventsHub() private returns(EventsHub) {
+        EventsHub _eventsHub = eventsHub;
+        if (_eventsHub == EventsHub(0x0)) {
+            _eventsHub = EventsHub(Registry(stakeManager.getRegistry()).contractMap(keccak256("eventsHub")));
+            eventsHub = _eventsHub;
+        }
+        return _eventsHub;
+    }
+
+    function _sellVoucher(uint256 claimAmount, uint256 maximumSharesToBurn) private returns(uint256, uint256) {
+        // first get how much staked in total and compare to target unstake amount
+        (uint256 totalStaked, uint256 rate) = getTotalStake(msg.sender);
+        require(totalStaked != 0 && totalStaked >= claimAmount, "Too much requested");
+
+        // convert requested amount back to shares
+        uint256 precision = _getRatePrecision();
+        uint256 shares = claimAmount.mul(precision).div(rate);
+        require(shares <= maximumSharesToBurn, "too much slippage");
+
+        _withdrawAndTransferReward(msg.sender);
+
+        _burn(msg.sender, shares);
+        stakeManager.updateValidatorState(validatorId, -int256(claimAmount));
+        activeAmount = activeAmount.sub(claimAmount);
+
+        uint256 _withdrawPoolShare = claimAmount.mul(precision).div(withdrawExchangeRate());
+        withdrawPool = withdrawPool.add(claimAmount);
+        withdrawShares = withdrawShares.add(_withdrawPoolShare);
+
+        return (shares, _withdrawPoolShare);
+    }
+
+    function _unstakeClaimTokens(DelegatorUnbond memory unbond) private returns(uint256) {
+        uint256 shares = unbond.shares;
+        require(
+            unbond.withdrawEpoch.add(stakeManager.withdrawalDelay()) <= stakeManager.epoch() && shares > 0,
+            "Incomplete withdrawal period"
+        );
+
+        uint256 _amount = withdrawExchangeRate().mul(shares).div(_getRatePrecision());
+        withdrawShares = withdrawShares.sub(shares);
+        withdrawPool = withdrawPool.sub(_amount);
+
+        require(stakeManager.transferFunds(validatorId, _amount, msg.sender), "Insufficent rewards");
+
+        return _amount;
+    }
+
+    function _getRatePrecision() private view returns (uint256) {
+        // if foundation validator, use old precision
+        if (validatorId < 8) {
+            return EXCHANGE_RATE_PRECISION;
+        }
+
+        return EXCHANGE_RATE_HIGH_PRECISION;
+    }
+
+    function _calculateRewardPerShareWithRewards(uint256 accumulatedReward) private view returns (uint256) {
+        uint256 _rewardPerShare = rewardPerShare;
+        if (accumulatedReward != 0) {
+            uint256 totalShares = totalSupply();
+            
+            if (totalShares != 0) {
+                _rewardPerShare = _rewardPerShare.add(accumulatedReward.mul(REWARD_PRECISION).div(totalShares));
+            }
+        }
+
+        return _rewardPerShare;
+    }
+
+    function _calculateReward(address user, uint256 _rewardPerShare) private view returns (uint256) {
+        uint256 shares = balanceOf(user);
+        if (shares == 0) {
+            return 0;
+        }
+
+        uint256 _initialRewardPerShare = initalRewardPerShare[user];
+
+        if (_initialRewardPerShare == _rewardPerShare) {
+            return 0;
+        }
+
+        return _rewardPerShare.sub(_initialRewardPerShare).mul(shares).div(REWARD_PRECISION);
+    }
+
+    function _withdrawReward(address user) private returns (uint256) {
+        uint256 _rewardPerShare = _calculateRewardPerShareWithRewards(
+            stakeManager.withdrawDelegatorsReward(validatorId)
+        );
+        uint256 liquidRewards = _calculateReward(user, _rewardPerShare);
+        
+        rewardPerShare = _rewardPerShare;
+        initalRewardPerShare[user] = _rewardPerShare;
+        return liquidRewards;
+    }
+
+    function _withdrawAndTransferReward(address user) private returns (uint256) {
+        uint256 liquidRewards = _withdrawReward(user);
+        if (liquidRewards != 0) {
+            require(stakeManager.transferFunds(validatorId, liquidRewards, user), "Insufficent rewards");
+            stakingLogger.logDelegatorClaimRewards(validatorId, user, liquidRewards);
+        }
+        return liquidRewards;
+    }
+
+    function _buyShares(
+        uint256 _amount,
+        uint256 _minSharesToMint,
+        address user
+    ) private onlyWhenUnlocked returns (uint256) {
+        require(delegation, "Delegation is disabled");
+
+        uint256 rate = exchangeRate();
+        uint256 precision = _getRatePrecision();
+        uint256 shares = _amount.mul(precision).div(rate);
+        require(shares >= _minSharesToMint, "Too much slippage");
+        require(unbonds[user].shares == 0, "Ongoing exit");
+
+        _mint(user, shares);
+
+        // clamp amount of tokens in case resulted shares requires less tokens than anticipated
+        _amount = rate.mul(shares).div(precision);
+
+        stakeManager.updateValidatorState(validatorId, int256(_amount));
+        activeAmount = activeAmount.add(_amount);
+
+        StakingInfo logger = stakingLogger;
+        logger.logShareMinted(validatorId, user, _amount, shares);
+        logger.logStakeUpdate(validatorId);
+
+        return _amount;
+    }
+
+    function _transfer(
+        address from,
+        address to,
+        uint256 value
+    ) internal {
+        // get rewards for recipient 
+        _withdrawAndTransferReward(to);
+        // convert rewards to shares
+        _withdrawAndTransferReward(from);
+        // move shares to recipient
+        super._transfer(from, to, value);
+        _getOrCacheEventsHub().logSharesTransfer(validatorId, from, to, value);
+    }
+}
+
 // 
 // // This is some weird backtick, it takes two bytes, i need to understand what is going on
 // // Don’t allow fillDeadline to be more than several bundles into the future.
