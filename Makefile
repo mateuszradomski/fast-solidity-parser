@@ -8,8 +8,6 @@ RELEASE_FLAGS = -O2 -DNDEBUG -msimd128
 
 .PHONY: all debug release
 
-all: debug release
-
 debug: $(SRC)
 	$(CC) $(WASM_FLAGS) $(DEBUG_FLAGS) -o web/$(TARGET) src/wasmMain.c $(INCLUDES)
 
