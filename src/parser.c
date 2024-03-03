@@ -54,6 +54,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_InterfaceDefinition,
     ASTNodeType_AbstractContractDefinition,
     ASTNodeType_InheritanceSpecifier,
+    ASTNodeType_NameValue,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -173,7 +174,8 @@ typedef struct ASTNodeNewExpression {
 
 typedef struct ASTNodeFunctionCallExpression {
     ASTNode *expression;
-    ASTNodeList arguments;
+    ASTNodeList argumentsExpression;
+    TokenIdList argumentsName;
 } ASTNodeFunctionCallExpression;
 
 typedef struct ASTNodeMemberAccessExpression {
@@ -248,7 +250,8 @@ typedef struct ASTNodeWhileStatement {
 
 typedef struct ASTNodeInheritanceSpecifier {
     ASTNode *identifier;
-    ASTNodeList arguments;
+    TokenIdList argumentsName;
+    ASTNodeList argumentsExpression;
 } ASTNodeInheritanceSpecifier;
 
 typedef struct ASTNodeContractDefintion {
@@ -296,6 +299,11 @@ typedef struct ASTNodeNamedParametersExpression {
     TokenIdList names;
     ASTNodeList expressions;
 } ASTNodeNamedParametersExpression;
+
+typedef struct ASTNodeNameValue {
+    TokenId name;
+    ASTNode *value;
+} ASTNodeNameValue;
 
 typedef struct ASTNode {
     ASTNodeType type;
@@ -356,6 +364,7 @@ typedef struct ASTNode {
         ASTNodeForStatement forStatementNode;
         ASTNodeEmitStatement emitStatementNode;
         ASTNodeConstructorDefinition constructorDefinitionNode;
+        ASTNodeNameValue nameValueNode;
     };
 } ASTNode;
 
@@ -1156,14 +1165,32 @@ getUnaryOperatorPrecedence(TokenType type) {
 static ASTNode *parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence);
 
 static void
-parseCallArgumentList(Parser *parser, ASTNodeList *list) {
+parseCallArgumentList(Parser *parser, ASTNodeList *expressions, TokenIdList *names) {
     if(!acceptToken(parser, TokenType_RParen)) {
-        do {
-            ASTNodeLink *argument = structPush(parser->arena, ASTNodeLink);
-            parseExpressionImpl(parser, &argument->node, 0);
-            SLL_QUEUE_PUSH(list->head, list->last, argument);
-            list->count += 1;
-        } while(acceptToken(parser, TokenType_Comma));
+        if(acceptToken(parser, TokenType_LBrace)) {
+            do {
+                TokenId identifier = parseIdentifier(parser);
+                assert(identifier != INVALID_TOKEN_ID);
+                listPushTokenId(names, identifier, parser->arena);
+
+                expectToken(parser, TokenType_Colon);
+
+                ASTNodeLink *expression = structPush(parser->arena, ASTNodeLink);
+                parseExpressionImpl(parser, &expression->node, 0);
+
+                SLL_QUEUE_PUSH(expressions->head, expressions->last, expression);
+                expressions->count += 1;
+            } while(acceptToken(parser, TokenType_Comma));
+            expectToken(parser, TokenType_RBrace);
+        } else {
+            do {
+                ASTNodeLink *argument = structPush(parser->arena, ASTNodeLink);
+                parseExpressionImpl(parser, &argument->node, 0);
+
+                SLL_QUEUE_PUSH(expressions->head, expressions->last, argument);
+                expressions->count += 1;
+            } while(acceptToken(parser, TokenType_Comma));
+        }
         expectToken(parser, TokenType_RParen);
     }
 }
@@ -1178,7 +1205,7 @@ parseFunctionCallExpression(Parser *parser, ASTNode *node) {
     ASTNodeFunctionCallExpression *functionCall = &node->functionCallExpressionNode;
 
     functionCall->expression = expression;
-    parseCallArgumentList(parser, &functionCall->arguments);
+    parseCallArgumentList(parser, &functionCall->argumentsExpression, &functionCall->argumentsName);
 
     return node;
 }
@@ -1322,7 +1349,6 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
             node->type = ASTNodeType_NamedParameterExpression;
             node->namedParametersExpressionNode.expression = expression;
 
-            //while(!acceptToken(parser, TokenType_RBrace)) {
             do {
                 TokenId identifier = parseIdentifier(parser);
                 assert(identifier != INVALID_TOKEN_ID);
@@ -1965,7 +1991,7 @@ parseContract(Parser *parser, ASTNode *node) {
             assert(inheritance->identifier->type == ASTNodeType_IdentifierPath);
 
             if(acceptToken(parser, TokenType_LParen)) {
-                parseCallArgumentList(parser, &inheritance->arguments);
+                parseCallArgumentList(parser, &inheritance->argumentsExpression, &inheritance->argumentsName);
             }
 
             SLL_QUEUE_PUSH(contract->baseContracts.head, contract->baseContracts.last, baseContractLink);

@@ -122,6 +122,25 @@ pushVariableDeclaration(Serializer *s, ASTNode *node) {
 }
 
 static u32
+pushCallArgumentList(Serializer *s, ASTNodeList *expressions, TokenIdList *names) {
+    u32 l = 0;
+
+    l += pushU32(s, expressions->count);
+    ASTNodeLink *argument = expressions->head;
+    for(u32 i = 0; i < expressions->count; i++, argument = argument->next) {
+        l += pushExpression(s, &argument->node);
+    }
+
+    l += pushU32(s, names->count);
+    for(u32 i = 0; i < names->count; i++) {
+        TokenId literal = listGetTokenId(names, i);
+        l += pushTokenStringById(s, literal);
+    }
+
+    return l;
+}
+
+static u32
 pushExpression(Serializer *s, ASTNode *node) {
     u32 l = 0;
 
@@ -178,12 +197,7 @@ pushExpression(Serializer *s, ASTNode *node) {
             ASTNodeFunctionCallExpression *function = &node->functionCallExpressionNode;
 
             l += pushExpression(s, function->expression);
-            l += pushU32(s, function->arguments.count);
-
-            ASTNodeLink *argument = function->arguments.head;
-            for(u32 i = 0; i < function->arguments.count; i++, argument = argument->next) {
-                l += pushExpression(s, &argument->node);
-            }
+            l += pushCallArgumentList(s, &function->argumentsExpression, &function->argumentsName);
         } break;
         case ASTNodeType_BaseType: {
             Token token = getToken(s->tokens, node->baseTypeNode.typeName);
@@ -241,6 +255,11 @@ pushExpression(Serializer *s, ASTNode *node) {
                 l += pushTokenStringById(s, listGetTokenId(&named->names, i));
                 l += pushExpression(s, &expression->node);
             }
+        } break;
+        case ASTNodeType_NameValue: {
+            ASTNodeNameValue *nameValue = &node->nameValueNode;
+            l += pushTokenStringById(s, nameValue->name);
+            l += pushExpression(s, nameValue->value);
         } break;
         default: {
             javascriptPrintNumber(node->type);
@@ -583,13 +602,7 @@ pushInheritanceSpecifier(Serializer *s, ASTNode *node) {
 
     ASTNodeInheritanceSpecifier *inheritance = &node->inheritanceSpecifierNode;
     l += pushType(s, inheritance->identifier);
-
-    // TODO(radomski): call-argument-list
-    l += pushU32(s, inheritance->arguments.count);
-    ASTNodeLink *argument = inheritance->arguments.head;
-    for(u32 i = 0; i < inheritance->arguments.count; i++, argument = argument->next) {
-        l += pushExpression(s, &argument->node);
-    }
+    l += pushCallArgumentList(s, &inheritance->argumentsExpression, &inheritance->argumentsName);
 
     return l;
 }

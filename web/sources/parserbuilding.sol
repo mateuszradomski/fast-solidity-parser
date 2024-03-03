@@ -3114,7 +3114,7 @@ function toRLPItem(bytes memory _in) internal pure returns (RLPItem memory) {
     //     ptr := add(_in, 32)
     // }
 
-    // return RLPItem({ length: _in.length, ptr: ptr });
+    return RLPItem({ length: _in.length, ptr: ptr });
     return 123;
 }
 
@@ -3147,19 +3147,19 @@ function readList(RLPItem memory _in) internal pure returns (RLPItem[] memory) {
     uint256 itemCount = 0;
     uint256 offset = listOffset;
     while (offset < _in.length) {
-    //     (uint256 itemOffset, uint256 itemLength, ) = _decodeLength(
-    //         RLPItem({
-    //         length: _in.length - offset,
-    //         ptr: MemoryPointer.wrap(MemoryPointer.unwrap(_in.ptr) + offset)
-    //     })
-    //     );
+        (uint256 itemOffset, uint256 itemLength, ) = _decodeLength(
+            RLPItem({
+            length: _in.length - offset,
+            ptr: MemoryPointer.wrap(MemoryPointer.unwrap(_in.ptr) + offset)
+        })
+        );
 
-    //     // We don't need to check itemCount < out.length explicitly because Solidity already
-    //     // handles this check on our behalf, we'd just be wasting gas.
-    //     out[itemCount] = RLPItem({
-    //         length: itemLength + itemOffset,
-    //         ptr: MemoryPointer.wrap(MemoryPointer.unwrap(_in.ptr) + offset)
-    //     });
+        // We don't need to check itemCount < out.length explicitly because Solidity already
+        // handles this check on our behalf, we'd just be wasting gas.
+        out[itemCount] = RLPItem({
+            length: itemLength + itemOffset,
+            ptr: MemoryPointer.wrap(MemoryPointer.unwrap(_in.ptr) + offset)
+        });
 
         itemCount += 1;
         offset += itemOffset + itemLength;
@@ -5197,167 +5197,167 @@ abstract contract SpokePool is
         );
     }
 
-//     /**************************************
-//      *         RELAYER FUNCTIONS          *
-//      **************************************/
-// 
-//     /**
-//     /**
-//      * @notice Called by relayer to fulfill part of a deposit by sending destination tokens to the recipient.
-//      * Relayer is expected to pass in unique identifying information for deposit that they want to fulfill, and this
-//      * relay submission will be validated by off-chain data workers who can dispute this relay if any part is invalid.
-//      * If the relay is valid, then the relayer will be refunded on their desired repayment chain. If relay is invalid,
-//      * then relayer will not receive any refund.
-//      * @notice All of the deposit data can be found via on-chain events from the origin SpokePool, except for the
-//      * realizedLpFeePct which is a function of the HubPool's utilization at the deposit quote time. This fee %
-//      * is deterministic based on the quote time, so the relayer should just compute it using the canonical algorithm
-//      * as described in a UMIP linked to the HubPool's identifier.
-//      * @param depositor Depositor on origin chain who set this chain as the destination chain.
-//      * @param recipient Specified recipient on this chain.
-//      * @param destinationToken Token to send to recipient. Should be mapped to the origin token, origin chain ID
-//      * and this chain ID via a mapping on the HubPool.
-//      * @param amount Full size of the deposit.
-//      * @param maxTokensToSend Max amount of tokens to send recipient. If higher than amount, then caller will
-//      * send recipient the full relay amount.
-//      * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
-//      * passed.
-//      * @param originChainId Chain of SpokePool where deposit originated.
-//      * @param realizedLpFeePct Fee % based on L1 HubPool utilization at deposit quote time. Deterministic based on
-//      * quote time.
-//      * @param relayerFeePct Fee % to keep as relayer, specified by depositor.
-//      * @param depositId Unique deposit ID on origin spoke pool.
-//      * @param message Message to send to recipient along with tokens.
-//      * @param maxCount Max count to protect the relayer from frontrunning.
-//      */
-//     /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
-//     function fillRelay(
-//         address depositor,
-//         address recipient,
-//         address destinationToken,
-//         uint256 amount,
-//         uint256 maxTokensToSend,
-//         uint256 repaymentChainId,
-//         uint256 originChainId,
-//         int64 realizedLpFeePct,
-//         int64 relayerFeePct,
-//         uint32 depositId,
-//         bytes memory message,
-//         uint256 maxCount
-//     ) public nonReentrant unpausedFills {
-//         // Each relay attempt is mapped to the hash of data uniquely identifying it, which includes the deposit data
-//         // such as the origin chain ID and the deposit ID, and the data in a relay attempt such as who the recipient
-//         // is, which chain and currency the recipient wants to receive funds on, and the relay fees.
-//         RelayExecution memory relayExecution = RelayExecution({
-//             relay: SpokePoolInterface.RelayData({
-//                 depositor: depositor,
-//                 recipient: recipient,
-//                 destinationToken: destinationToken,
-//                 amount: amount,
-//                 realizedLpFeePct: realizedLpFeePct,
-//                 relayerFeePct: relayerFeePct,
-//                 depositId: depositId,
-//                 originChainId: originChainId,
-//                 destinationChainId: chainId(),
-//                 message: message
-//             }),
-//             relayHash: bytes32(0),
-//             updatedRelayerFeePct: relayerFeePct,
-//             updatedRecipient: recipient,
-//             updatedMessage: message,
-//             repaymentChainId: repaymentChainId,
-//             maxTokensToSend: maxTokensToSend,
-//             slowFill: false,
-//             payoutAdjustmentPct: 0,
-//             maxCount: maxCount
-//         });
-//         relayExecution.relayHash = _getRelayHash(relayExecution.relay);
-// 
-//         uint256 fillAmountPreFees = _fillRelay(relayExecution);
-//         _emitFillRelay(relayExecution, fillAmountPreFees);
-//     }
-// 
-//     /**
-//      * @notice Called by relayer to execute same logic as calling fillRelay except that relayer is using an updated
-//      * relayer fee %. The fee % must have been emitted in a message cryptographically signed by the depositor.
-//      * @notice By design, the depositor probably emitted the message with the updated fee by calling speedUpDeposit().
-//      * @param depositor Depositor on origin chain who set this chain as the destination chain.
-//      * @param recipient Specified recipient on this chain.
-//      * @param destinationToken Token to send to recipient. Should be mapped to the origin token, origin chain ID
-//      * and this chain ID via a mapping on the HubPool.
-//      * @param amount Full size of the deposit.
-//      * @param maxTokensToSend Max amount of tokens to send recipient. If higher than amount, then caller will
-//      * send recipient the full relay amount.
-//      * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
-//      * passed.
-//      * @param originChainId Chain of SpokePool where deposit originated.
-//      * @param realizedLpFeePct Fee % based on L1 HubPool utilization at deposit quote time. Deterministic based on
-//      * quote time.
-//      * @param relayerFeePct Original fee % to keep as relayer set by depositor.
-//      * @param updatedRelayerFeePct New fee % to keep as relayer also specified by depositor.
-//      * @param depositId Unique deposit ID on origin spoke pool.
-//      * @param message Original message that was sent along with this deposit.
-//      * @param updatedMessage Modified message that the depositor signed when updating parameters.
-//      * @param depositorSignature Signed message containing the depositor address, this contract chain ID, the updated
-//      * relayer fee %, and the deposit ID. This signature is produced by signing a hash of data according to the
-//      * EIP-712 standard. See more in the _verifyUpdateRelayerFeeMessage() comments.
-//      * @param maxCount Max fill count to protect the relayer from frontrunning.
-//      */
-//     /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
-//     function fillRelayWithUpdatedDeposit(
-//         address depositor,
-//         address recipient,
-//         address updatedRecipient,
-//         address destinationToken,
-//         uint256 amount,
-//         uint256 maxTokensToSend,
-//         uint256 repaymentChainId,
-//         uint256 originChainId,
-//         int64 realizedLpFeePct,
-//         int64 relayerFeePct,
-//         int64 updatedRelayerFeePct,
-//         uint32 depositId,
-//         bytes memory message,
-//         bytes memory updatedMessage,
-//         bytes memory depositorSignature,
-//         uint256 maxCount
-//     ) public override nonReentrant unpausedFills {
-//         RelayExecution memory relayExecution = RelayExecution({
-//             relay: SpokePoolInterface.RelayData({
-//                 depositor: depositor,
-//                 recipient: recipient,
-//                 destinationToken: destinationToken,
-//                 amount: amount,
-//                 realizedLpFeePct: realizedLpFeePct,
-//                 relayerFeePct: relayerFeePct,
-//                 depositId: depositId,
-//                 originChainId: originChainId,
-//                 destinationChainId: chainId(),
-//                 message: message
-//             }),
-//             relayHash: bytes32(0),
-//             updatedRelayerFeePct: updatedRelayerFeePct,
-//             updatedRecipient: updatedRecipient,
-//             updatedMessage: updatedMessage,
-//             repaymentChainId: repaymentChainId,
-//             maxTokensToSend: maxTokensToSend,
-//             slowFill: false,
-//             payoutAdjustmentPct: 0,
-//             maxCount: maxCount
-//         });
-//         relayExecution.relayHash = _getRelayHash(relayExecution.relay);
-// 
-//         _verifyUpdateDepositMessage(
-//             depositor,
-//             depositId,
-//             originChainId,
-//             updatedRelayerFeePct,
-//             updatedRecipient,
-//             updatedMessage,
-//             depositorSignature
-//         );
-//         uint256 fillAmountPreFees = _fillRelay(relayExecution);
-//         _emitFillRelay(relayExecution, fillAmountPreFees);
-//     }
+    /**************************************
+     *         RELAYER FUNCTIONS          *
+     **************************************/
+
+    /**
+    /**
+     * @notice Called by relayer to fulfill part of a deposit by sending destination tokens to the recipient.
+     * Relayer is expected to pass in unique identifying information for deposit that they want to fulfill, and this
+     * relay submission will be validated by off-chain data workers who can dispute this relay if any part is invalid.
+     * If the relay is valid, then the relayer will be refunded on their desired repayment chain. If relay is invalid,
+     * then relayer will not receive any refund.
+     * @notice All of the deposit data can be found via on-chain events from the origin SpokePool, except for the
+     * realizedLpFeePct which is a function of the HubPool's utilization at the deposit quote time. This fee %
+     * is deterministic based on the quote time, so the relayer should just compute it using the canonical algorithm
+     * as described in a UMIP linked to the HubPool's identifier.
+     * @param depositor Depositor on origin chain who set this chain as the destination chain.
+     * @param recipient Specified recipient on this chain.
+     * @param destinationToken Token to send to recipient. Should be mapped to the origin token, origin chain ID
+     * and this chain ID via a mapping on the HubPool.
+     * @param amount Full size of the deposit.
+     * @param maxTokensToSend Max amount of tokens to send recipient. If higher than amount, then caller will
+     * send recipient the full relay amount.
+     * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
+     * passed.
+     * @param originChainId Chain of SpokePool where deposit originated.
+     * @param realizedLpFeePct Fee % based on L1 HubPool utilization at deposit quote time. Deterministic based on
+     * quote time.
+     * @param relayerFeePct Fee % to keep as relayer, specified by depositor.
+     * @param depositId Unique deposit ID on origin spoke pool.
+     * @param message Message to send to recipient along with tokens.
+     * @param maxCount Max count to protect the relayer from frontrunning.
+     */
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
+    function fillRelay(
+        address depositor,
+        address recipient,
+        address destinationToken,
+        uint256 amount,
+        uint256 maxTokensToSend,
+        uint256 repaymentChainId,
+        uint256 originChainId,
+        int64 realizedLpFeePct,
+        int64 relayerFeePct,
+        uint32 depositId,
+        bytes memory message,
+        uint256 maxCount
+    ) public nonReentrant unpausedFills {
+        // Each relay attempt is mapped to the hash of data uniquely identifying it, which includes the deposit data
+        // such as the origin chain ID and the deposit ID, and the data in a relay attempt such as who the recipient
+        // is, which chain and currency the recipient wants to receive funds on, and the relay fees.
+        RelayExecution memory relayExecution = RelayExecution({
+            relay: SpokePoolInterface.RelayData({
+                depositor: depositor,
+                recipient: recipient,
+                destinationToken: destinationToken,
+                amount: amount,
+                realizedLpFeePct: realizedLpFeePct,
+                relayerFeePct: relayerFeePct,
+                depositId: depositId,
+                originChainId: originChainId,
+                destinationChainId: chainId(),
+                message: message
+            }),
+            relayHash: bytes32(0),
+            updatedRelayerFeePct: relayerFeePct,
+            updatedRecipient: recipient,
+            updatedMessage: message,
+            repaymentChainId: repaymentChainId,
+            maxTokensToSend: maxTokensToSend,
+            slowFill: false,
+            payoutAdjustmentPct: 0,
+            maxCount: maxCount
+        });
+        relayExecution.relayHash = _getRelayHash(relayExecution.relay);
+
+        uint256 fillAmountPreFees = _fillRelay(relayExecution);
+        _emitFillRelay(relayExecution, fillAmountPreFees);
+    }
+
+    /**
+     * @notice Called by relayer to execute same logic as calling fillRelay except that relayer is using an updated
+     * relayer fee %. The fee % must have been emitted in a message cryptographically signed by the depositor.
+     * @notice By design, the depositor probably emitted the message with the updated fee by calling speedUpDeposit().
+     * @param depositor Depositor on origin chain who set this chain as the destination chain.
+     * @param recipient Specified recipient on this chain.
+     * @param destinationToken Token to send to recipient. Should be mapped to the origin token, origin chain ID
+     * and this chain ID via a mapping on the HubPool.
+     * @param amount Full size of the deposit.
+     * @param maxTokensToSend Max amount of tokens to send recipient. If higher than amount, then caller will
+     * send recipient the full relay amount.
+     * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
+     * passed.
+     * @param originChainId Chain of SpokePool where deposit originated.
+     * @param realizedLpFeePct Fee % based on L1 HubPool utilization at deposit quote time. Deterministic based on
+     * quote time.
+     * @param relayerFeePct Original fee % to keep as relayer set by depositor.
+     * @param updatedRelayerFeePct New fee % to keep as relayer also specified by depositor.
+     * @param depositId Unique deposit ID on origin spoke pool.
+     * @param message Original message that was sent along with this deposit.
+     * @param updatedMessage Modified message that the depositor signed when updating parameters.
+     * @param depositorSignature Signed message containing the depositor address, this contract chain ID, the updated
+     * relayer fee %, and the deposit ID. This signature is produced by signing a hash of data according to the
+     * EIP-712 standard. See more in the _verifyUpdateRelayerFeeMessage() comments.
+     * @param maxCount Max fill count to protect the relayer from frontrunning.
+     */
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
+    function fillRelayWithUpdatedDeposit(
+        address depositor,
+        address recipient,
+        address updatedRecipient,
+        address destinationToken,
+        uint256 amount,
+        uint256 maxTokensToSend,
+        uint256 repaymentChainId,
+        uint256 originChainId,
+        int64 realizedLpFeePct,
+        int64 relayerFeePct,
+        int64 updatedRelayerFeePct,
+        uint32 depositId,
+        bytes memory message,
+        bytes memory updatedMessage,
+        bytes memory depositorSignature,
+        uint256 maxCount
+    ) public override nonReentrant unpausedFills {
+        RelayExecution memory relayExecution = RelayExecution({
+            relay: SpokePoolInterface.RelayData({
+                depositor: depositor,
+                recipient: recipient,
+                destinationToken: destinationToken,
+                amount: amount,
+                realizedLpFeePct: realizedLpFeePct,
+                relayerFeePct: relayerFeePct,
+                depositId: depositId,
+                originChainId: originChainId,
+                destinationChainId: chainId(),
+                message: message
+            }),
+            relayHash: bytes32(0),
+            updatedRelayerFeePct: updatedRelayerFeePct,
+            updatedRecipient: updatedRecipient,
+            updatedMessage: updatedMessage,
+            repaymentChainId: repaymentChainId,
+            maxTokensToSend: maxTokensToSend,
+            slowFill: false,
+            payoutAdjustmentPct: 0,
+            maxCount: maxCount
+        });
+        relayExecution.relayHash = _getRelayHash(relayExecution.relay);
+
+        _verifyUpdateDepositMessage(
+            depositor,
+            depositId,
+            originChainId,
+            updatedRelayerFeePct,
+            updatedRecipient,
+            updatedMessage,
+            depositorSignature
+        );
+        uint256 fillAmountPreFees = _fillRelay(relayExecution);
+        _emitFillRelay(relayExecution, fillAmountPreFees);
+    }
 
     /******************************************
      *         V3 RELAYER FUNCTIONS          *
@@ -5404,82 +5404,82 @@ abstract contract SpokePool is
      * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
      * passed. Will receive inputAmount of the equivalent token to inputToken on the repayment chain.
      */
-//     function fillV3Relay(V3RelayData calldata relayData, uint256 repaymentChainId)
-//         public
-//         override
-//         nonReentrant
-//         unpausedFills
-//     {
-//         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
-//         // to fill the relay.
-//         if (relayData.exclusivityDeadline >= getCurrentTime() && relayData.exclusiveRelayer != msg.sender) {
-//             revert NotExclusiveRelayer();
-//         }
-// 
-//         V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
-//             relay: relayData,
-//             relayHash: _getV3RelayHash(relayData),
-//             updatedOutputAmount: relayData.outputAmount,
-//             updatedRecipient: relayData.recipient,
-//             updatedMessage: relayData.message,
-//             repaymentChainId: repaymentChainId
-//         });
-// 
-//         _fillRelayV3(relayExecution, msg.sender, false);
-//     }
-// 
-//     /**
-//      * @notice Identical to fillV3Relay except that the relayer wants to use a depositor's updated output amount,
-//      * recipient, and/or message. The relayer should only use this function if they can supply a message signed
-//      * by the depositor that contains the fill's matching deposit ID along with updated relay parameters.
-//      * If the signature can be verified, then this function will emit a FilledV3Event that will be used by
-//      * the system for refund verification purposes. In otherwords, this function is an alternative way to fill a
-//      * a deposit than fillV3Relay.
-//      * @dev Subject to same exclusivity deadline rules as fillV3Relay().
-//      * @param relayData struct containing all the data needed to identify the deposit to be filled. See fillV3Relay().
-//      * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
-//      * passed. See fillV3Relay().
-//      * @param updatedOutputAmount New output amount to use for this deposit.
-//      * @param updatedRecipient New recipient to use for this deposit.
-//      * @param updatedMessage New message to use for this deposit.
-//      * @param depositorSignature Signed EIP712 hashstruct containing the deposit ID. Should be signed by the depositor
-//      * account.
-//      */
-//     function fillV3RelayWithUpdatedDeposit(
-//         V3RelayData calldata relayData,
-//         uint256 repaymentChainId,
-//         uint256 updatedOutputAmount,
-//         address updatedRecipient,
-//         bytes calldata updatedMessage,
-//         bytes calldata depositorSignature
-//     ) public override nonReentrant unpausedFills {
-//         // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
-//         // to fill the relay.
-//         if (relayData.exclusivityDeadline >= getCurrentTime() && relayData.exclusiveRelayer != msg.sender) {
-//             revert NotExclusiveRelayer();
-//         }
-// 
-//         V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
-//             relay: relayData,
-//             relayHash: _getV3RelayHash(relayData),
-//             updatedOutputAmount: updatedOutputAmount,
-//             updatedRecipient: updatedRecipient,
-//             updatedMessage: updatedMessage,
-//             repaymentChainId: repaymentChainId
-//         });
-// 
-//         _verifyUpdateV3DepositMessage(
-//             relayData.depositor,
-//             relayData.depositId,
-//             relayData.originChainId,
-//             updatedOutputAmount,
-//             updatedRecipient,
-//             updatedMessage,
-//             depositorSignature
-//         );
-// 
-//         _fillRelayV3(relayExecution, msg.sender, false);
-//     }
+    function fillV3Relay(V3RelayData calldata relayData, uint256 repaymentChainId)
+        public
+        override
+        nonReentrant
+        unpausedFills
+    {
+        // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
+        // to fill the relay.
+        if (relayData.exclusivityDeadline >= getCurrentTime() && relayData.exclusiveRelayer != msg.sender) {
+            revert NotExclusiveRelayer();
+        }
+
+        V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
+            relay: relayData,
+            relayHash: _getV3RelayHash(relayData),
+            updatedOutputAmount: relayData.outputAmount,
+            updatedRecipient: relayData.recipient,
+            updatedMessage: relayData.message,
+            repaymentChainId: repaymentChainId
+        });
+
+        _fillRelayV3(relayExecution, msg.sender, false);
+    }
+
+    /**
+     * @notice Identical to fillV3Relay except that the relayer wants to use a depositor's updated output amount,
+     * recipient, and/or message. The relayer should only use this function if they can supply a message signed
+     * by the depositor that contains the fill's matching deposit ID along with updated relay parameters.
+     * If the signature can be verified, then this function will emit a FilledV3Event that will be used by
+     * the system for refund verification purposes. In otherwords, this function is an alternative way to fill a
+     * a deposit than fillV3Relay.
+     * @dev Subject to same exclusivity deadline rules as fillV3Relay().
+     * @param relayData struct containing all the data needed to identify the deposit to be filled. See fillV3Relay().
+     * @param repaymentChainId Chain of SpokePool where relayer wants to be refunded after the challenge window has
+     * passed. See fillV3Relay().
+     * @param updatedOutputAmount New output amount to use for this deposit.
+     * @param updatedRecipient New recipient to use for this deposit.
+     * @param updatedMessage New message to use for this deposit.
+     * @param depositorSignature Signed EIP712 hashstruct containing the deposit ID. Should be signed by the depositor
+     * account.
+     */
+    function fillV3RelayWithUpdatedDeposit(
+        V3RelayData calldata relayData,
+        uint256 repaymentChainId,
+        uint256 updatedOutputAmount,
+        address updatedRecipient,
+        bytes calldata updatedMessage,
+        bytes calldata depositorSignature
+    ) public override nonReentrant unpausedFills {
+        // Exclusivity deadline is inclusive and is the latest timestamp that the exclusive relayer has sole right
+        // to fill the relay.
+        if (relayData.exclusivityDeadline >= getCurrentTime() && relayData.exclusiveRelayer != msg.sender) {
+            revert NotExclusiveRelayer();
+        }
+
+        V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
+            relay: relayData,
+            relayHash: _getV3RelayHash(relayData),
+            updatedOutputAmount: updatedOutputAmount,
+            updatedRecipient: updatedRecipient,
+            updatedMessage: updatedMessage,
+            repaymentChainId: repaymentChainId
+        });
+
+        _verifyUpdateV3DepositMessage(
+            relayData.depositor,
+            relayData.depositId,
+            relayData.originChainId,
+            updatedOutputAmount,
+            updatedRecipient,
+            updatedMessage,
+            depositorSignature
+        );
+
+        _fillRelayV3(relayExecution, msg.sender, false);
+    }
 
     /**
      * @notice Request Across to send LP funds to this contract to fulfill a slow fill relay
@@ -5584,48 +5584,48 @@ abstract contract SpokePool is
         );
     }
  
-//     /**
-//      * @notice Executes a slow relay leaf stored as part of a root bundle relayed by the HubPool.
-//      * @dev Executing a slow fill leaf is equivalent to filling the relayData so this function cannot be used to
-//      * double fill a recipient. The relayData that is filled is included in the slowFillLeaf and is hashed
-//      * like any other fill sent through fillV3Relay().
-//      * @dev There is no relayer credited with filling this relay since funds are sent directly out of this contract.
-//      * @param slowFillLeaf Contains all data necessary to uniquely identify a relay for this chain. This struct is
-//      * hashed and included in a merkle root that is relayed to all spoke pools.
-//      * - relayData: struct containing all the data needed to identify the original deposit to be slow filled.
-//      * - chainId: chain identifier where slow fill leaf should be executed. If this doesn't match this chain's
-//      * chainId, then this function will revert.
-//      * - updatedOutputAmount: Amount to be sent to recipient out of this contract's balance. Can be set differently
-//      * from relayData.outputAmount to charge a different fee because this deposit was "slow" filled. Usually,
-//      * this will be set higher to reimburse the recipient for waiting for the slow fill.
-//      * @param rootBundleId Unique ID of root bundle containing slow relay root that this leaf is contained in.
-//      * @param proof Inclusion proof for this leaf in slow relay root in root bundle.
-//      */
-//     function executeV3SlowRelayLeaf(
-//         V3SlowFill calldata slowFillLeaf,
-//         uint32 rootBundleId,
-//         bytes32[] calldata proof
-//     ) public override nonReentrant {
-//         V3RelayData memory relayData = slowFillLeaf.relayData;
-// 
-//         _preExecuteLeafHook(relayData.outputToken);
-// 
-//         // @TODO In the future consider allowing way for slow fill leaf to be created with updated
-//         // deposit params like outputAmount, message and recipient.
-//         V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
-//             relay: relayData,
-//             relayHash: _getV3RelayHash(relayData),
-//             updatedOutputAmount: slowFillLeaf.updatedOutputAmount,
-//             updatedRecipient: relayData.recipient,
-//             updatedMessage: relayData.message,
-//             repaymentChainId: EMPTY_REPAYMENT_CHAIN_ID // Repayment not relevant for slow fills.
-//         });
-// 
-//         _verifyV3SlowFill(relayExecution, rootBundleId, proof);
-// 
-//         // - No relayer to refund for slow fill executions.
-//         _fillRelayV3(relayExecution, EMPTY_RELAYER, true);
-//     }
+    /**
+     * @notice Executes a slow relay leaf stored as part of a root bundle relayed by the HubPool.
+     * @dev Executing a slow fill leaf is equivalent to filling the relayData so this function cannot be used to
+     * double fill a recipient. The relayData that is filled is included in the slowFillLeaf and is hashed
+     * like any other fill sent through fillV3Relay().
+     * @dev There is no relayer credited with filling this relay since funds are sent directly out of this contract.
+     * @param slowFillLeaf Contains all data necessary to uniquely identify a relay for this chain. This struct is
+     * hashed and included in a merkle root that is relayed to all spoke pools.
+     * - relayData: struct containing all the data needed to identify the original deposit to be slow filled.
+     * - chainId: chain identifier where slow fill leaf should be executed. If this doesn't match this chain's
+     * chainId, then this function will revert.
+     * - updatedOutputAmount: Amount to be sent to recipient out of this contract's balance. Can be set differently
+     * from relayData.outputAmount to charge a different fee because this deposit was "slow" filled. Usually,
+     * this will be set higher to reimburse the recipient for waiting for the slow fill.
+     * @param rootBundleId Unique ID of root bundle containing slow relay root that this leaf is contained in.
+     * @param proof Inclusion proof for this leaf in slow relay root in root bundle.
+     */
+    function executeV3SlowRelayLeaf(
+        V3SlowFill calldata slowFillLeaf,
+        uint32 rootBundleId,
+        bytes32[] calldata proof
+    ) public override nonReentrant {
+        V3RelayData memory relayData = slowFillLeaf.relayData;
+
+        _preExecuteLeafHook(relayData.outputToken);
+
+        // @TODO In the future consider allowing way for slow fill leaf to be created with updated
+        // deposit params like outputAmount, message and recipient.
+        V3RelayExecutionParams memory relayExecution = V3RelayExecutionParams({
+            relay: relayData,
+            relayHash: _getV3RelayHash(relayData),
+            updatedOutputAmount: slowFillLeaf.updatedOutputAmount,
+            updatedRecipient: relayData.recipient,
+            updatedMessage: relayData.message,
+            repaymentChainId: EMPTY_REPAYMENT_CHAIN_ID // Repayment not relevant for slow fills.
+        });
+
+        _verifyV3SlowFill(relayExecution, rootBundleId, proof);
+
+        // - No relayer to refund for slow fill executions.
+        _fillRelayV3(relayExecution, EMPTY_RELAYER, true);
+    }
 
     /**
      * @notice Executes a relayer refund leaf stored as part of a root bundle. Will send the relayer the amount they
@@ -5791,60 +5791,60 @@ abstract contract SpokePool is
         }
     }
 
-//     // Verifies inclusion proof of leaf in root and sends recipient remainder of relay. Marks relay as filled.
-//     /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
-//     function _executeSlowRelayLeaf(
-//         address depositor,
-//         address recipient,
-//         address destinationToken,
-//         uint256 amount,
-//         uint256 originChainId,
-//         uint256 destinationChainId,
-//         int64 realizedLpFeePct,
-//         int64 relayerFeePct,
-//         uint32 depositId,
-//         uint32 rootBundleId,
-//         bytes memory message,
-//         int256 payoutAdjustmentPct,
-//         bytes32[] memory proof
-//     ) internal {
-//         RelayExecution memory relayExecution = RelayExecution({
-//             relay: SpokePoolInterface.RelayData({
-//                 depositor: depositor,
-//                 recipient: recipient,
-//                 destinationToken: destinationToken,
-//                 amount: amount,
-//                 realizedLpFeePct: realizedLpFeePct,
-//                 relayerFeePct: relayerFeePct,
-//                 depositId: depositId,
-//                 originChainId: originChainId,
-//                 destinationChainId: destinationChainId,
-//                 message: message
-//             }),
-//             relayHash: bytes32(0),
-//             updatedRelayerFeePct: 0,
-//             updatedRecipient: recipient,
-//             updatedMessage: message,
-//             repaymentChainId: 0,
-//             maxTokensToSend: SLOW_FILL_MAX_TOKENS_TO_SEND,
-//             slowFill: true,
-//             payoutAdjustmentPct: payoutAdjustmentPct,
-//             maxCount: type(uint256).max
-//         });
-//         relayExecution.relayHash = _getRelayHash(relayExecution.relay);
-// 
-//         _verifySlowFill(relayExecution, rootBundleId, proof);
-// 
-//         // Note: use relayAmount as the max amount to send, so the relay is always completely filled by the contract's
-//         // funds in all cases. As this is a slow relay we set the relayerFeePct to 0. This effectively refunds the
-//         // relayer component of the relayerFee thereby only charging the depositor the LpFee.
-//         uint256 fillAmountPreFees = _fillRelay(relayExecution);
-// 
-//         // Note: Set repayment chain ID to 0 to indicate that there is no repayment to be made. The off-chain data
-//         // worker can use repaymentChainId=0 as a signal to ignore such relays for refunds. Also, set the relayerFeePct
-//         // to 0 as slow relays do not pay the caller of this method (depositor is refunded this fee).
-//         _emitFillRelay(relayExecution, fillAmountPreFees);
-//     }
+    // Verifies inclusion proof of leaf in root and sends recipient remainder of relay. Marks relay as filled.
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
+    function _executeSlowRelayLeaf(
+        address depositor,
+        address recipient,
+        address destinationToken,
+        uint256 amount,
+        uint256 originChainId,
+        uint256 destinationChainId,
+        int64 realizedLpFeePct,
+        int64 relayerFeePct,
+        uint32 depositId,
+        uint32 rootBundleId,
+        bytes memory message,
+        int256 payoutAdjustmentPct,
+        bytes32[] memory proof
+    ) internal {
+        RelayExecution memory relayExecution = RelayExecution({
+            relay: SpokePoolInterface.RelayData({
+                depositor: depositor,
+                recipient: recipient,
+                destinationToken: destinationToken,
+                amount: amount,
+                realizedLpFeePct: realizedLpFeePct,
+                relayerFeePct: relayerFeePct,
+                depositId: depositId,
+                originChainId: originChainId,
+                destinationChainId: destinationChainId,
+                message: message
+            }),
+            relayHash: bytes32(0),
+            updatedRelayerFeePct: 0,
+            updatedRecipient: recipient,
+            updatedMessage: message,
+            repaymentChainId: 0,
+            maxTokensToSend: SLOW_FILL_MAX_TOKENS_TO_SEND,
+            slowFill: true,
+            payoutAdjustmentPct: payoutAdjustmentPct,
+            maxCount: type(uint256).max
+        });
+        relayExecution.relayHash = _getRelayHash(relayExecution.relay);
+
+        _verifySlowFill(relayExecution, rootBundleId, proof);
+
+        // Note: use relayAmount as the max amount to send, so the relay is always completely filled by the contract's
+        // funds in all cases. As this is a slow relay we set the relayerFeePct to 0. This effectively refunds the
+        // relayer component of the relayerFee thereby only charging the depositor the LpFee.
+        uint256 fillAmountPreFees = _fillRelay(relayExecution);
+
+        // Note: Set repayment chain ID to 0 to indicate that there is no repayment to be made. The off-chain data
+        // worker can use repaymentChainId=0 as a signal to ignore such relays for refunds. Also, set the relayerFeePct
+        // to 0 as slow relays do not pay the caller of this method (depositor is refunded this fee).
+        _emitFillRelay(relayExecution, fillAmountPreFees);
+    }
 
     function _setCrossDomainAdmin(address newCrossDomainAdmin) internal {
         require(newCrossDomainAdmin != address(0), "Bad bridge router address");
@@ -5964,37 +5964,37 @@ abstract contract SpokePool is
         require(isValid, "invalid signature");
     }
 
-//     /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
-//     function _verifySlowFill(
-//         RelayExecution memory relayExecution,
-//         uint32 rootBundleId,
-//         bytes32[] memory proof
-//     ) internal view {
-//         SlowFill memory slowFill = SlowFill({
-//             relayData: relayExecution.relay,
-//             payoutAdjustmentPct: relayExecution.payoutAdjustmentPct
-//         });
-// 
-//         require(
-//             MerkleLib.verifySlowRelayFulfillment(rootBundles[rootBundleId].slowRelayRoot, slowFill, proof),
-//             "Invalid slow relay proof"
-//         );
-//     }
-// 
-//     function _verifyV3SlowFill(
-//         V3RelayExecutionParams memory relayExecution,
-//         uint32 rootBundleId,
-//         bytes32[] memory proof
-//     ) internal view {
-//         V3SlowFill memory slowFill = V3SlowFill({
-//             relayData: relayExecution.relay,
-//             chainId: chainId(),
-//             updatedOutputAmount: relayExecution.updatedOutputAmount
-//         });
-// 
-//         if (!MerkleLib.verifyV3SlowRelayFulfillment(rootBundles[rootBundleId].slowRelayRoot, slowFill, proof))
-//             revert InvalidMerkleProof();
-//     }
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
+    function _verifySlowFill(
+        RelayExecution memory relayExecution,
+        uint32 rootBundleId,
+        bytes32[] memory proof
+    ) internal view {
+        SlowFill memory slowFill = SlowFill({
+            relayData: relayExecution.relay,
+            payoutAdjustmentPct: relayExecution.payoutAdjustmentPct
+        });
+
+        require(
+            MerkleLib.verifySlowRelayFulfillment(rootBundles[rootBundleId].slowRelayRoot, slowFill, proof),
+            "Invalid slow relay proof"
+        );
+    }
+
+    function _verifyV3SlowFill(
+        V3RelayExecutionParams memory relayExecution,
+        uint32 rootBundleId,
+        bytes32[] memory proof
+    ) internal view {
+        V3SlowFill memory slowFill = V3SlowFill({
+            relayData: relayExecution.relay,
+            chainId: chainId(),
+            updatedOutputAmount: relayExecution.updatedOutputAmount
+        });
+
+        if (!MerkleLib.verifyV3SlowRelayFulfillment(rootBundles[rootBundleId].slowRelayRoot, slowFill, proof))
+            revert InvalidMerkleProof();
+    }
 
     /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function _computeAmountPreFees(uint256 amount, int64 feesPct) private pure returns (uint256) {
@@ -6262,35 +6262,35 @@ abstract contract SpokePool is
 //             );
 //         }
 //     }
-// 
-//     /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
-//     function _emitFillRelay(RelayExecution memory relayExecution, uint256 fillAmountPreFees) internal {
-//         RelayExecutionInfo memory relayExecutionInfo = RelayExecutionInfo({
-//             relayerFeePct: relayExecution.updatedRelayerFeePct,
-//             recipient: relayExecution.updatedRecipient,
-//             message: relayExecution.updatedMessage,
-//             isSlowRelay: relayExecution.slowFill,
-//             payoutAdjustmentPct: relayExecution.payoutAdjustmentPct
-//         });
-// 
-//         emit FilledRelay(
-//             relayExecution.relay.amount,
-//             DEPRECATED_relayFills[relayExecution.relayHash],
-//             fillAmountPreFees,
-//             relayExecution.repaymentChainId,
-//             relayExecution.relay.originChainId,
-//             relayExecution.relay.destinationChainId,
-//             relayExecution.relay.relayerFeePct,
-//             relayExecution.relay.realizedLpFeePct,
-//             relayExecution.relay.depositId,
-//             relayExecution.relay.destinationToken,
-//             msg.sender,
-//             relayExecution.relay.depositor,
-//             relayExecution.relay.recipient,
-//             relayExecution.relay.message,
-//             relayExecutionInfo
-//         );
-//     }
+
+    /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
+    function _emitFillRelay(RelayExecution memory relayExecution, uint256 fillAmountPreFees) internal {
+        RelayExecutionInfo memory relayExecutionInfo = RelayExecutionInfo({
+            relayerFeePct: relayExecution.updatedRelayerFeePct,
+            recipient: relayExecution.updatedRecipient,
+            message: relayExecution.updatedMessage,
+            isSlowRelay: relayExecution.slowFill,
+            payoutAdjustmentPct: relayExecution.payoutAdjustmentPct
+        });
+
+        emit FilledRelay(
+            relayExecution.relay.amount,
+            DEPRECATED_relayFills[relayExecution.relayHash],
+            fillAmountPreFees,
+            relayExecution.repaymentChainId,
+            relayExecution.relay.originChainId,
+            relayExecution.relay.destinationChainId,
+            relayExecution.relay.relayerFeePct,
+            relayExecution.relay.realizedLpFeePct,
+            relayExecution.relay.depositId,
+            relayExecution.relay.destinationToken,
+            msg.sender,
+            relayExecution.relay.depositor,
+            relayExecution.relay.recipient,
+            relayExecution.relay.message,
+            relayExecutionInfo
+        );
+    }
 
     // Implementing contract needs to override this to ensure that only the appropriate cross chain admin can execute
     // certain admin functions. For L2 contracts, the cross chain admin refers to some L1 address or contract, and for

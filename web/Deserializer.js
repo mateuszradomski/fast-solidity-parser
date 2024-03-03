@@ -52,6 +52,7 @@ const ASTNodeType_NamedParametersExpression = 51
 const ASTNodeType_InterfaceDefinition = 52
 const ASTNodeType_AbstractContractDefinition = 53
 const ASTNodeType_InheritanceSpecifier = 54
+const ASTNodeType_NameValue = 55
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -277,6 +278,22 @@ class Deserializer {
         }
     }
 
+    popCallArgumentList() {
+        const argumentCount = this.popU32();
+        const args = []
+        for(let i = 0; i < argumentCount; i++) {
+            args.push(this.popExpression());
+        }
+
+        const namesCount = this.popU32();
+        const names = []
+        for(let i = 0; i < namesCount; i++) {
+            names.push(this.popString());
+        }
+
+        return [args, names];
+    }
+
     popExpression() {
         const type = this.popU32();
 
@@ -374,18 +391,18 @@ class Deserializer {
             }
         } else if(type === ASTNodeType_FunctionCallExpression) {
             const expression = this.popExpression();
-            const argumentCount = this.popU32();
-            const args = []
-            for(let i = 0; i < argumentCount; i++) {
-                args.push(this.popExpression());
+            const [args, names] = this.popCallArgumentList();
+            const identifiers = []
+            for(let i = 0; i < names.length; i++) {
+                identifiers.push(stringToIdentifier(names[i]));
             }
 
             return {
                 type: "FunctionCall",
                 expression,
                 arguments: args,
-                names: [],
-                identifiers: [],
+                names,
+                identifiers,
             }
         } else if(type === ASTNodeType_BaseType) {
             return this.popType()
@@ -465,6 +482,14 @@ class Deserializer {
                     identifiers,
                     arguments: parameters,
                 }
+            }
+        } else if(type === ASTNodeType_NameValue) {
+            const name = this.popString()
+            const value = this.popExpression()
+            return {
+                type: "NameValueExpression",
+                name,
+                value,
             }
         } else {
             throw new Error(`Unknown/Unsupported expression type: ${type}`);
@@ -898,12 +923,7 @@ class Deserializer {
 
     popInheritanceSpecifier() {
         const identifier = this.popType();
-
-        const argCount = this.popU32();
-        const args = []
-        for(let k = 0; k < argCount; k++) {
-            args.push(this.popExpression());
-        }
+        const [args, names] = this.popCallArgumentList();
 
         return {
             type: "InheritanceSpecifier",
