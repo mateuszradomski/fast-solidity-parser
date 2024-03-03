@@ -53,6 +53,7 @@ const ASTNodeType_InterfaceDefinition = 52
 const ASTNodeType_AbstractContractDefinition = 53
 const ASTNodeType_InheritanceSpecifier = 54
 const ASTNodeType_NameValue = 55
+const ASTNodeType_Pragma = 56
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -628,6 +629,16 @@ class Deserializer {
         }
     }
 
+    popPragma() {
+        const name = this.popString();
+        const value = this.popString();
+        return {
+            type: "PragmaDirective",
+            name,
+            value,
+        }
+    }
+
     popImport() {
         const path = this.popString();
         const unitAlias = this.popString();
@@ -991,6 +1002,8 @@ class Deserializer {
 
         if(type === ASTNodeType_SourceUnit) {
             return this.popSourceUnit();
+        } else if(type === ASTNodeType_Pragma) {
+            return this.popPragma();
         } else if(type === ASTNodeType_Import) {
             return this.popImport();
         } else if(type === ASTNodeType_EnumDefinition) {

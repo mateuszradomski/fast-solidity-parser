@@ -51,6 +51,14 @@ popU32(Serializer *s) {
 }
 
 static u32
+pushString(Serializer *s, String string) {
+    pushU32(s, (u32)(string.data - s->inputStringBase));
+    pushU32(s, (u32)string.size);
+
+    return 2 * sizeof(u32);
+}
+
+static u32
 pushTokenStringById(Serializer *s, TokenId token) {
     if(s->head) {
         if(token == INVALID_TOKEN_ID) {
@@ -401,6 +409,28 @@ pushFunctionParameters(Serializer *s, FunctionParameterList *parameters) {
 }
 
 static u32
+pushPragma(Serializer *s, ASTNode *node) {
+    u32 l = pushU32(s, node->type);
+    ASTNodePragma *pragma = &node->pragmaNode;
+
+    l += pushTokenStringById(s, pragma->major);
+    assert(pragma->following.count > 0);
+    TokenId firstTokenId = listGetTokenId(&pragma->following, 0);
+    TokenId lastTokenId = listGetTokenId(&pragma->following, pragma->following.count - 1);
+    String first = getToken(s->tokens, firstTokenId).string;
+    String last = getToken(s->tokens, lastTokenId).string;
+    String string = {
+        .data = first.data,
+        .size = (u32)(last.data - first.data) + last.size,
+    };
+
+    l += pushString(s, string);
+
+    return l;
+}
+
+
+static u32
 pushImportDirective(Serializer *s, ASTNode *node) {
     u32 l = 0;
 
@@ -651,6 +681,9 @@ pushASTNode(Serializer *s, ASTNode *node) {
     u32 l = 0;
 
     switch(node->type) {
+        case ASTNodeType_Pragma: {
+            l = pushPragma(s, node);
+        } break;
         case ASTNodeType_Import: {
             l = pushImportDirective(s, node);
         } break;

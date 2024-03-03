@@ -1,3 +1,19 @@
+pragma solidity 0.4.4;
+pragma solidity ^0.4.4;
+pragma solidity ~0.4.4;
+pragma solidity >0.4.4;
+pragma solidity >=0.4.4;
+pragma solidity <0.4.4;
+pragma solidity <=0.4.4;
+pragma solidity =0.4.4;
+pragma solidity 0.4;
+pragma solidity >=0.5.0 <0.7.0;
+pragma solidity ^0.6;
+pragma solidity ^0.5.0 || ^0.6.0;
+pragma solidity ^0.5.0 || ^0.6.0 || ^0.7.0;
+pragma solidity *;
+pragma experimental ABIEncoderV2;
+
 import "./abc.sol";
 import "./def.sol";
 import './abc.sol';
@@ -4340,7 +4356,7 @@ contract Foo {
 
 
 // SPDX-License-Identifier: BUSL-1.1
-// pragma solidity ^0.8.0;
+pragma solidity ^0.8.0;
 
 import "./MerkleLib.sol";
 import "./external/interfaces/WETH9Interface.sol";

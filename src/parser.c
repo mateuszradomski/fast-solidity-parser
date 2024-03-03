@@ -55,6 +55,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_AbstractContractDefinition,
     ASTNodeType_InheritanceSpecifier,
     ASTNodeType_NameValue,
+    ASTNodeType_Pragma,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -305,6 +306,11 @@ typedef struct ASTNodeNameValue {
     ASTNode *value;
 } ASTNodeNameValue;
 
+typedef struct ASTNodePragma {
+    TokenId major;
+    TokenIdList following;
+} ASTNodePragma;
+
 typedef struct ASTNode {
     ASTNodeType type;
 
@@ -318,6 +324,7 @@ typedef struct ASTNode {
             TokenIdList symbols;
             TokenIdList symbolAliases;
         };
+        ASTNodePragma pragmaNode;
         struct { // ASTNodeType_EnumDefinition
             TokenId nameTokenId;
             TokenIdList values;
@@ -856,6 +863,22 @@ parseType(Parser *parser, ASTNode *node) {
             parseExpression(parser, node->arrayTypeNode.lengthExpression);
             expectToken(parser, TokenType_RBracket);
         }
+    }
+
+    return true;
+}
+
+static bool
+parsePragma(Parser *parser, ASTNode *node) {
+    node->type = ASTNodeType_Pragma;
+    ASTNodePragma *pragma = &node->pragmaNode;
+
+    pragma->major = parseIdentifier(parser);
+    assert(pragma->major != INVALID_TOKEN_ID);
+
+    while(!acceptToken(parser, TokenType_Semicolon)) {
+        TokenId part = parser->current++;
+        listPushTokenId(&pragma->following, part, parser->arena);
     }
 
     return true;
@@ -2043,9 +2066,7 @@ parseSourceUnit(Parser *parser) {
         ASTNodeLink *child = arrayPush(parser->arena, ASTNodeLink, 1);
 
         if(acceptToken(parser, TokenType_Pragma)) {
-            assert(parseIdentifier(parser));
-            expectToken(parser, TokenType_Symbol);
-            expectToken(parser, TokenType_Semicolon);
+            assert(parsePragma(parser, &child->node));
         } else if(acceptToken(parser, TokenType_Import)) {
             assert(parseImport(parser, &child->node));
         } else if(acceptToken(parser, TokenType_Enum)) {
