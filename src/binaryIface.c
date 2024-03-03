@@ -462,6 +462,22 @@ pushImportDirective(Serializer *s, ASTNode *node) {
 }
 
 static u32
+pushUsing(Serializer *s, ASTNode *node) {
+    u32 l = pushU32(s, node->type);
+
+    ASTNodeUsing *using = &node->usingNode;
+
+    l += pushType(s, using->identifierPath);
+    l += pushU16(s, using->forType != 0x0);
+    if(using->forType != 0x0) {
+        l += pushType(s, using->forType);
+    }
+    l += pushU16(s, using->global);
+
+    return l;
+}
+
+static u32
 pushEnumDefinition(Serializer *s, ASTNode *node) {
     u32 l = 0;
 
@@ -704,6 +720,9 @@ pushASTNode(Serializer *s, ASTNode *node) {
         } break;
         case ASTNodeType_Import: {
             l = pushImportDirective(s, node);
+        } break;
+        case ASTNodeType_Using: {
+            l = pushUsing(s, node);
         } break;
         case ASTNodeType_EnumDefinition: {
             l = pushEnumDefinition(s, node);

@@ -54,6 +54,8 @@ const ASTNodeType_AbstractContractDefinition = 53
 const ASTNodeType_InheritanceSpecifier = 54
 const ASTNodeType_NameValue = 55
 const ASTNodeType_Pragma = 56
+const ASTNodeType_ModifierInvocation = 57
+const ASTNodeType_Using = 58
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -680,6 +682,25 @@ class Deserializer {
         }
     }
 
+    popUsing() {
+        const libraryName = this.popType().namePath;
+        const hasForType = this.popU16();
+        let typeName = null;
+        if(hasForType === 1) {
+            typeName = this.popType();
+        }
+        const isGlobal = this.popU16() === 1;
+
+        return {
+            type: "UsingForDeclaration",
+            isGlobal,
+            typeName,
+            libraryName,
+            functions: [],
+            operators: [],
+        }
+    }
+
     popEnumDefinition() {
         const name = this.popString();
 
@@ -1031,6 +1052,8 @@ class Deserializer {
             return this.popPragma();
         } else if(type === ASTNodeType_Import) {
             return this.popImport();
+        } else if(type === ASTNodeType_Using) {
+            return this.popUsing();
         } else if(type === ASTNodeType_EnumDefinition) {
             return this.popEnumDefinition();
         } else if(type === ASTNodeType_StructDefinition) {

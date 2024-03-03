@@ -57,6 +57,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_NameValue,
     ASTNodeType_Pragma,
     ASTNodeType_ModifierInvocation,
+    ASTNodeType_Using,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -315,6 +316,12 @@ typedef struct ASTNodePragma {
     TokenIdList following;
 } ASTNodePragma;
 
+typedef struct ASTNodeUsing {
+    ASTNode *identifierPath;
+    ASTNode *forType;
+    u8 global;
+} ASTNodeUsing;
+
 typedef struct ASTNode {
     ASTNodeType type;
 
@@ -377,6 +384,7 @@ typedef struct ASTNode {
         ASTNodeEmitStatement emitStatementNode;
         ASTNodeConstructorDefinition constructorDefinitionNode;
         ASTNodeNameValue nameValueNode;
+        ASTNodeUsing usingNode;
     };
 } ASTNode;
 
@@ -933,6 +941,35 @@ parseImport(Parser *parser, ASTNode *node) {
     }
 
     node->type = ASTNodeType_Import;
+
+    expectToken(parser, TokenType_Semicolon);
+
+    return true;
+}
+
+static bool
+parseUsing(Parser *parser, ASTNode *node) {
+    if(acceptToken(parser, TokenType_LParen)) { assert(0); }
+
+    node->type = ASTNodeType_Using;
+    ASTNodeUsing *using = &node->usingNode;
+
+    using->identifierPath = structPush(parser->arena, ASTNode);
+    parseType(parser, using->identifierPath);
+
+    expectToken(parser, TokenType_For);
+
+    if(acceptToken(parser, TokenType_Star)) {
+        using->forType = 0x0;
+    } else {
+        using->forType = structPush(parser->arena, ASTNode);
+        parseType(parser, using->forType);
+    }
+
+    using->global = 0;
+    if(acceptToken(parser, TokenType_Global)) {
+        using->global = 1;
+    }
 
     expectToken(parser, TokenType_Semicolon);
 
@@ -2007,6 +2044,8 @@ parseContractBody(Parser *parser, ASTNodeList *elements) {
             element->node.type = ASTNodeType_ReceiveFunction;
         } else if(acceptToken(parser, TokenType_Struct)) {
             assert(parseStruct(parser, &element->node));
+        } else if(acceptToken(parser, TokenType_Using)) {
+            assert(parseUsing(parser, &element->node));
         } else if(acceptToken(parser, TokenType_Enum)) {
             assert(parseEnum(parser, &element->node));
         } else if(acceptToken(parser, TokenType_Type)) {
@@ -2103,6 +2142,8 @@ parseSourceUnit(Parser *parser) {
             assert(parsePragma(parser, &child->node));
         } else if(acceptToken(parser, TokenType_Import)) {
             assert(parseImport(parser, &child->node));
+        } else if(acceptToken(parser, TokenType_Using)) {
+            assert(parseUsing(parser, &child->node));
         } else if(acceptToken(parser, TokenType_Enum)) {
             assert(parseEnum(parser, &child->node));
         } else if(acceptToken(parser, TokenType_Struct)) {
