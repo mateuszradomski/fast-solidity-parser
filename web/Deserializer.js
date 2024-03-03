@@ -281,6 +281,11 @@ class Deserializer {
 
     popCallArgumentList() {
         const argumentCount = this.popU32();
+
+        if(argumentCount === 0xffffffff) {
+            return [null, null];
+        }
+
         const args = []
         for(let i = 0; i < argumentCount; i++) {
             args.push(this.popExpression());
@@ -878,10 +883,12 @@ class Deserializer {
         const modifiers = []
         for(let i = 0; i < modifierCount; i++) {
             const name = this.popType().namePath;
+            const [args, names] = this.popCallArgumentList();
+
             modifiers.push({
                type: "ModifierInvocation",
                name,
-               arguments: null
+               arguments: args
             })
         }
 

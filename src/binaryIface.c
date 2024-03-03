@@ -134,6 +134,10 @@ pushCallArgumentList(Serializer *s, ASTNodeList *expressions, TokenIdList *names
     u32 l = 0;
 
     l += pushU32(s, expressions->count);
+    if(expressions->count == -1) {
+        return l;
+    }
+
     ASTNodeLink *argument = expressions->head;
     for(u32 i = 0; i < expressions->count; i++, argument = argument->next) {
         l += pushExpression(s, &argument->node);
@@ -588,9 +592,11 @@ pushFunctionDefinition(Serializer *s, ASTNode *node) {
 
     l += pushFunctionParameters(s, &function->returnParameters);
     l += pushU32(s, function->modifiers.count);
-    ASTNodeLink *override = function->modifiers.head;
-    for(u32 i = 0; i < function->modifiers.count; i++, override = override->next) {
-        l += pushType(s, &override->node);
+    ASTNodeLink *it = function->modifiers.head;
+    for(u32 i = 0; i < function->modifiers.count; i++, it = it->next) {
+        ASTNodeModifierInvocation *invocation = &it->node.modifierInvocationNode;
+        l += pushType(s, invocation->identifier);
+        l += pushCallArgumentList(s, &invocation->argumentsExpression, &invocation->argumentsName);
     }
 
     l += pushU32(s, function->body != 0x0);

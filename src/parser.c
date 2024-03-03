@@ -56,6 +56,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_InheritanceSpecifier,
     ASTNodeType_NameValue,
     ASTNodeType_Pragma,
+    ASTNodeType_ModifierInvocation,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -255,6 +256,8 @@ typedef struct ASTNodeInheritanceSpecifier {
     ASTNodeList argumentsExpression;
 } ASTNodeInheritanceSpecifier;
 
+typedef ASTNodeInheritanceSpecifier ASTNodeModifierInvocation;
+
 typedef struct ASTNodeContractDefintion {
     TokenId name;
     ASTNodeList elements;
@@ -365,6 +368,7 @@ typedef struct ASTNode {
         ASTNodeVariableDeclarationTupleStatement variableDeclarationTupleStatementNode;
         ASTNodeWhileStatement whileStatementNode;
         ASTNodeInheritanceSpecifier inheritanceSpecifierNode;
+        ASTNodeModifierInvocation modifierInvocationNode;
         ASTNodeContractDefintion contractDefintionNode;
         ASTNodeLibraryDefintion libraryDefintionNode;
         ASTNodeRevertStatement revertStatementNode;
@@ -1728,6 +1732,21 @@ parseOverrideSpecifierArgs(Parser *parser, ASTNodeList *list) {
     }
 }
 
+static void
+parseModifierInvocation(Parser *parser, ASTNode *node, ASTNode *identifierPath) {
+    node->type = ASTNodeType_ModifierInvocation;
+    ASTNodeModifierInvocation *invocation = &node->modifierInvocationNode;
+
+    invocation->identifier = structPush(parser->arena, ASTNode);
+    *invocation->identifier = *identifierPath;
+
+    invocation->argumentsExpression.count = -1;
+    if(acceptToken(parser, TokenType_LParen)) {
+        invocation->argumentsExpression.count = 0;
+        parseCallArgumentList(parser, &invocation->argumentsExpression, &invocation->argumentsName);
+    }
+}
+
 static bool
 parseFunction(Parser *parser, ASTNode *node) {
     node->type = ASTNodeType_FunctionDefinition;
@@ -1798,7 +1817,7 @@ parseFunction(Parser *parser, ASTNode *node) {
             if(isSuccess) {
                 assert(testExpression.type == ASTNodeType_IdentifierPath);
                 ASTNodeLink *link = structPush(parser->arena, ASTNodeLink);
-                link->node = testExpression;
+                parseModifierInvocation(parser, &link->node, &testExpression);
 
                 SLL_QUEUE_PUSH(function->modifiers.head, function->modifiers.last, link);
                 function->modifiers.count += 1;
