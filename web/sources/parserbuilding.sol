@@ -7762,9 +7762,9 @@ contract PolygonRollupManager is
                 uint256 diffBatches = totalBatchesAboveTarget -
                     totalBatchesBelowTarget;
 
-                //diffBatches = diffBatches > _MAX_BATCH_MULTIPLIER
-                //    ? _MAX_BATCH_MULTIPLIER
-                //    : diffBatches;
+                diffBatches = diffBatches > _MAX_BATCH_MULTIPLIER
+                    ? _MAX_BATCH_MULTIPLIER
+                    : diffBatches;
 
                 // For every multiplierBatchFee multiplication we must shift 3 zeroes since we have 3 decimals
                 _batchFee =
@@ -7775,9 +7775,9 @@ contract PolygonRollupManager is
                 uint256 diffBatches = totalBatchesBelowTarget -
                     totalBatchesAboveTarget;
 
-                //diffBatches = diffBatches > _MAX_BATCH_MULTIPLIER
-                //    ? _MAX_BATCH_MULTIPLIER
-                //    : diffBatches;
+                diffBatches = diffBatches > _MAX_BATCH_MULTIPLIER
+                    ? _MAX_BATCH_MULTIPLIER
+                    : diffBatches;
 
                 // For every multiplierBatchFee multiplication we must shift 3 zeroes since we have 3 decimals
                 uint256 accDivisor = (uint256(1 ether) *
