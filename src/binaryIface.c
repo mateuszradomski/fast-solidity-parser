@@ -289,7 +289,10 @@ pushStatement(Serializer *s, ASTNode *node) {
             l += pushStatement(s, unchecked->block);
         } break;
         case ASTNodeType_ReturnStatement: {
-            l += pushExpression(s, node->returnStatementNode.expression);
+            l += pushU16(s, node->returnStatementNode.expression != 0x0);
+            if(node->returnStatementNode.expression != 0x0) {
+                l += pushExpression(s, node->returnStatementNode.expression);
+            }
         } break;
         case ASTNodeType_ExpressionStatement: {
             l += pushU16(s, node->expressionStatementNode.expression != 0x0);

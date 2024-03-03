@@ -1493,10 +1493,13 @@ parseStatement(Parser *parser, ASTNode *node) {
     if(acceptToken(parser, TokenType_Return)) {
         ASTNode *returnStatement = node;
         returnStatement->type = ASTNodeType_ReturnStatement;
-        returnStatement->returnStatementNode.expression = structPush(parser->arena, ASTNode);
+        returnStatement->returnStatementNode.expression = 0x0;
 
-        parseExpression(parser, returnStatement->returnStatementNode.expression);
-        expectToken(parser, TokenType_Semicolon);
+        if(!acceptToken(parser, TokenType_Semicolon)) {
+            returnStatement->returnStatementNode.expression = structPush(parser->arena, ASTNode);
+            parseExpression(parser, returnStatement->returnStatementNode.expression);
+            expectToken(parser, TokenType_Semicolon);
+        }
     } else if(acceptToken(parser, TokenType_If)) {
         node->type = ASTNodeType_IfStatement;
         ASTNodeIfStatement *ifStatement = &node->ifStatementNode;

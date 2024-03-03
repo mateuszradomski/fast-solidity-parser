@@ -516,9 +516,15 @@ class Deserializer {
                 block,
             }
         } else if(type === ASTNodeType_ReturnStatement) {
+            let expression = null
+            const hasExpression = this.popU16();
+            if(hasExpression === 1) {
+                expression = this.popExpression();
+            }
+
             return {
                 type: "ReturnStatement",
-                expression: this.popExpression()
+                expression
             }
         } else if(type === ASTNodeType_ExpressionStatement) {
             const hasExpression = this.popU16() == 1;

@@ -6161,107 +6161,107 @@ abstract contract SpokePool is
             );
         }
     }
-// 
-//     // @param relayer: relayer who is actually credited as filling this deposit. Can be different from
-//     // exclusiveRelayer if passed exclusivityDeadline or if slow fill.
-//     function _fillRelayV3(
-//         V3RelayExecutionParams memory relayExecution,
-//         address relayer,
-//         bool isSlowFill
-//     ) internal {
-//         V3RelayData memory relayData = relayExecution.relay;
-// 
-//         if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
-// 
-//         bytes32 relayHash = relayExecution.relayHash;
-// 
-//         // If a slow fill for this fill was requested then the relayFills value for this hash will be
-//         // FillStatus.RequestedSlowFill. Therefore, if this is the status, then this fast fill
-//         // will be replacing the slow fill. If this is a slow fill execution, then the following variable
-//         // is trivially true. We'll emit this value in the FilledRelay
-//         // event to assist the Dataworker in knowing when to return funds back to the HubPool that can no longer
-//         // be used for a slow fill execution.
-//         FillType fillType = isSlowFill
-//             ? FillType.SlowFill
-//             : (
-//                 // The following is true if this is a fast fill that was sent after a slow fill request.
-//                 fillStatuses[relayExecution.relayHash] == uint256(FillStatus.RequestedSlowFill)
-//                     ? FillType.ReplacedSlowFill
-//                     : FillType.FastFill
-//             );
-// 
-//         // @dev This function doesn't support partial fills. Therefore, we associate the relay hash with
-//         // an enum tracking its fill status. All filled relays, whether slow or fast fills, are set to the Filled
-//         // status. However, we also use this slot to track whether this fill had a slow fill requested. Therefore
-//         // we can include a bool in the FilledRelay event making it easy for the dataworker to compute if this
-//         // fill was a fast fill that replaced a slow fill and therefore this SpokePool has excess funds that it
-//         // needs to send back to the HubPool.
-//         if (fillStatuses[relayHash] == uint256(FillStatus.Filled)) revert RelayFilled();
-//         fillStatuses[relayHash] = uint256(FillStatus.Filled);
-// 
-//         // @dev Before returning early, emit events to assist the dataworker in being able to know which fills were
-//         // successful.
-//         emit FilledV3Relay(
-//             relayData.inputToken,
-//             relayData.outputToken,
-//             relayData.inputAmount,
-//             relayData.outputAmount,
-//             relayExecution.repaymentChainId,
-//             relayData.originChainId,
-//             relayData.depositId,
-//             relayData.fillDeadline,
-//             relayData.exclusivityDeadline,
-//             relayData.exclusiveRelayer,
-//             relayer,
-//             relayData.depositor,
-//             relayData.recipient,
-//             relayData.message,
-//             V3RelayExecutionEventInfo({
-//                 updatedRecipient: relayExecution.updatedRecipient,
-//                 updatedMessage: relayExecution.updatedMessage,
-//                 updatedOutputAmount: relayExecution.updatedOutputAmount,
-//                 fillType: fillType
-//             })
-//         );
-// 
-//         // If relayer and receiver are the same address, there is no need to do any transfer, as it would result in no
-//         // net movement of funds.
-//         // Note: this is important because it means that relayers can intentionally self-relay in a capital efficient
-//         // way (no need to have funds on the destination).
-//         // If this is a slow fill, we can't exit early since we still need to send funds out of this contract
-//         // since there is no "relayer".
-//         address recipientToSend = relayExecution.updatedRecipient;
-// 
-//         if (msg.sender == recipientToSend && !isSlowFill) return;
-// 
-//         // If relay token is wrappedNativeToken then unwrap and send native token.
-//         address outputToken = relayData.outputToken;
-//         uint256 amountToSend = relayExecution.updatedOutputAmount;
-//         if (outputToken == address(wrappedNativeToken)) {
-//             // Note: useContractFunds is True if we want to send funds to the recipient directly out of this contract,
-//             // otherwise we expect the caller to send funds to the recipient. If useContractFunds is True and the
-//             // recipient wants wrappedNativeToken, then we can assume that wrappedNativeToken is already in the
-//             // contract, otherwise we'll need the user to send wrappedNativeToken to this contract. Regardless, we'll
-//             // need to unwrap it to native token before sending to the user.
-//             if (!isSlowFill) IERC20Upgradeable(outputToken).safeTransferFrom(msg.sender, address(this), amountToSend);
-//             _unwrapwrappedNativeTokenTo(payable(recipientToSend), amountToSend);
-//             // Else, this is a normal ERC20 token. Send to recipient.
-//         } else {
-//             // Note: Similar to note above, send token directly from the contract to the user in the slow relay case.
-//             if (!isSlowFill) IERC20Upgradeable(outputToken).safeTransferFrom(msg.sender, recipientToSend, amountToSend);
-//             else IERC20Upgradeable(outputToken).safeTransfer(recipientToSend, amountToSend);
-//         }
-// 
-//         bytes memory updatedMessage = relayExecution.updatedMessage;
-//         if (recipientToSend.isContract() && updatedMessage.length > 0) {
-//             AcrossMessageHandler(recipientToSend).handleV3AcrossMessage(
-//                 outputToken,
-//                 amountToSend,
-//                 msg.sender,
-//                 updatedMessage
-//             );
-//         }
-//     }
+
+    // @param relayer: relayer who is actually credited as filling this deposit. Can be different from
+    // exclusiveRelayer if passed exclusivityDeadline or if slow fill.
+    function _fillRelayV3(
+        V3RelayExecutionParams memory relayExecution,
+        address relayer,
+        bool isSlowFill
+    ) internal {
+        V3RelayData memory relayData = relayExecution.relay;
+
+        if (relayData.fillDeadline < getCurrentTime()) revert ExpiredFillDeadline();
+
+        bytes32 relayHash = relayExecution.relayHash;
+
+        // If a slow fill for this fill was requested then the relayFills value for this hash will be
+        // FillStatus.RequestedSlowFill. Therefore, if this is the status, then this fast fill
+        // will be replacing the slow fill. If this is a slow fill execution, then the following variable
+        // is trivially true. We'll emit this value in the FilledRelay
+        // event to assist the Dataworker in knowing when to return funds back to the HubPool that can no longer
+        // be used for a slow fill execution.
+        FillType fillType = isSlowFill
+            ? FillType.SlowFill
+            : (
+                // The following is true if this is a fast fill that was sent after a slow fill request.
+                fillStatuses[relayExecution.relayHash] == uint256(FillStatus.RequestedSlowFill)
+                    ? FillType.ReplacedSlowFill
+                    : FillType.FastFill
+            );
+
+        // @dev This function doesn't support partial fills. Therefore, we associate the relay hash with
+        // an enum tracking its fill status. All filled relays, whether slow or fast fills, are set to the Filled
+        // status. However, we also use this slot to track whether this fill had a slow fill requested. Therefore
+        // we can include a bool in the FilledRelay event making it easy for the dataworker to compute if this
+        // fill was a fast fill that replaced a slow fill and therefore this SpokePool has excess funds that it
+        // needs to send back to the HubPool.
+        if (fillStatuses[relayHash] == uint256(FillStatus.Filled)) revert RelayFilled();
+        fillStatuses[relayHash] = uint256(FillStatus.Filled);
+
+        // @dev Before returning early, emit events to assist the dataworker in being able to know which fills were
+        // successful.
+        emit FilledV3Relay(
+            relayData.inputToken,
+            relayData.outputToken,
+            relayData.inputAmount,
+            relayData.outputAmount,
+            relayExecution.repaymentChainId,
+            relayData.originChainId,
+            relayData.depositId,
+            relayData.fillDeadline,
+            relayData.exclusivityDeadline,
+            relayData.exclusiveRelayer,
+            relayer,
+            relayData.depositor,
+            relayData.recipient,
+            relayData.message,
+            V3RelayExecutionEventInfo({
+                updatedRecipient: relayExecution.updatedRecipient,
+                updatedMessage: relayExecution.updatedMessage,
+                updatedOutputAmount: relayExecution.updatedOutputAmount,
+                fillType: fillType
+            })
+        );
+
+        // If relayer and receiver are the same address, there is no need to do any transfer, as it would result in no
+        // net movement of funds.
+        // Note: this is important because it means that relayers can intentionally self-relay in a capital efficient
+        // way (no need to have funds on the destination).
+        // If this is a slow fill, we can't exit early since we still need to send funds out of this contract
+        // since there is no "relayer".
+        address recipientToSend = relayExecution.updatedRecipient;
+
+        if (msg.sender == recipientToSend && !isSlowFill) return;
+
+        // If relay token is wrappedNativeToken then unwrap and send native token.
+        address outputToken = relayData.outputToken;
+        uint256 amountToSend = relayExecution.updatedOutputAmount;
+        if (outputToken == address(wrappedNativeToken)) {
+            // Note: useContractFunds is True if we want to send funds to the recipient directly out of this contract,
+            // otherwise we expect the caller to send funds to the recipient. If useContractFunds is True and the
+            // recipient wants wrappedNativeToken, then we can assume that wrappedNativeToken is already in the
+            // contract, otherwise we'll need the user to send wrappedNativeToken to this contract. Regardless, we'll
+            // need to unwrap it to native token before sending to the user.
+            if (!isSlowFill) IERC20Upgradeable(outputToken).safeTransferFrom(msg.sender, address(this), amountToSend);
+            _unwrapwrappedNativeTokenTo(payable(recipientToSend), amountToSend);
+            // Else, this is a normal ERC20 token. Send to recipient.
+        } else {
+            // Note: Similar to note above, send token directly from the contract to the user in the slow relay case.
+            if (!isSlowFill) IERC20Upgradeable(outputToken).safeTransferFrom(msg.sender, recipientToSend, amountToSend);
+            else IERC20Upgradeable(outputToken).safeTransfer(recipientToSend, amountToSend);
+        }
+
+        bytes memory updatedMessage = relayExecution.updatedMessage;
+        if (recipientToSend.isContract() && updatedMessage.length > 0) {
+            AcrossMessageHandler(recipientToSend).handleV3AcrossMessage(
+                outputToken,
+                amountToSend,
+                msg.sender,
+                updatedMessage
+            );
+        }
+    }
 
     /// @custom:audit FOLLOWING FUNCTION TO BE DEPRECATED
     function _emitFillRelay(RelayExecution memory relayExecution, uint256 fillAmountPreFees) internal {
