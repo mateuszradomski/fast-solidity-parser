@@ -7756,41 +7756,41 @@ contract PolygonRollupManager is
 
         // TODO(radomski: Lower has weird precedense errors
         // Since all the following operations cannot overflow, we can optimize this operations with unchecked
-        // unchecked {
-        //     if (totalBatchesBelowTarget < totalBatchesAboveTarget) {
-        //         // There are more batches above target, fee is multiplied
-        //         uint256 diffBatches = totalBatchesAboveTarget -
-        //             totalBatchesBelowTarget;
+        unchecked {
+            if (totalBatchesBelowTarget < totalBatchesAboveTarget) {
+                // There are more batches above target, fee is multiplied
+                uint256 diffBatches = totalBatchesAboveTarget -
+                    totalBatchesBelowTarget;
 
-        //         diffBatches = diffBatches > _MAX_BATCH_MULTIPLIER
-        //             ? _MAX_BATCH_MULTIPLIER
-        //             : diffBatches;
+                //diffBatches = diffBatches > _MAX_BATCH_MULTIPLIER
+                //    ? _MAX_BATCH_MULTIPLIER
+                //    : diffBatches;
 
-        //         // For every multiplierBatchFee multiplication we must shift 3 zeroes since we have 3 decimals
-        //         _batchFee =
-        //             (_batchFee * (uint256(multiplierBatchFee) ** diffBatches)) /
-        //             (uint256(1000) ** diffBatches);
-        //     } else {
-        //         // There are more batches below target, fee is divided
-        //         uint256 diffBatches = totalBatchesBelowTarget -
-        //             totalBatchesAboveTarget;
+                // For every multiplierBatchFee multiplication we must shift 3 zeroes since we have 3 decimals
+                _batchFee =
+                    (_batchFee * (uint256(multiplierBatchFee) ** diffBatches)) /
+                    (uint256(1000) ** diffBatches);
+            } else {
+                // There are more batches below target, fee is divided
+                uint256 diffBatches = totalBatchesBelowTarget -
+                    totalBatchesAboveTarget;
 
-        //         diffBatches = diffBatches > _MAX_BATCH_MULTIPLIER
-        //             ? _MAX_BATCH_MULTIPLIER
-        //             : diffBatches;
+                //diffBatches = diffBatches > _MAX_BATCH_MULTIPLIER
+                //    ? _MAX_BATCH_MULTIPLIER
+                //    : diffBatches;
 
-        //         // For every multiplierBatchFee multiplication we must shift 3 zeroes since we have 3 decimals
-        //         uint256 accDivisor = (uint256(1 ether) *
-        //             (uint256(multiplierBatchFee) ** diffBatches)) /
-        //             (uint256(1000) ** diffBatches);
+                // For every multiplierBatchFee multiplication we must shift 3 zeroes since we have 3 decimals
+                uint256 accDivisor = (uint256(1 ether) *
+                    (uint256(multiplierBatchFee) ** diffBatches)) /
+                    (uint256(1000) ** diffBatches);
 
-        //         // multiplyFactor = multiplierBatchFee ** diffBatches / 10 ** (diffBatches * 3)
-        //         // accDivisor = 1E18 * multiplyFactor
-        //         // 1E18 * batchFee / accDivisor = batchFee / multiplyFactor
-        //         // < 60 bits * < 70 bits / ~60 bits --> overflow not possible
-        //         _batchFee = (uint256(1 ether) * _batchFee) / accDivisor;
-        //     }
-        // }
+                // multiplyFactor = multiplierBatchFee ** diffBatches / 10 ** (diffBatches * 3)
+                // accDivisor = 1E18 * multiplyFactor
+                // 1E18 * batchFee / accDivisor = batchFee / multiplyFactor
+                // < 60 bits * < 70 bits / ~60 bits --> overflow not possible
+                _batchFee = (uint256(1 ether) * _batchFee) / accDivisor;
+            }
+        }
 
         // Batch fee must remain inside a range
         if (_batchFee > _MAX_BATCH_FEE) {
