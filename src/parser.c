@@ -258,16 +258,16 @@ typedef struct ASTNodeInheritanceSpecifier {
 
 typedef ASTNodeInheritanceSpecifier ASTNodeModifierInvocation;
 
-typedef struct ASTNodeContractDefintion {
+typedef struct ASTNodeContractDefinition {
     TokenId name;
     ASTNodeList elements;
     ASTNodeList baseContracts;
-} ASTNodeContractDefintion;
+} ASTNodeContractDefinition;
 
-typedef struct ASTNodeLibraryDefintion {
+typedef struct ASTNodeLibraryDefinition {
     TokenId name;
     ASTNodeList elements;
-} ASTNodeLibraryDefintion;
+} ASTNodeLibraryDefinition;
 
 typedef struct ASTNodeForStatement {
     ASTNode *variableStatement;
@@ -369,8 +369,8 @@ typedef struct ASTNode {
         ASTNodeWhileStatement whileStatementNode;
         ASTNodeInheritanceSpecifier inheritanceSpecifierNode;
         ASTNodeModifierInvocation modifierInvocationNode;
-        ASTNodeContractDefintion contractDefintionNode;
-        ASTNodeLibraryDefintion libraryDefintionNode;
+        ASTNodeContractDefinition contractDefinitionNode;
+        ASTNodeLibraryDefinition libraryDefinitionNode;
         ASTNodeRevertStatement revertStatementNode;
         ASTNodeForStatement forStatementNode;
         ASTNodeEmitStatement emitStatementNode;
@@ -2020,7 +2020,7 @@ parseContractBody(Parser *parser, ASTNodeList *elements) {
 static bool
 parseContract(Parser *parser, ASTNode *node) {
     node->type = ASTNodeType_ContractDefinition;
-    ASTNodeContractDefintion *contract = &node->contractDefintionNode;
+    ASTNodeContractDefinition *contract = &node->contractDefinitionNode;
 
     contract->name = parseIdentifier(parser);
 
@@ -2069,7 +2069,7 @@ parseAbstractContract(Parser *parser, ASTNode *node) {
 static bool
 parseLibrary(Parser *parser, ASTNode *node) {
     node->type = ASTNodeType_LibraryDefinition;
-    ASTNodeLibraryDefintion *library = &node->libraryDefintionNode;
+    ASTNodeLibraryDefinition *library = &node->libraryDefinitionNode;
 
     library->name = parseIdentifier(parser);
 

@@ -650,7 +650,7 @@ static u32
 pushContractDefinition(Serializer *s, ASTNode *node) {
     u32 l = pushU32(s, node->type);
 
-    ASTNodeContractDefintion *contract = &node->contractDefintionNode;
+    ASTNodeContractDefinition *contract = &node->contractDefinitionNode;
     l += pushTokenStringById(s, contract->name);
 
     l += pushU32(s, contract->baseContracts.count);
