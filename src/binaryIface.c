@@ -47,7 +47,7 @@ popU32(Serializer *s) {
         *s->head -= sizeof(u32);
     }
 
-    return -sizeof(u32);
+    return -((u32)(sizeof(u32)));
 }
 
 static u32

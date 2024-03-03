@@ -1,3 +1,4 @@
+#ifdef WASM
 typedef unsigned char u8;
 typedef unsigned short u16;
 typedef unsigned int u32;
@@ -7,8 +8,22 @@ typedef short s16;
 typedef int s32;
 
 typedef u32 bool;
-
 typedef u32 size_t;
+#endif
+
+#ifdef LINUX
+#include <stdint.h>
+
+typedef uint8_t u8;
+typedef uint16_t u16;
+typedef uint32_t u32;
+
+typedef int8_t s8;
+typedef int16_t s16;
+typedef int32_t s32;
+
+typedef u32 bool;
+#endif
 
 const u32 Kilobyte = 1024;
 const u32 Megabyte = Kilobyte * 1024;
@@ -35,6 +50,22 @@ const u32 Gigabyte = Megabyte * 1024;
 #define SLL_QUEUE_PUSH(F,L,N) STMNT( SLL_QUEUE_PUSH_((F),(L),(N)) )
 #define SLL_QUEUE_POP(F,L) STMNT( SLL_QUEUE_POP_((F),(L)) )
 
+#define WASM_PAGE_SIZE 65536
+
+#define assert(expression) __assert((void*)(expression))
+
+#ifdef LINUX
+#include <assert.h>
+#include <stdlib.h>
+#include <string.h>
+
+void javascriptPrintStringPtr(void *s) {}
+void javascriptPrintNumber(u32 n) {}
+void traceBegin(u32 n) {}
+void traceEnd() {}
+#endif
+
+#ifdef WASM
 extern unsigned char __heap_base;
 unsigned int bumpPointer = (unsigned int)(&__heap_base);
 
@@ -42,10 +73,6 @@ extern void javascriptPrintStringPtr(void *s);
 extern void javascriptPrintNumber(u32 n);
 extern void traceBegin(u32 n);
 extern void traceEnd();
-
-#define WASM_PAGE_SIZE 65536
-
-#define assert(expression) __assert((void*)(expression))
 
 static void __assert(void *boolean) {
     if (!boolean) {
@@ -80,6 +107,7 @@ memset(void *dst, u8 value, int n) {
         d[i] = value;
     }
 }
+#endif
 
 typedef struct MemoryCursor {
     u8* basePointer;

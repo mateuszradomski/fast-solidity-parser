@@ -1139,6 +1139,7 @@ getOperatorPrecedence(TokenType type) {
         case TokenType_NotEqual: return -11;
         case TokenType_LogicalAnd: return -12;
         case TokenType_LogicalOr: return -13;
+        case TokenType_QuestionMark:
         case TokenType_Equal:
         case TokenType_OrEqual:
         case TokenType_XorEqual:
@@ -1150,7 +1151,6 @@ getOperatorPrecedence(TokenType type) {
         case TokenType_StarEqual:
         case TokenType_DivideEqual:
         case TokenType_PercentEqual: return -14;
-        case TokenType_QuestionMark: return -15;
         default: assert(0);
     }
 
