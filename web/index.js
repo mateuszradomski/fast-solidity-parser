@@ -1,35 +1,56 @@
-const fs = require('fs');
-const WasmParser = require('./wasmParse');
+const WasmParser = require('./wasmParseWeb');
 const parser = require('@solidity-parser/parser')
+;
+const { stringify } = require('querystring');
+const button = document.getElementById('runDemoButton');
 
-async function runBinaryInterface(input) {
+async function onButtonClick() {
+    button.disabled = true;
+
+    const response = await fetch('./sources/parserbuilding.sol')
+    const input = await response.text() 
+    const byteCount = input.length;
+    const lineCount = input.split('\n').length;
+
+    document.getElementById('inputByteCount').textContent = byteCount.toString();
+    document.getElementById('inputLineCount').textContent = lineCount.toString();
+
+    const antlrResultSpan = document.getElementById('antlrResult');
+    const wasmResultSpan = document.getElementById('wasmResult');
+
+    let antlrElapsed = -performance.now()
+    const antlrAST = await runAntlrParser(input);
+    antlrElapsed += performance.now();
+    let linesPerSecond = lineCount / (antlrElapsed / 1000);
+    let bytesPerSecond = byteCount / (antlrElapsed / 1000);
+    antlrResultSpan.textContent = `${formatSI(linesPerSecond, "L/s")}, ${formatSI(bytesPerSecond, "B/s")}`
+
     const parser = new WasmParser();
+    await parser.loadParser();
 
-    let elapsed = -performance.now()
-    await parser.parseBinaryInterface(input)
-    elapsed += performance.now();
-    const lines = input.split('\n').length;
-    const linesPerSeconds = lines / (elapsed / 1000);
-    console.error("WASM: Lines per second:", formatSI(linesPerSeconds, "LPS"));
+    let wasmElapsed = -performance.now()
+    const wasmAST = await runWasmParser(parser, input);
+    wasmElapsed += performance.now();
+    linesPerSecond = lineCount / (wasmElapsed / 1000);
+    bytesPerSecond = byteCount / (wasmElapsed / 1000);
+    wasmResultSpan.textContent = `${formatSI(linesPerSecond, "L/s")}, ${formatSI(bytesPerSecond, "B/s")}`
+
+    const astMatch = JSON.stringify(wasmAST) === JSON.stringify(antlrAST)
+    const matchText = astMatch ? "is the same" : "ERROR IS NOT THE SAME"
+    document.getElementById('summaryResult').textContent = `wasm was ${(antlrElapsed / wasmElapsed).toFixed(2)} times faster, output ${matchText}`
+
+    button.disabled = false;
 }
+
+button.addEventListener('click', onButtonClick);
 
 async function runAntlrParser(input) {
-    let elapsed = -performance.now()
-    parser.parse(input)
-    elapsed += performance.now();
-    const lines = input.split('\n').length;
-    const linesPerSeconds = lines / (elapsed / 1000);
-    console.error("ANTLR: Lines per second:", formatSI(linesPerSeconds, "LPS"));
+    return parser.parse(input)
 }
 
-async function main() {
-    const input = fs.readFileSync("web/sources/parserbuilding.sol", 'utf-8')
-
-    await runBinaryInterface(input)
-    await runAntlrParser(input)
+async function runWasmParser(parser, input) {
+    return parser.parseBinaryInterface(input)
 }
-
-main()
 
 function formatSI(value, unit) {
   if (value === 0) {

@@ -1,64 +1,30 @@
 const Deserializer = require('./Deserializer');
 
-const SpallProfiler = require('./spall');
-const profiler = new SpallProfiler();
-
 class WasmParser {
     constructor() {}
 
-    loadParserNode() {
-        const fs = require('fs');
-        const path = require('path');
-        profiler.trace_begin("Loading the module");
-
-        profiler.trace_begin("Read from disk");
-        const wasmPath = path.join(__dirname, "./parser.wasm");
-        const wasmBuffer = fs.readFileSync(wasmPath);
-        profiler.trace_end();
-
-        this.loadWasmModule(wasmBuffer)
-
-        profiler.trace_end();
-    }
-
-    loadWasmModule(wasmBuffer) {
-        profiler.trace_begin("Make module");
-        const mod = new WebAssembly.Module(wasmBuffer);
-        profiler.trace_end();
-        profiler.trace_begin("Make instance");
-        const instance = new WebAssembly.Instance(mod, {
+    async loadParser() {
+        const response = await fetch('./parser.wasm');
+        const wasmArrayBuffer = await response.arrayBuffer();
+        const { instance } = await WebAssembly.instantiate(wasmArrayBuffer, {
             env: makeEnv(this)
         });
-        profiler.trace_end();
-
         this.instance = instance;
-    }
-    
-    saveProfileToDisk() {
-        const fs = require('fs');
-        const spallBytes = profiler.serialize();
-        fs.writeFileSync("data.spall", spallBytes);
     }
 
     parseBinaryInterface(input) {
         const jsArray = new TextEncoder().encode(input);
 
-        profiler.trace_begin("Copying");
         const cArrayPointer = this.instance.exports.malloc(jsArray.length);
         let memoryBuffer = this.instance.exports.memory.buffer;
         this.cArray = new Uint8Array(memoryBuffer, cArrayPointer, jsArray.length);
         this.cArray.set(jsArray);
-        profiler.trace_end();
 
-        profiler.trace_begin("WASM Binary Interface");
         const resultPointer = this.instance.exports.entryPointBinaryInterface(cArrayPointer, jsArray.length);
-        profiler.trace_end();
 
         memoryBuffer = this.instance.exports.memory.buffer;
 
-        profiler.trace_begin("parseBinary");
         const object = this.parseBinary(input, memoryBuffer, resultPointer);
-        profiler.trace_end();
 
         return object;
     }
@@ -84,13 +50,9 @@ class WasmParser {
         console.log(number);
     }
 
-    traceBegin(number) {
-        profiler.trace_begin(`${number}`);
-    }
+    traceBegin(number) { }
 
-    traceEnd() {
-        profiler.trace_end();
-    }
+    traceEnd() { }
 }
 
 function struct_string_by_pointer(mem_buffer, ptr) {
@@ -130,6 +92,27 @@ function hexdump(mem_buffer, index, size) {
             }
         }
         console.log(line);
+    }
+}
+
+async function loadWasmModule(url) {
+    try {
+        // Use the Fetch API to load the Wasm file
+
+        // Compile and instantiate the Wasm module
+        // Note: Adjust the import object based on your Wasm module's requirements
+        const importObject = {
+            env: {
+                // Define any imports your module requires here
+                // For example, memory: new WebAssembly.Memory({initial: 256, maximum: 512}),
+            },
+        };
+
+        // The Wasm module is now instantiated, and you can start using it
+        // For example, if your module exports a function named 'parse', you can call it as follows:
+        // instance.exports.parse();
+    } catch (error) {
+        console.error('Error loading Wasm module:', error);
     }
 }
 

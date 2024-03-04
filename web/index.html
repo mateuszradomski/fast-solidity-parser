@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>DEMO: Parser performance</title>
+    <style>
+    body {
+        font-family:'Lucida Console', monospace
+    }
+    </style>
+  </head>
+  <body>
+      <h1>This is a performance DEMO</h1>
+      <p>
+      It aims to show the difference between the solidity-parser generated via ANTLR4 and a hand-rolled parser written in C that is compiled to wasm.
+      </p>
+      <button style="width: 64px; height: 48px;" type="button" id="runDemoButton">Run!</button>
+      <script type="module" src="out/index.js"></script>
+
+      <hr>
+      <h1>Test input</h1>
+      <li> <b>Byte count</b>: <span id="inputByteCount"></span> </li>
+      <li> <b>Line count</b>: <span id="inputLineCount"></span> </li>
+
+      <hr>
+      <h1>Results</h1>
+      The "wasm" parser is in two parts.</br>
+      Actual WASM building the tree and serialazing it into a custom format.</br>
+      And a deserializer written in JavsScript to turn it into the same format as the ANTLR4 parser.</br>
+      JavaScript becomes faster the more times you run it.</br>
+      Keep pressing run and you'll see the wasm parser get <b>faster and faster</b></br></br>
+
+      <li> <b>ANTLR</b>: <span id="antlrResult"></span> </li>
+      <li> <b>wasm</b>: <span id="wasmResult"></span> </li>
+      <li> <b>Summary</b>: <span id="summaryResult"></span> </li>
+  </body>
+</html>

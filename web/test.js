@@ -10,9 +10,10 @@ async function main() {
     const antlrAST = JSON.stringify(antlrASTObj, null, 2)
 
     const wasmParser = new WasmParser();
-    // const myASTObj = await wasmParser.parseJSONInterface(input)
-    const myASTObj = await wasmParser.parseBinaryInterface(input)
+    wasmParser.loadParserNode();
+    const myASTObj = wasmParser.parseBinaryInterface(input)
     const myAST = JSON.stringify(myASTObj, null, 2)
+    wasmParser.saveProfileToDisk();
 
     if(antlrAST !== myAST) {
         console.log("ASTs are different")
