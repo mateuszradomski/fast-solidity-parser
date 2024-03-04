@@ -72,28 +72,31 @@ class SpallProfiler {
     }
 
     trace_begin(functionName) {
-        const hrTime = process.hrtime();
-        this.events.push({
-            type: 3, // begin
-            category: 0,
-            pid: 1,
-            tid: 1,
-            time: hrTime[0] * 1000000000 + hrTime[1],
-            name: functionName,
-            args_len: 0,
-        });
+        if(typeof process === 'object') {
+            const hrTime = global.process.hrtime();
+            this.events.push({
+                             type: 3, // begin
+                             category: 0,
+                             pid: 1,
+                             tid: 1,
+                             time: hrTime[0] * 1000000000 + hrTime[1],
+                             name: functionName,
+                             args_len: 0,
+            });
+        }
     }
 
     trace_end() {
-        const hrTime = process.hrtime();
-        this.events.push({
-            type: 4, // end
-            pid: 1,
-            tid: 1,
-            time: hrTime[0] * 1000000000 + hrTime[1],
-        });
+        if(typeof process === 'object') {
+            const hrTime = global.process.hrtime();
+            this.events.push({
+                             type: 4, // end
+                             pid: 1,
+                             tid: 1,
+                             time: hrTime[0] * 1000000000 + hrTime[1],
+            });
+        }
     }
-
 }
 
 module.exports = SpallProfiler;

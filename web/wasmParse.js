@@ -1,5 +1,4 @@
 const Deserializer = require('./Deserializer');
-
 const SpallProfiler = require('./spall');
 const profiler = new SpallProfiler();
 
@@ -19,6 +18,12 @@ class WasmParser {
         this.loadWasmModule(wasmBuffer)
 
         profiler.trace_end();
+    }
+
+    async loadParserWeb() {
+        const response = await fetch('./parser.wasm');
+        const wasmBuffer = await response.arrayBuffer();
+        this.loadWasmModule(wasmBuffer);
     }
 
     loadWasmModule(wasmBuffer) {

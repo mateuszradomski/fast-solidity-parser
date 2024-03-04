@@ -1,4 +1,4 @@
-const WasmParser = require('./wasmParseWeb');
+const WasmParser = require('./wasmParse');
 const parser = require('@solidity-parser/parser')
 ;
 const { stringify } = require('querystring');
@@ -26,7 +26,7 @@ async function onButtonClick() {
     antlrResultSpan.textContent = `${formatSI(linesPerSecond, "L/s")}, ${formatSI(bytesPerSecond, "B/s")}`
 
     const parser = new WasmParser();
-    await parser.loadParser();
+    await parser.loadParserWeb();
 
     let wasmElapsed = -performance.now()
     const wasmAST = await runWasmParser(parser, input);
