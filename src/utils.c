@@ -527,3 +527,43 @@ typedef struct StringList {
     StringNode *head;
     StringNode *last;
 } StringList;
+
+static String
+neutralizeUnicode(const char *string, int len, Arena *arena) {
+    static u8 followingByteCount[] = {
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        1, 1, 1, 1, 2, 2, 3, 0xff,
+    };
+
+    String result = {
+        .data = arrayPush(arena, u8, len),
+        .size = 0,
+    };
+
+    for(int i = 0; i < len; i++) {
+        if(string[i] & 0x80) {
+            u8 c = string[i];
+            u8 first5Bits = (c >> 3) & 0x1f;
+            u8 bytesToFollow = followingByteCount[first5Bits];
+            u32 codePoint = c & (0x7f >> (bytesToFollow + 1));
+
+            assert(i + bytesToFollow < len);
+            for(int j = 0; j < bytesToFollow; j++) {
+                u8 b = string[++i];
+                assert((b & 0xc0) == 0x80);
+                codePoint = (codePoint << 6) | (b & 0x3f);
+            }
+
+            if(codePoint > 0xffff) {
+                result.data[result.size++] = 'u';
+            }
+            result.data[result.size++] = 'u';
+        } else {
+            result.data[result.size++] = string[i];
+        }
+    }
+
+    return result;
+}

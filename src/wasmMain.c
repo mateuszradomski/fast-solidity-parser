@@ -5,34 +5,25 @@
 static String result = { 0 };
 
 String *
-entryPointJSONInterface(const char *string, int len) {
-    Arena arena = arenaCreate(64 * Megabyte, 32 * Kilobyte, 64);
-    String input = { .data = (u8 *)string, .size = len };
-    TokenizeResult tokens = tokenize(input, &arena);
-    Parser parser = createParser(tokens, &arena);
-    ASTNode node = parseSourceUnit(&parser);
-    result = astNodeToString(tokens, node, &arena);
-
-    return &result;
-}
-
-String *
 entryPointBinaryInterface(const char *string, int len) {
     traceBegin(1);
     Arena arena = arenaCreate(64 * Megabyte, 32 * Kilobyte, 64);
-    String input = { .data = (u8 *)string, .size = len };
     traceEnd();
 
     traceBegin(2);
+    String input = neutralizeUnicode(string, len, &arena);
+    traceEnd();
+
+    traceBegin(3);
     TokenizeResult tokens = tokenize(input, &arena);
     traceEnd();
-    traceBegin(3);
+    traceBegin(4);
     Parser parser = createParser(tokens, &arena);
     ASTNode node = parseSourceUnit(&parser);
     traceEnd();
 
-    traceBegin(4);
-    Serializer s = createSerializer(&arena, string, tokens);
+    traceBegin(5);
+    Serializer s = createSerializer(&arena, input.data, tokens);
     result = astNodeToBinary(&s, &node);
     traceEnd();
 

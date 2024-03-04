@@ -36,6 +36,12 @@ enum Locations {
     Village
 }
 
+
+// This is a Unicode neutralizer: äöü => uuu that will test if we correctly
+// handle Unicode in code so that later Javascript has the correct substring
+// range 😎. Don’t allow fillDeadline to be more than several bundles into the
+// future. ’
+
 struct KeyValuePair {
     address a0;
     bool a1;
@@ -12903,6 +12909,7 @@ library SwapUtils {
     emit NewAdminFee(self.key, newAdminFee);
   }
 
+
   /**
    * @notice update the swap fee
    * @dev fee cannot be higher than 1% of each swap
@@ -12925,8 +12932,3 @@ library SwapUtils {
     return !self.disabled && self.pooledTokens.length != 0;
   }
 }
-
-// 
-// // This is some weird backtick, it takes two bytes, i need to understand what is going on
-// // Don’t allow fillDeadline to be more than several bundles into the future.
-// //’
