@@ -36,7 +36,6 @@ enum Locations {
     Village
 }
 
-
 // This is a Unicode neutralizer: äöü => uuu that will test if we correctly
 // handle Unicode in code so that later Javascript has the correct substring
 // range 😎. Don’t allow fillDeadline to be more than several bundles into the
