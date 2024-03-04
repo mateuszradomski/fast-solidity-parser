@@ -114,6 +114,7 @@ typedef enum TokenType {
     TokenType_Symbol,
     TokenType_StringLit,
     TokenType_HexStringLit,
+    TokenType_UnicodeStringLit,
     TokenType_NumberLit,
     TokenType_HexNumberLit,
     TokenType_Comment,
@@ -268,6 +269,7 @@ tokenTypeToString(TokenType tokenType) {
         case TokenType_HexStringLit: return LIT_TO_STR("HexStringLit");
         case TokenType_NumberLit: return LIT_TO_STR("NumberLit");
         case TokenType_HexNumberLit: return LIT_TO_STR("HexNumberLit");
+        case TokenType_UnicodeStringLit: return LIT_TO_STR("UnicodeStringLit");
         case TokenType_Comment: return LIT_TO_STR("Comment");
         case TokenType_Constructor: return LIT_TO_STR("Constructor");
         case TokenType_Count: return LIT_TO_STR("Count");
@@ -598,6 +600,20 @@ tokenize(String source, Arena *arena) {
                 }
 
                 pushToken(&result, TokenType_HexStringLit, symbol);
+            } else if(stringMatch(symbol, LIT_TO_STR("unicode")) && (nextByte == '"' || nextByte == '\'')) {
+                u8 delimiter = nextByte;
+                consumeByte(&c);
+                String symbol = { .data = c.head, .size = 0 };
+
+                while(consumerGood(&c)) {
+                    u8 nextByte = consumeByte(&c);
+                    if(nextByte == delimiter) {
+                        break;
+                    }
+                    symbol.size += 1;
+                }
+
+                pushToken(&result, TokenType_UnicodeStringLit, symbol);
             } else {
                 TokenType tokenType = categorizeSymbol(symbol);
                 pushToken(&result, tokenType, symbol);
@@ -647,24 +663,28 @@ tokenize(String source, Arena *arena) {
             }
         } else if(byte == '"') {
             String symbol = { .data = c.head, .size = 0 };
+            u8 previousByte = byte;
             while(consumerGood(&c)) {
                 u8 nextByte = consumeByte(&c);
-                if(nextByte == '"') {
+                if(nextByte == '"' && previousByte != '\\') {
                     break;
                 }
 
+                previousByte = nextByte;
                 symbol.size += 1;
             }
 
             pushToken(&result, TokenType_StringLit, symbol);
         } else if(byte == '\'') {
             String symbol = { .data = c.head, .size = 0 };
+            u8 previousByte = byte;
             while(consumerGood(&c)) {
                 u8 nextByte = consumeByte(&c);
-                if(nextByte == '\'') {
+                if(nextByte == '\'' && previousByte != '\\') {
                     break;
                 }
 
+                previousByte = nextByte;
                 symbol.size += 1;
             }
 
@@ -688,7 +708,13 @@ tokenize(String source, Arena *arena) {
             u8 nextByte = peekByte(&c);
             if(nextByte == '<') {
                 consumeByte(&c);
-                pushToken(&result, TokenType_LeftShift, (String){ .data = c.head - 2, .size = 2 });
+                u8 nextByte = peekByte(&c);
+                if(nextByte == '=') {
+                    consumeByte(&c);
+                    pushToken(&result, TokenType_LeftShiftEqual, (String){ .data = c.head - 3, .size = 3 });
+                } else {
+                    pushToken(&result, TokenType_LeftShift, (String){ .data = c.head - 2, .size = 2 });
+                }
             } else if(nextByte == '=') {
                 consumeByte(&c);
                 pushToken(&result, TokenType_LeftEqual, (String){ .data = c.head - 2, .size = 2 });
@@ -703,6 +729,9 @@ tokenize(String source, Arena *arena) {
                 if(nextByte == '>') {
                     consumeByte(&c);
                     pushToken(&result, TokenType_RightShiftZero, (String){ .data = c.head - 3, .size = 3 });
+                } else if(nextByte == '=') {
+                    consumeByte(&c);
+                    pushToken(&result, TokenType_RightShiftEqual, (String){ .data = c.head - 3, .size = 3 });
                 } else {
                     pushToken(&result, TokenType_RightShift, (String){ .data = c.head - 2, .size = 2 });
                 }
@@ -757,7 +786,13 @@ tokenize(String source, Arena *arena) {
                 pushToken(&result, TokenType_Minus, (String){ .data = c.head - 1, .size = 1 });
             }
         } else if(byte == '%') {
-            pushToken(&result, TokenType_Percent, (String){ .data = c.head - 1, .size = 1 });
+            u8 nextByte = peekByte(&c);
+            if(nextByte == '=') {
+                consumeByte(&c);
+                pushToken(&result, TokenType_PercentEqual, (String){ .data = c.head - 2, .size = 2 });
+            } else {
+                pushToken(&result, TokenType_Percent, (String){ .data = c.head - 1, .size = 1 });
+            }
         } else if(byte == '*') {
             u8 nextByte = peekByte(&c);
             if(nextByte == '*') {
@@ -792,7 +827,13 @@ tokenize(String source, Arena *arena) {
                 pushToken(&result, TokenType_Pipe, (String){ .data = c.head - 1, .size = 1 });
             }
         } else if(byte == '^') {
-            pushToken(&result, TokenType_Carrot, (String){ .data = c.head - 1, .size = 1 });
+            u8 nextByte = peekByte(&c);
+            if(nextByte == '=') {
+                consumeByte(&c);
+                pushToken(&result, TokenType_XorEqual, (String){ .data = c.head - 2, .size = 2 });
+            } else {
+                pushToken(&result, TokenType_Carrot, (String){ .data = c.head - 1, .size = 1 });
+            }
         } else if(byte == '~') {
             pushToken(&result, TokenType_Tylde, (String){ .data = c.head - 1, .size = 1 });
         } else if(byte == '=') {
@@ -806,6 +847,8 @@ tokenize(String source, Arena *arena) {
         } else if(byte == '?') {
             pushToken(&result, TokenType_QuestionMark, (String){ .data = c.head - 1, .size = 1 });
         } else {
+            javascriptPrintString("Ouch! Unhandled character: ");
+            javascriptPrintNumber(byte);
             assert(false);
         }
     }

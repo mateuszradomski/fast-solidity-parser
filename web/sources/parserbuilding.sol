@@ -3508,9 +3508,8 @@ contract test {
     string b = "aaa""bbb";
     string c = "aaa"  "bbb";
 
-    // unicode strings
-    // string a = unicode"Hello ";
-    // string b = unicode'Hello ';
+    string a = unicode"Hello 😃";
+    string b = unicode'Hello 😃';
 
     // hex literal parts
     function foo() public {
@@ -12930,4 +12929,983 @@ library SwapUtils {
   function exists(Swap storage self) internal view returns (bool) {
     return !self.disabled && self.pooledTokens.length != 0;
   }
+}
+
+abstract contract PurityChecker {
+    uint256 private constant acceptedOpcodesMask = 0x600800000000000000000000ffffffffffffffff0fdf01ff67ff00013fff0fff;
+    function check(address account) external view returns (bool) {
+        return Puretea.check(account.code, acceptedOpcodesMask);
+    }
+}
+interface IChallenge {
+    function run(address target, uint256 seed) external view returns (uint32);
+    function svg(uint256 tokenId) external view returns (string memory);
+    function name() external view returns (string memory);
+    function description() external view returns (string memory);
+}
+struct TokenDetails {
+    uint256 challengeId;
+    IChallenge challenge;
+    uint32 leaderGas;
+    uint32 leaderSolutionId;
+    address leaderSolver;
+    address leaderOwner;
+    address leaderSubmission;
+    uint32 gas;
+    uint32 solutionId;
+    uint32 rank;
+    uint32 improvementPercentage;
+    address solver;
+    address owner;
+    address submission;
+}
+
+library HexString {
+    error HexLengthInsufficient();
+    bytes16 private constant ALPHABET = "0123456789abcdef";
+    function toHexStringNoPrefix(uint256 value, uint256 length) internal pure returns (string memory) {
+        bytes memory buffer = new bytes(2 * length);
+        unchecked {
+            for (uint256 i = buffer.length; i > 0; --i) {
+                buffer[i - 1] = ALPHABET[value & 0xf];
+                value >>= 4;
+            }
+        }
+        if (value != 0) revert HexLengthInsufficient();
+        return string(buffer);
+    }
+    function toHexString(uint256 value, uint256 length) internal pure returns (string memory) {
+        bytes memory buffer = new bytes(2 * length + 2);
+        buffer[0] = "0";
+        buffer[1] = "x";
+        unchecked {
+            for (uint256 i = 2 * length + 1; i > 1; --i) {
+                buffer[i] = ALPHABET[value & 0xf];
+                value >>= 4;
+            }
+        }
+        if (value != 0) revert HexLengthInsufficient();
+        return string(buffer);
+    }
+}
+
+function packTokenId(uint256 challengeId, uint32 solutionId) pure returns (uint256) {
+    return (challengeId << 32) | solutionId;
+}
+
+function unpackTokenId(uint256 tokenId) pure returns (uint256 challengeId, uint32 solutionId) {
+    challengeId = tokenId >> 32;
+    solutionId = uint32(tokenId);
+}
+
+library NFTSVG {
+    struct SVGParams {
+        string projectName;
+        string challengeName;
+        string solverAddr;
+        string challengeAddr;
+        uint256 gasUsed;
+        uint256 gasOpti;
+        uint256 tokenId;
+        uint32 rank;
+        uint32 participants;
+        string color;
+        uint256 x1;
+        uint256 y1;
+        uint256 x2;
+        uint256 y2;
+        uint256 x3;
+        uint256 y3;
+    }
+    function generateSVG(SVGParams memory params, string memory challengeSVG)
+        internal
+        pure
+        returns (string memory svg)
+    {
+        return string.concat(
+            generateSVGDefs(params),
+            generateSVGBorderText(params.projectName, params.challengeName, params.solverAddr, params.challengeAddr),
+            generateSVGCardMantle(params.challengeName, params.rank, params.participants),
+            generateRankBorder(params.rank),
+            generateSvgCurve(challengeSVG),
+            generateSVGPositionDataAndLocationCurve(LibString.toString(params.tokenId), params.gasUsed, params.gasOpti),
+            generateOptimizorIcon(),
+            "</svg>"
+        );
+    }
+    function generateSVGDefs(SVGParams memory params) private pure returns (string memory svg) {
+        svg = string.concat(
+            '<svg width="290" height="500" viewBox="0 0 290 500" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'
+            "<defs>"
+            '<filter id="icon"><feImage result="icon" xlink:href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTY2LjU5NyIgaGVpZ2h0PSIxMjguOTQxIiB2aWV3Qm94PSIwIDAgNDQuMDc5IDM0LjExNiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMjAuNzkzIDEzLjMyMWgtLjYyM1YxMi43aC02LjIyNXYuNjIyaC42MjJ2LjYyM2gtLjYyMnYuNjIyaC0uNjIzdi0uNjIySDEyLjd2Ni4yMjVoLjYyMnYuNjIzaC42MjN2LjYyMmg2LjIyNXYtLjYyMmguNjIzdi0uNjIzaC42MjJ2LTYuMjI1aC0uNjIyem0tMy43MzUgNS42MDN2LTQuMzU4aDEuODY3djQuMzU4em0xMy42OTgtNi4yMjVoLTYuODQ4di42MjJoLjYyM3YuNjIzaC0uNjIzdi42MjJoLS42MjJ2LS42MjJoLS42MjN2Ni4yMjVoLjYyM3YuNjIzaC42MjJ2LjYyMmg2Ljg0OHYtLjYyMmguNjIydi0xLjI0NWgtLjYyMnYtLjYyM0gyNy4wMnYtNC4zNThoMy43MzV2LS42MjJoLjYyMnYtLjYyM2gtLjYyMnoiIHN0eWxlPSJmaWxsOiM2NjYiLz48L3N2Zz4="/></filter>'
+            '<filter id="f1"><feImage result="p0" xlink:href="data:image/svg+xml;base64,',
+            Base64.encode(
+                bytes(
+                    string.concat(
+                        "<svg width='290' height='500' viewBox='0 0 290 500' xmlns='http://www.w3.org/2000/svg'><rect width='290' height='500' fill='#",
+                        params.color,
+                        "'/></svg>"
+                    )
+                )
+            ),
+            '"/><feImage result="p1" xlink:href="data:image/svg+xml;base64,',
+            Base64.encode(
+                bytes(
+                    string.concat(
+                        "<svg width='290' height='500' viewBox='0 0 290 500' xmlns='http://www.w3.org/2000/svg'><circle cx='",
+                        LibString.toString(params.x1),
+                        "' cy='",
+                        LibString.toString(params.y1),
+                        "' r='120' fill='#",
+                        params.color,
+                        "'/></svg>"
+                    )
+                )
+            ),
+            '"/><feImage result="p2" xlink:href="data:image/svg+xml;base64,',
+            Base64.encode(
+                bytes(
+                    string.concat(
+                        "<svg width='290' height='500' viewBox='0 0 290 500' xmlns='http://www.w3.org/2000/svg'><circle cx='",
+                        LibString.toString(params.x2),
+                        "' cy='",
+                        LibString.toString(params.y2),
+                        "' r='120' fill='#",
+                        params.color,
+                        "'/></svg>"
+                    )
+                )
+            ),
+            '" />',
+            '<feImage result="p3" xlink:href="data:image/svg+xml;base64,',
+            Base64.encode(
+                bytes(
+                    string.concat(
+                        "<svg width='290' height='500' viewBox='0 0 290 500' xmlns='http://www.w3.org/2000/svg'><circle cx='",
+                        LibString.toString(params.x3),
+                        "' cy='",
+                        LibString.toString(params.y3),
+                        "' r='100' fill='#",
+                        params.color,
+                        "'/></svg>"
+                    )
+                )
+            ),
+            '"/><feBlend mode="overlay" in="p0" in2="p1"/><feBlend mode="exclusion" in2="p2"/><feBlend mode="overlay" in2="p3" result="blendOut"/><feGaussianBlur '
+            'in="blendOut" stdDeviation="42"/></filter><clipPath id="corners"><rect width="290" height="500" rx="42" ry="42"/></clipPath>'
+            '<path id="text-path-a" d="M40 12 H250 A28 28 0 0 1 278 40 V460 A28 28 0 0 1 250 488 H40 A28 28 0 0 1 12 460 V40 A28 28 0 0 1 40 12 z"/>'
+            '<path id="minimap" d="M234 444C234 457.949 242.21 463 253 463"/>'
+            '<filter id="top-region-blur"><feGaussianBlur in="SourceGraphic" stdDeviation="24"/></filter>'
+            '<linearGradient id="grad-up" x1="1" x2="0" y1="1" y2="0"><stop offset="0.0" stop-color="#fff" stop-opacity="1"/>'
+            '<stop offset=".9" stop-color="#fff" stop-opacity="0"/></linearGradient>'
+            '<linearGradient id="grad-down" x1="0" x2="1" y1="0" y2="1"><stop offset="0.0" stop-color="#fff" stop-opacity="1"/><stop offset="0.9" stop-color="#fff" stop-opacity="0"/></linearGradient>'
+            '<mask id="fade-up" maskContentUnits="objectBoundingBox"><rect width="1" height="1" fill="url(#grad-up)"/></mask>'
+            '<mask id="fade-down" maskContentUnits="objectBoundingBox"><rect width="1" height="1" fill="url(#grad-down)"/></mask>'
+            '<mask id="none" maskContentUnits="objectBoundingBox"><rect width="1" height="1" fill="#fff"/></mask>'
+            '<linearGradient id="grad-symbol"><stop offset="0.7" stop-color="#fff" stop-opacity="1"/><stop offset=".95" stop-color="#fff" stop-opacity="0"/></linearGradient>'
+            '<mask id="fade-symbol" maskContentUnits="userSpaceOnUse"><rect width="290" height="200" fill="url(#grad-symbol)"/></mask></defs>'
+            '<g clip-path="url(#corners)">' '<rect fill="',
+            params.color,
+            '" x="0" y="0" width="290" height="500"/>'
+            '<rect style="filter: url(#f1)" x="0" y="0" width="290" height="500"/>'
+            '<g style="filter:url(#top-region-blur); transform:scale(1.5); transform-origin:center top;">'
+            '<rect fill="none" x="0" y="0" width="290" height="500"/>'
+            '<ellipse cx="50%" cy="0" rx="180" ry="120" fill="#000" opacity="0.85"/></g>'
+            '<rect x="0" y="0" width="290" height="500" rx="42" ry="42" fill="rgba(0,0,0,0)" stroke="rgba(255,255,255,0.2)"/></g>'
+        );
+    }
+    function generateSVGBorderText(
+        string memory projectName,
+        string memory challengeName,
+        string memory solverAddr,
+        string memory challengeAddr
+    ) private pure returns (string memory svg) {
+        svg = string.concat(
+            '<text text-rendering="optimizeSpeed">'
+            '<textPath startOffset="-100%" fill="#fff" font-family="Courier New, monospace" font-size="10px" xlink:href="#text-path-a">',
+            challengeName,
+            unicode" • ",
+            challengeAddr,
+            '<animate additive="sum" attributeName="startOffset" from="0%" to="100%" begin="0s" dur="30s" repeatCount="indefinite"/>'
+            '</textPath> <textPath startOffset="0%" fill="#fff" font-family="Courier New, monospace" font-size="10px" xlink:href="#text-path-a">',
+            challengeName,
+            unicode" • ",
+            challengeAddr,
+            '<animate additive="sum" attributeName="startOffset" from="0%" to="100%" begin="0s" dur="30s" repeatCount="indefinite"/></textPath>'
+            '<textPath startOffset="50%" fill="#fff" font-family="Courier New, monospace" font-size="10px" xlink:href="#text-path-a">',
+            projectName,
+            unicode" • ",
+            solverAddr,
+            '<animate additive="sum" attributeName="startOffset" from="0%" to="100%" begin="0s" dur="30s"'
+            ' repeatCount="indefinite"/></textPath><textPath startOffset="-50%" fill="#fff" font-family="Courier New, monospace" font-size="10px" xlink:href="#text-path-a">',
+            projectName,
+            unicode" • ",
+            solverAddr,
+            '<animate additive="sum" attributeName="startOffset" from="0%" to="100%" begin="0s" dur="30s" repeatCount="indefinite"/></textPath></text>'
+        );
+    }
+    function generateSVGCardMantle(string memory challengeName, uint32 rank, uint32 participants)
+        private
+        pure
+        returns (string memory svg)
+    {
+        svg = string.concat(
+            '<g mask="url(#fade-symbol)"><rect fill="none" x="0" y="0" width="290" height="200"/><text y="70" x="32" fill="#fff" font-family="Courier New, monospace" font-weight="200" font-size="28px">',
+            challengeName,
+            '</text><text y="115" x="32" fill="#fff" font-family="Courier New, monospace" font-weight="200" font-size="20px">'
+            "Rank ",
+            LibString.toString(rank),
+            " of ",
+            LibString.toString(participants),
+            "</text></g>"
+        );
+    }
+    function generateRankBorder(uint32 rank) private pure returns (string memory svg) {
+        string memory color;
+        if (rank == 1) {
+            color = "rgba(255,215,0,1.0)";
+        } else if (rank == 2) {
+            color = "rgba(255,255,255,1.0)";
+        } else if (rank == 3) {
+            color = "rgba(205,127,50,1.0)";
+        } else {
+            color = "rgba(255,255,255,0.2)";
+        }
+        svg = string.concat(
+            '<rect x="16" y="16" width="258" height="468" rx="26" ry="26" fill="rgba(0,0,0,0)" stroke="', color, '"/>'
+        );
+    }
+    function generateSvgCurve(string memory challengeSVG) private pure returns (string memory svg) {
+        svg = string.concat('<g mask="url(#none)"', ' style="transform:translate(30px,130px)">', challengeSVG, "</g>");
+    }
+    function generateSVGPositionDataAndLocationCurve(string memory tokenId, uint256 gasUsed, uint256 gasOpti)
+        private
+        pure
+        returns (string memory svg)
+    {
+        string memory gasUsedStr = LibString.toString(gasUsed);
+        string memory gasOptiStr = LibString.toString(gasOpti);
+        uint256 str1length = bytes(tokenId).length + 4;
+        uint256 str2length = bytes(gasUsedStr).length + 10;
+        uint256 str3length = bytes(gasOptiStr).length + 14;
+        svg = string.concat(
+            '<g font-family="Courier New, monospace" font-size="12" fill="#fff">'
+            '<g style="transform:translate(29px, 384px)">' '<rect width="',
+            LibString.toString(uint256(7 * (str1length + 4))),
+            string.concat('" height="26" rx="8" ry="8" fill="rgba(0,0,0,0.6)"/>' '<text x="12" y="17"><tspan fill="#999">ID: </tspan>'),
+            tokenId,
+            "</text></g>" '<g style="transform:translate(29px, 414px)">' '<rect width="',
+            LibString.toString(uint256(7 * (str2length + 4))),
+            '" height="26" rx="8" ry="8" fill="rgba(0,0,0,0.6)"/>'
+            '<text x="12" y="17"><tspan fill="#999">Gas used: </tspan>',
+            gasUsedStr,
+            "</text></g>" '<g style="transform:translate(29px, 444px)">' '<rect width="',
+            LibString.toString(uint256(7 * (str3length + 4))),
+            '" height="26" rx="8" ry="8" fill="rgba(0,0,0,0.6)"/>'
+            '<text x="12" y="17"><tspan fill="#999">Improvement: </tspan>',
+            gasOptiStr,
+            "%" "</text></g></g>"
+        );
+    }
+    function generateOptimizorIcon() private pure returns (string memory svg) {
+        return
+        '<g style="transform:translate(180px, 365px)"><rect style="filter: url(#icon)" x="0" y="0" width="83" height="64"/></g>';
+    }
+    function getCircleCoord(address tokenAddress, uint256 offset, uint256 tokenId) internal pure returns (uint8) {
+        unchecked {
+            return uint8((((uint256(uint160(tokenAddress)) >> offset) & 0xFF) * tokenId) % 255);
+        }
+    }
+}
+
+abstract contract Owned {
+    event OwnershipTransferred(address indexed user, address indexed newOwner);
+    address public owner;
+    modifier onlyOwner() virtual {
+        require(msg.sender == owner, "UNAUTHORIZED");
+        _;
+    }
+    constructor(address _owner) {
+        owner = _owner;
+        emit OwnershipTransferred(address(0), _owner);
+    }
+    function transferOwnership(address newOwner) public virtual onlyOwner {
+        owner = newOwner;
+        emit OwnershipTransferred(msg.sender, newOwner);
+    }
+}
+abstract contract ERC721 {
+    event Transfer(address indexed from, address indexed to, uint256 indexed id);
+    event Approval(address indexed owner, address indexed spender, uint256 indexed id);
+    event ApprovalForAll(address indexed owner, address indexed operator, bool approved);
+    string public name;
+    string public symbol;
+    function tokenURI(uint256 id) public view virtual returns (string memory);
+    mapping(uint256 => address) internal _ownerOf;
+    mapping(address => uint256) internal _balanceOf;
+    function ownerOf(uint256 id) public view virtual returns (address owner) {
+        require((owner = _ownerOf[id]) != address(0), "NOT_MINTED");
+    }
+    function balanceOf(address owner) public view virtual returns (uint256) {
+        require(owner != address(0), "ZERO_ADDRESS");
+        return _balanceOf[owner];
+    }
+    mapping(uint256 => address) public getApproved;
+    mapping(address => mapping(address => bool)) public isApprovedForAll;
+    constructor(string memory _name, string memory _symbol) {
+        name = _name;
+        symbol = _symbol;
+    }
+    function approve(address spender, uint256 id) public virtual {
+        address owner = _ownerOf[id];
+        require(msg.sender == owner || isApprovedForAll[owner][msg.sender], "NOT_AUTHORIZED");
+        getApproved[id] = spender;
+        emit Approval(owner, spender, id);
+    }
+    function setApprovalForAll(address operator, bool approved) public virtual {
+        isApprovedForAll[msg.sender][operator] = approved;
+        emit ApprovalForAll(msg.sender, operator, approved);
+    }
+    function transferFrom(
+        address from,
+        address to,
+        uint256 id
+    ) public virtual {
+        require(from == _ownerOf[id], "WRONG_FROM");
+        require(to != address(0), "INVALID_RECIPIENT");
+        require(
+            msg.sender == from || isApprovedForAll[from][msg.sender] || msg.sender == getApproved[id],
+            "NOT_AUTHORIZED"
+        );
+        unchecked {
+            _balanceOf[from]--;
+            _balanceOf[to]++;
+        }
+        _ownerOf[id] = to;
+        delete getApproved[id];
+        emit Transfer(from, to, id);
+    }
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 id
+    ) public virtual {
+        transferFrom(from, to, id);
+        require(
+            to.code.length == 0 ||
+                ERC721TokenReceiver(to).onERC721Received(msg.sender, from, id, "") ==
+                ERC721TokenReceiver.onERC721Received.selector,
+            "UNSAFE_RECIPIENT"
+        );
+    }
+    function safeTransferFrom(
+        address from,
+        address to,
+        uint256 id,
+        bytes calldata data
+    ) public virtual {
+        transferFrom(from, to, id);
+        require(
+            to.code.length == 0 ||
+                ERC721TokenReceiver(to).onERC721Received(msg.sender, from, id, data) ==
+                ERC721TokenReceiver.onERC721Received.selector,
+            "UNSAFE_RECIPIENT"
+        );
+    }
+    function supportsInterface(bytes4 interfaceId) public view virtual returns (bool) {
+        return
+            interfaceId == 0x01ffc9a7 ||
+            interfaceId == 0x80ac58cd ||
+            interfaceId == 0x5b5e139f;
+    }
+    function _mint(address to, uint256 id) internal virtual {
+        require(to != address(0), "INVALID_RECIPIENT");
+        require(_ownerOf[id] == address(0), "ALREADY_MINTED");
+        unchecked {
+            _balanceOf[to]++;
+        }
+        _ownerOf[id] = to;
+        emit Transfer(address(0), to, id);
+    }
+    function _burn(uint256 id) internal virtual {
+        address owner = _ownerOf[id];
+        require(owner != address(0), "NOT_MINTED");
+        unchecked {
+            _balanceOf[owner]--;
+        }
+        delete _ownerOf[id];
+        delete getApproved[id];
+        emit Transfer(owner, address(0), id);
+    }
+    function _safeMint(address to, uint256 id) internal virtual {
+        _mint(to, id);
+        require(
+            to.code.length == 0 ||
+                ERC721TokenReceiver(to).onERC721Received(msg.sender, address(0), id, "") ==
+                ERC721TokenReceiver.onERC721Received.selector,
+            "UNSAFE_RECIPIENT"
+        );
+    }
+    function _safeMint(
+        address to,
+        uint256 id,
+        bytes memory data
+    ) internal virtual {
+        _mint(to, id);
+        require(
+            to.code.length == 0 ||
+                ERC721TokenReceiver(to).onERC721Received(msg.sender, address(0), id, data) ==
+                ERC721TokenReceiver.onERC721Received.selector,
+            "UNSAFE_RECIPIENT"
+        );
+    }
+}
+
+abstract contract ERC721TokenReceiver {
+    function onERC721Received(
+        address,
+        address,
+        uint256,
+        bytes calldata
+    ) external virtual returns (bytes4) {
+        return ERC721TokenReceiver.onERC721Received.selector;
+    }
+}
+abstract contract OptimizorNFT is ERC721 {
+    error InvalidSolutionId(uint256 challengeId, uint32 solutionId);
+    error ChallengeNotFound(uint256 challengeId);
+    struct ChallengeInfo {
+        IChallenge target;
+        uint32 solutions;
+    }
+    struct ExtraDetails {
+        address code;
+        address solver;
+        uint32 gas;
+    }
+    mapping(uint256 => ChallengeInfo) public challenges;
+    mapping(uint256 => ExtraDetails) public extraDetails;
+    constructor() ERC721("Optimizor Club", "OC") {}
+    function contractURI() external pure returns (string memory) {
+        return
+        "data:application/json;base64,eyJuYW1lIjoiT3B0aW1pem9yIENsdWIiLCJkZXNjcmlwdGlvbiI6IlRoZSBPcHRpbWl6b3IgQ2x1YiBORlQgY29sbGVjdGlvbiByZXdhcmRzIGdhcyBlZmZpY2llbnQgcGVvcGxlIGFuZCBtYWNoaW5lcyBieSBtaW50aW5nIG5ldyBpdGVtcyB3aGVuZXZlciBhIGNoZWFwZXIgc29sdXRpb24gaXMgc3VibWl0dGVkIGZvciBhIGNlcnRhaW4gY2hhbGxlbmdlLiIsImltYWdlIjoiZGF0YTppbWFnZS9zdmcreG1sO2Jhc2U2NCxQSE4yWnlCM2FXUjBhRDBpTVRZMkxqVTVOeUlnYUdWcFoyaDBQU0l4TWpndU9UUXhJaUIyYVdWM1FtOTRQU0l3SURBZ05EUXVNRGM1SURNMExqRXhOaUlnZUcxc2JuTTlJbWgwZEhBNkx5OTNkM2N1ZHpNdWIzSm5Mekl3TURBdmMzWm5JajQ4Y0dGMGFDQmtQU0pOTWpBdU56a3pJREV6TGpNeU1XZ3RMall5TTFZeE1pNDNhQzAyTGpJeU5YWXVOakl5YUM0Mk1qSjJMall5TTJndExqWXlNbll1TmpJeWFDMHVOakl6ZGkwdU5qSXlTREV5TGpkMk5pNHlNalZvTGpZeU1uWXVOakl6YUM0Mk1qTjJMall5TW1nMkxqSXlOWFl0TGpZeU1tZ3VOakl6ZGkwdU5qSXphQzQyTWpKMkxUWXVNakkxYUMwdU5qSXllbTB0TXk0M016VWdOUzQyTUROMkxUUXVNelU0YURFdU9EWTNkalF1TXpVNGVtMHhNeTQyT1RndE5pNHlNalZvTFRZdU9EUTRkaTQyTWpKb0xqWXlNM1l1TmpJemFDMHVOakl6ZGk0Mk1qSm9MUzQyTWpKMkxTNDJNakpvTFM0Mk1qTjJOaTR5TWpWb0xqWXlNM1l1TmpJemFDNDJNakoyTGpZeU1tZzJMamcwT0hZdExqWXlNbWd1TmpJeWRpMHhMakkwTldndExqWXlNbll0TGpZeU0wZ3lOeTR3TW5ZdE5DNHpOVGhvTXk0M016VjJMUzQyTWpKb0xqWXlNbll0TGpZeU0yZ3RMall5TW5vaUlITjBlV3hsUFNKbWFXeHNPaU0yTmpZaUx6NDhMM04yWno0PSIsImV4dGVybmFsX2xpbmsiOiJodHRwczovL29wdGltaXpvci5jbHViLyJ9";
+    }
+    function tokenDetails(uint256 tokenId) public view returns (TokenDetails memory) {
+        (uint256 challengeId, uint32 solutionId) = unpackTokenId(tokenId);
+        if (solutionId == 0) revert InvalidSolutionId(challengeId, solutionId);
+        ChallengeInfo storage chl = challenges[challengeId];
+        if (address(chl.target) == address(0)) revert ChallengeNotFound(challengeId);
+        if (solutionId > chl.solutions) revert InvalidSolutionId(challengeId, solutionId);
+        ExtraDetails storage details = extraDetails[tokenId];
+        uint256 leaderTokenId = packTokenId(challengeId, chl.solutions);
+        ExtraDetails storage leaderDetails = extraDetails[leaderTokenId];
+        uint32 leaderSolutionId = chl.solutions;
+        uint32 rank = leaderSolutionId - solutionId + 1;
+        uint32 percentage = 0;
+        if (solutionId > 1) {
+            ExtraDetails storage prevDetails = extraDetails[tokenId - 1];
+            percentage = (details.gas * 100) / prevDetails.gas;
+        }
+        return TokenDetails({
+            challengeId: challengeId,
+            challenge: chl.target,
+            leaderGas: leaderDetails.gas,
+            leaderSolutionId: leaderSolutionId,
+            leaderSolver: leaderDetails.solver,
+            leaderOwner: _ownerOf[leaderTokenId],
+            leaderSubmission: leaderDetails.code,
+            gas: details.gas,
+            solutionId: solutionId,
+            rank: rank,
+            improvementPercentage: percentage,
+            solver: details.solver,
+            owner: _ownerOf[tokenId],
+            submission: details.code
+        });
+    }
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        TokenDetails memory details = tokenDetails(tokenId);
+        string memory description = string.concat(details.challenge.description(), "\\n\\n", leaderboardString(tokenId));
+        return string.concat(
+            "data:application/json;base64,",
+            Base64.encode(
+                bytes(
+                    string.concat(
+                        '{"name":"Optimizor Club: ',
+                        details.challenge.name(),
+                        '","description":"',
+                        description,
+                        '","attributes":',
+                        attributesJSON(details),
+                        ',"image":"data:image/svg+xml;base64,',
+                        Base64.encode(bytes(svg(tokenId, details))),
+                        '"}'
+                    )
+                )
+            )
+        );
+    }
+    function leaderboard(uint256 tokenId) public view returns (address[] memory board) {
+        (uint256 challengeId,) = unpackTokenId(tokenId);
+        uint32 winners = challenges[challengeId].solutions;
+        board = new address[](winners);
+        unchecked {
+            for (uint32 i = 1; i <= winners; ++i) {
+                ExtraDetails storage details = extraDetails[packTokenId(challengeId, i)];
+                board[i - 1] = details.solver;
+            }
+        }
+    }
+    function leaderboardString(uint256 tokenId) private view returns (string memory) {
+        address[] memory leaders = leaderboard(tokenId);
+        string memory leadersStr = "";
+        uint256 lIdx = leaders.length;
+        unchecked {
+            for (uint256 i = 0; i < leaders.length; ++i) {
+                leadersStr = string.concat(
+                    "\\n",
+                    LibString.toString(lIdx),
+                    ". ",
+                    HexString.toHexString(uint256(uint160(leaders[i])), 20),
+                    leadersStr
+                );
+                --lIdx;
+            }
+        }
+        return string.concat("Leaderboard:\\n", leadersStr);
+    }
+    function attributesJSON(TokenDetails memory details) private view returns (string memory attributes) {
+        uint32 rank = details.rank;
+        attributes = string.concat(
+            '[{"trait_type":"Challenge","value":"',
+            details.challenge.name(),
+            '"},{"trait_type":"Gas used","value":',
+            LibString.toString(details.gas),
+            ',"display_type":"number"},{"trait_type":"Code size","value":',
+            LibString.toString(details.submission.code.length),
+            ',"display_type":"number"},{"trait_type":"Improvement percentage","value":"',
+            LibString.toString(details.improvementPercentage),
+            '%"},{"trait_type":"Solver","value":"',
+            HexString.toHexString(uint256(uint160(details.solver)), 20),
+            '"},{"trait_type":"Rank","value":',
+            LibString.toString(rank),
+            ',"display_type":"number"},{"trait_type":"Leader","value":"',
+            (rank == 1) ? "Yes" : "No",
+            '"},{"trait_type":"Top 3","value":"',
+            (rank <= 3) ? "Yes" : "No",
+            '"},{"trait_type":"Top 10","value":"',
+            (rank <= 10) ? "Yes" : "No",
+            '"}]'
+        );
+    }
+    function scale(uint8 value, uint256 minOut, uint256 maxOut) private pure returns (uint256) {
+        unchecked {
+            return ((uint256(value) * (maxOut - minOut)) / 255) + minOut;
+        }
+    }
+    function svg(uint256 tokenId, TokenDetails memory details) private view returns (string memory) {
+        uint256 gradRgb = 0;
+        if (details.rank > 10) {
+            gradRgb = 0xbebebe;
+        } else if (details.rank > 3) {
+            uint256 fRank;
+            uint256 init = 40;
+            uint256 factor = 15;
+            unchecked {
+                fRank = init + details.rank * factor;
+            }
+            gradRgb = (uint256(fRank) << 16) | (uint256(fRank) << 8) | uint256(fRank);
+        }
+        NFTSVG.SVGParams memory svgParams = NFTSVG.SVGParams({
+            projectName: "Optimizor Club",
+            challengeName: details.challenge.name(),
+            solverAddr: HexString.toHexString(uint256(uint160(address(details.owner))), 20),
+            challengeAddr: HexString.toHexString(uint256(uint160(address(details.challenge))), 20),
+            gasUsed: details.gas,
+            gasOpti: details.improvementPercentage,
+            tokenId: tokenId,
+            rank: details.rank,
+            participants: details.leaderSolutionId,
+            color: HexString.toHexStringNoPrefix(gradRgb, 3),
+            x1: scale(NFTSVG.getCircleCoord(address(details.challenge), 16, tokenId), 16, 274),
+            y1: scale(NFTSVG.getCircleCoord(address(details.solver), 16, tokenId), 100, 484),
+            x2: scale(NFTSVG.getCircleCoord(address(details.challenge), 32, tokenId), 16, 274),
+            y2: scale(NFTSVG.getCircleCoord(address(details.solver), 32, tokenId), 100, 484),
+            x3: scale(NFTSVG.getCircleCoord(address(details.challenge), 48, tokenId), 16, 274),
+            y3: scale(NFTSVG.getCircleCoord(address(details.solver), 48, tokenId), 100, 484)
+        });
+        return NFTSVG.generateSVG(svgParams, details.challenge.svg(tokenId));
+    }
+}
+abstract contract OptimizorAdmin is OptimizorNFT, Owned {
+    PurityChecker public purityChecker;
+    error ChallengeExists(uint256 challengeId);
+    event PurityCheckerUpdated(PurityChecker newPurityChecker);
+    event ChallengeAdded(uint256 challengeId, IChallenge);
+    constructor(PurityChecker _purityChecker) Owned(msg.sender) {
+        updatePurityChecker(_purityChecker);
+    }
+    function updatePurityChecker(PurityChecker _purityChecker) public onlyOwner {
+        purityChecker = _purityChecker;
+        emit PurityCheckerUpdated(_purityChecker);
+    }
+    function addChallenge(uint256 id, IChallenge challenge) external onlyOwner {
+        ChallengeInfo storage chl = challenges[id];
+        if (address(chl.target) != address(0)) {
+            revert ChallengeExists(id);
+        }
+        chl.target = challenge;
+        emit ChallengeAdded(id, challenge);
+    }
+}
+uint256 constant EPOCH = 64;
+contract Optimizor is OptimizorAdmin {
+    struct Submission {
+        address sender;
+        uint96 blockNumber;
+    }
+    mapping(bytes32 => Submission) public submissions;
+    error CodeAlreadySubmitted();
+    error TooEarlyToChallenge();
+    error InvalidRecipient();
+    error CodeNotSubmitted();
+    error NotPure();
+    error NotOptimizor();
+    constructor(PurityChecker _purityChecker) OptimizorAdmin(_purityChecker) {}
+    function commit(bytes32 key) external {
+        if (submissions[key].sender != address(0)) {
+            revert CodeAlreadySubmitted();
+        }
+        submissions[key] = Submission({sender: msg.sender, blockNumber: uint96(block.number)});
+    }
+    function challenge(uint256 id, address target, address recipient, uint256 salt) external {
+        ChallengeInfo storage chl = challenges[id];
+        bytes32 key = keccak256(abi.encode(msg.sender, target.codehash, salt));
+        if (submissions[key].blockNumber + EPOCH >= block.number) {
+            revert TooEarlyToChallenge();
+        }
+        if (submissions[key].sender == address(0)) {
+            revert CodeNotSubmitted();
+        }
+        if (address(chl.target) == address(0)) {
+            revert ChallengeNotFound(id);
+        }
+        if (recipient == address(0)) {
+            revert InvalidRecipient();
+        }
+        if (!purityChecker.check(target)) {
+            revert NotPure();
+        }
+        uint32 gas = chl.target.run(target, block.difficulty);
+        uint256 leaderTokenId = packTokenId(id, chl.solutions);
+        uint32 leaderGas = extraDetails[leaderTokenId].gas;
+        if ((leaderGas != 0) && (leaderGas <= gas)) {
+            revert NotOptimizor();
+        }
+        unchecked {
+            ++chl.solutions;
+        }
+        uint256 tokenId = packTokenId(id, chl.solutions);
+        ERC721._mint(recipient, tokenId);
+        extraDetails[tokenId] = ExtraDetails(target, recipient, gas);
+    }
+}
+
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
+
+// This is an adapted version of StdCheats by foundry:
+// https://github.com/foundry-rs/forge-std/blob/master/src/StdCheats.sol
+contract StdCheatsSafe {
+    struct Chain {
+        string name;
+        uint256 chainId;
+        string rpcUrl;
+    }
+
+    struct Chains {
+        Chain Anvil;
+        Chain Hardhat;
+        Chain Mainnet;
+        Chain Goerli;
+        Chain Sepolia;
+        Chain Optimism;
+        Chain OptimismGoerli;
+        Chain ArbitrumOne;
+        Chain ArbitrumOneGoerli;
+        Chain ArbitrumNova;
+        Chain Polygon;
+        Chain PolygonMumbai;
+        Chain Avalanche;
+        Chain AvalancheFuji;
+        Chain BnbSmartChain;
+        Chain BnbSmartChainTestnet;
+        Chain GnosisChain;
+    }
+
+    Chains stdChains;
+
+    function f(string[2][] memory rpcs) public returns (uint256) {
+        stdChains = Chains({
+            Anvil: Chain("Anvil", 31337, "http://127.0.0.1:8545"),
+            Hardhat: Chain("Hardhat", 31337, "http://127.0.0.1:8545"),
+            Mainnet: Chain("Mainnet", 1, "https://api.mycryptoapi.com/eth"),
+            Goerli: Chain("Goerli", 5, "https://goerli.infura.io/v3/84842078b09946638c03157f83405213"),
+            Sepolia: Chain("Sepolia", 11155111, "https://rpc.sepolia.dev"),
+            Optimism: Chain("Optimism", 10, "https://mainnet.optimism.io"),
+            OptimismGoerli: Chain("OptimismGoerli", 420, "https://goerli.optimism.io"),
+            ArbitrumOne: Chain("ArbitrumOne", 42161, "https://arb1.arbitrum.io/rpc"),
+            ArbitrumOneGoerli: Chain("ArbitrumOneGoerli", 421613, "https://goerli-rollup.arbitrum.io/rpc"),
+            ArbitrumNova: Chain("ArbitrumNova", 42170, "https://nova.arbitrum.io/rpc"),
+            Polygon: Chain("Polygon", 137, "https://polygon-rpc.com"),
+            PolygonMumbai: Chain("PolygonMumbai", 80001, "https://rpc-mumbai.matic.today"),
+            Avalanche: Chain("Avalanche", 43114, "https://api.avax.network/ext/bc/C/rpc"),
+            AvalancheFuji: Chain("AvalancheFuji", 43113, "https://api.avax-test.network/ext/bc/C/rpc"),
+            BnbSmartChain: Chain("BnbSmartChain", 56, "https://bsc-dataseed1.binance.org"),
+            BnbSmartChainTestnet: Chain("BnbSmartChainTestnet", 97, "https://data-seed-prebsc-1-s1.binance.org:8545"),
+            GnosisChain: Chain("GnosisChain", 100, "https://rpc.gnosischain.com")
+        });
+
+        for (uint256 i = 0; i < rpcs.length; i++) {
+            (string memory name, string memory rpcUrl) = (rpcs[i][0], rpcs[i][1]);
+            // forgefmt: disable-start
+            if (isEqual(name, "anvil")) stdChains.Anvil.rpcUrl = rpcUrl;
+            else if (isEqual(name, "hardhat")) stdChains.Hardhat.rpcUrl = rpcUrl;
+            else if (isEqual(name, "mainnet")) stdChains.Mainnet.rpcUrl = rpcUrl;
+            else if (isEqual(name, "goerli")) stdChains.Goerli.rpcUrl = rpcUrl;
+            else if (isEqual(name, "sepolia")) stdChains.Sepolia.rpcUrl = rpcUrl;
+            else if (isEqual(name, "optimism")) stdChains.Optimism.rpcUrl = rpcUrl;
+            else if (isEqual(name, "optimism_goerli", "optimism-goerli")) stdChains.OptimismGoerli.rpcUrl = rpcUrl;
+            else if (isEqual(name, "arbitrum_one", "arbitrum-one")) stdChains.ArbitrumOne.rpcUrl = rpcUrl;
+            else if (isEqual(name, "arbitrum_one_goerli", "arbitrum-one-goerli")) stdChains.ArbitrumOneGoerli.rpcUrl = rpcUrl;
+            else if (isEqual(name, "arbitrum_nova", "arbitrum-nova")) stdChains.ArbitrumNova.rpcUrl = rpcUrl;
+            else if (isEqual(name, "polygon")) stdChains.Polygon.rpcUrl = rpcUrl;
+            else if (isEqual(name, "polygon_mumbai", "polygon-mumbai")) stdChains.PolygonMumbai.rpcUrl = rpcUrl;
+            else if (isEqual(name, "avalanche")) stdChains.Avalanche.rpcUrl = rpcUrl;
+            else if (isEqual(name, "avalanche_fuji", "avalanche-fuji")) stdChains.AvalancheFuji.rpcUrl = rpcUrl;
+            else if (isEqual(name, "bnb_smart_chain", "bnb-smart-chain")) stdChains.BnbSmartChain.rpcUrl = rpcUrl;
+            else if (isEqual(name, "bnb_smart_chain_testnet", "bnb-smart-chain-testnet")) stdChains.BnbSmartChainTestnet.rpcUrl = rpcUrl;
+            else if (isEqual(name, "gnosis_chain", "gnosis-chain")) stdChains.GnosisChain.rpcUrl = rpcUrl;
+            // forgefmt: disable-end
+        }
+        return 0;
+    }
+
+    function isEqual(string memory a, string memory b) private pure returns (bool) {
+        return keccak256(abi.encode(a)) == keccak256(abi.encode(b));
+    }
+
+    function isEqual(string memory a, string memory b, string memory c) private pure returns (bool) {
+        return keccak256(abi.encode(a)) == keccak256(abi.encode(b))
+            || keccak256(abi.encode(a)) == keccak256(abi.encode(c));
+    }
+}
+
+// This file is MIT Licensed.
+//
+// Copyright 2017 Christian Reitwiessner
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+// The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+pragma solidity ^0.8.0;
+library Pairing {
+    struct G1Point {
+        uint X;
+        uint Y;
+    }
+    // Encoding of field elements is: X[0] * z + X[1]
+    struct G2Point {
+        uint[2] X;
+        uint[2] Y;
+    }
+    /// @return the generator of G1
+    function P1() pure internal returns (G1Point memory) {
+        return G1Point(1, 2);
+    }
+    /// @return the generator of G2
+    function P2() pure internal returns (G2Point memory) {
+        //return G2Point(
+        //    [10857046999023057135944570762232829481370756359578518086990519993285655852781,
+        //     11559732032986387107991004021392285783925812861821192530917403151452391805634],
+        //    [8495653923123431417604973247489272438418190587263600148770280649306958101930,
+        //     4082367875863433681332203403145435568316851327593401208105741076214120093531]
+        //);
+    }
+    /// @return the negation of p, i.e. p.addition(p.negate()) should be zero.
+    function negate(G1Point memory p) pure internal returns (G1Point memory) {
+        // The prime q in the base field F_q for G1
+        uint q = 21888242871839275222246405745257275088696311157297823662689037894645226208583;
+        if (p.X == 0 && p.Y == 0)
+            return G1Point(0, 0);
+        return G1Point(p.X, q - (p.Y % q));
+    }
+    /// @return r the sum of two points of G1
+    function addition(G1Point memory p1, G1Point memory p2) internal view returns (G1Point memory r) {
+        uint[4] memory input;
+        input[0] = p1.X;
+        input[1] = p1.Y;
+        input[2] = p2.X;
+        input[3] = p2.Y;
+        bool success;
+        // assembly {
+        //     success := staticcall(sub(gas(), 2000), 6, input, 0xc0, r, 0x60)
+        //     // Use "invalid" to make gas estimation work
+        //     switch success case 0 { invalid() }
+        // }
+        require(success);
+    }
+
+
+    /// @return r the product of a point on G1 and a scalar, i.e.
+    /// p == p.scalar_mul(1) and p.addition(p) == p.scalar_mul(2) for all points p.
+    function scalar_mul(G1Point memory p, uint s) internal view returns (G1Point memory r) {
+        uint[3] memory input;
+        input[0] = p.X;
+        input[1] = p.Y;
+        input[2] = s;
+        bool success;
+        // assembly {
+        //     success := staticcall(sub(gas(), 2000), 7, input, 0x80, r, 0x60)
+        //     // Use "invalid" to make gas estimation work
+        //     switch success case 0 { invalid() }
+        // }
+        require (success);
+    }
+    /// @return the result of computing the pairing check
+    /// e(p1[0], p2[0]) *  .... * e(p1[n], p2[n]) == 1
+    /// For example pairing([P1(), P1().negate()], [P2(), P2()]) should
+    /// return true.
+    function pairing(G1Point[] memory p1, G2Point[] memory p2) internal view returns (bool) {
+        require(p1.length == p2.length);
+        uint elements = p1.length;
+        uint inputSize = elements * 6;
+        uint[] memory input = new uint[](inputSize);
+        for (uint i = 0; i < elements; i++)
+        {
+            input[i * 6 + 0] = p1[i].X;
+            input[i * 6 + 1] = p1[i].Y;
+            input[i * 6 + 2] = p2[i].X[1];
+            input[i * 6 + 3] = p2[i].X[0];
+            input[i * 6 + 4] = p2[i].Y[1];
+            input[i * 6 + 5] = p2[i].Y[0];
+        }
+        uint[1] memory out;
+        bool success;
+        // assembly {
+        //     success := staticcall(sub(gas(), 2000), 8, add(input, 0x20), mul(inputSize, 0x20), out, 0x20)
+        //     // Use "invalid" to make gas estimation work
+        //     switch success case 0 { invalid() }
+        // }
+        require(success);
+        return out[0] != 0;
+    }
+    /// Convenience method for a pairing check for two pairs.
+    function pairingProd2(G1Point memory a1, G2Point memory a2, G1Point memory b1, G2Point memory b2) internal view returns (bool) {
+        G1Point[] memory p1 = new G1Point[](2);
+        G2Point[] memory p2 = new G2Point[](2);
+        p1[0] = a1;
+        p1[1] = b1;
+        p2[0] = a2;
+        p2[1] = b2;
+        return pairing(p1, p2);
+    }
+    /// Convenience method for a pairing check for three pairs.
+    function pairingProd3(
+            G1Point memory a1, G2Point memory a2,
+            G1Point memory b1, G2Point memory b2,
+            G1Point memory c1, G2Point memory c2
+    ) internal view returns (bool) {
+        G1Point[] memory p1 = new G1Point[](3);
+        G2Point[] memory p2 = new G2Point[](3);
+        p1[0] = a1;
+        p1[1] = b1;
+        p1[2] = c1;
+        p2[0] = a2;
+        p2[1] = b2;
+        p2[2] = c2;
+        return pairing(p1, p2);
+    }
+    /// Convenience method for a pairing check for four pairs.
+    function pairingProd4(
+            G1Point memory a1, G2Point memory a2,
+            G1Point memory b1, G2Point memory b2,
+            G1Point memory c1, G2Point memory c2,
+            G1Point memory d1, G2Point memory d2
+    ) internal view returns (bool) {
+        G1Point[] memory p1 = new G1Point[](4);
+        G2Point[] memory p2 = new G2Point[](4);
+        p1[0] = a1;
+        p1[1] = b1;
+        p1[2] = c1;
+        p1[3] = d1;
+        p2[0] = a2;
+        p2[1] = b2;
+        p2[2] = c2;
+        p2[3] = d2;
+        return pairing(p1, p2);
+    }
+}
+
+contract Verifier {
+    using Pairing for *;
+    struct VerifyingKey {
+        Pairing.G1Point alpha;
+        Pairing.G2Point beta;
+        Pairing.G2Point gamma;
+        Pairing.G2Point delta;
+        Pairing.G1Point[] gamma_abc;
+    }
+    struct Proof {
+        Pairing.G1Point a;
+        Pairing.G2Point b;
+        Pairing.G1Point c;
+    }
+    function verifyingKey() pure internal returns (VerifyingKey memory vk) {
+        vk.alpha = Pairing.G1Point(uint256(0x1e19a8a58ad52243374aeded373b7e89656ea339b9fa8ace98dd5fb221885ea2), uint256(0x2e66a9a67f1a9060a51da039c91c3402d1f46b71bbf10c7348ac4f13c3906736));
+        //vk.beta = Pairing.G2Point([uint256(0x1ca3e556290187c64a1057061f419a078dc71353f6af1066c03d7e1448bbc119), uint256(0x2bbc1b80e59743b489ec811b4ebf30a1ff540c2c37ced63d360b94f92f0a41fb)], [uint256(0x07eceb98d2fb10fa7363b45f51aa3d3ef3d511b482790645039a2562e2070f30), uint256(0x1c3e076d2aaf914abd6a49b72c4205669d3d1cbe4a4bf97b9ee49ac0fbbdbda9)]);
+        //vk.gamma = Pairing.G2Point([uint256(0x222c0019521d3e52881431be17cacaf8a7379398dd0833f60a2ac45f1c3fcd42), uint256(0x1018dbb94cd920bd55af4e2b12a9f740c6b38748a163b5dbd37c5ef6cf74708f)], [uint256(0x18bf34dc86b549a92f316f7a32070a3ce45a0f38fa45dda1162c4b6498baf286), uint256(0x12848d5a670b6102d5bd45d2b8250d50361001ea335ff6a1405a52504c22b8ac)]);
+        //vk.delta = Pairing.G2Point([uint256(0x13b8e16c40a6a299ea42107a97f881f9fa89986dcd5234ecb6919caf756ac1cb), uint256(0x25b64e4978690cd7cb531dbab0119148c96f5fc0c984c0cafb290bb75f033a09)], [uint256(0x1758eaa970929deff5e96e5852d21790c32591dbb13bc63e3df046f0271479a4), uint256(0x14d0b4222ad1710c6330e4bd8ad8f0d7b8f4cff0a37793d53001800e49f41192)]);
+        vk.gamma_abc = new Pairing.G1Point[](9);
+        vk.gamma_abc[0] = Pairing.G1Point(uint256(0x0925dc800d3a577859439a049f8ed0ae7a37dcd36652de478d662c08907a7626), uint256(0x1f7f76e299220ebf3da17bb415d25e6574e142391972dbd1513cf81341975cb5));
+        vk.gamma_abc[1] = Pairing.G1Point(uint256(0x0e67dddfd91adad72376c56cbd98d5cfa4df5217d6115ff26ec741d0154f0bd8), uint256(0x0b97b2ddfdf4c31916d98e384bee3b24bfa0fc59a21ab489153f4dcd1a9a48ca));
+        vk.gamma_abc[2] = Pairing.G1Point(uint256(0x1416b354665883cbbc5f5541012d1f8dd87ebb4415b3ee431be0804fff290bbf), uint256(0x1a284dd2eff43e6cb5aaea43dd9bee022ef0c91d90d0803cf5f7e4677e94a271));
+        vk.gamma_abc[3] = Pairing.G1Point(uint256(0x2526852e7f009b4afa1fe0e1d30334c6e516fac223866b81a830b472164bdfe7), uint256(0x28adf6fbe54ba40afa91555c18477ad3a2f0a460f68d55a15b4e0c264b9c11c2));
+        vk.gamma_abc[4] = Pairing.G1Point(uint256(0x22feae4a12bfb751638cd76b2373e84884ba4adef575ea14ed50c5954d31d410), uint256(0x108c3da0ffd7eda1fe7789e41693146beb979bd1644b19bbd517742ca3841348));
+        vk.gamma_abc[5] = Pairing.G1Point(uint256(0x081477a5c52f41533cf6ca4f778ab922d59ba44b5a5e3fbdbf34ed8dc1a47a8d), uint256(0x0f2624780bd75b9f6c47f7bee582d02f1f983529b8aa9493ca848e38f2ec8447));
+        vk.gamma_abc[6] = Pairing.G1Point(uint256(0x0603e7413c605d1e9b9352a62f0208e2bbd247d3cf3b3721f72c3a9407d679b9), uint256(0x0ce2d2dca8ae14ac4fd2f3fd89e602cdb45de815cf3ba183a25a47d877d9f6f5));
+        vk.gamma_abc[7] = Pairing.G1Point(uint256(0x05bbe6b58285021fb843123971f8e2cfdd207b02c0aef5923ffe7ac841ee0cc9), uint256(0x2da1d3c2049546a7b46aaf89a8a7de493470087ce9af8ba37673f5ee8c35eb1b));
+        vk.gamma_abc[8] = Pairing.G1Point(uint256(0x2c721270df9ba8884d309140f3a4b150a8e53a6c9d09bd8fc7c9aa3c4901aa8d), uint256(0x0de2cb1684759e693e855711fa1c381ae737e463447c3817df507a02064b470f));
+    }
+    function verify(uint[] memory input, Proof memory proof) internal view returns (uint) {
+        uint256 snark_scalar_field = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
+        VerifyingKey memory vk = verifyingKey();
+        require(input.length + 1 == vk.gamma_abc.length);
+        // Compute the linear combination vk_x
+        Pairing.G1Point memory vk_x = Pairing.G1Point(0, 0);
+        for (uint i = 0; i < input.length; i++) {
+            require(input[i] < snark_scalar_field);
+            vk_x = Pairing.addition(vk_x, Pairing.scalar_mul(vk.gamma_abc[i + 1], input[i]));
+        }
+        vk_x = Pairing.addition(vk_x, vk.gamma_abc[0]);
+        if(!Pairing.pairingProd4(
+             proof.a, proof.b,
+             Pairing.negate(vk_x), vk.gamma,
+             Pairing.negate(proof.c), vk.delta,
+             Pairing.negate(vk.alpha), vk.beta)) return 1;
+        return 0;
+    }
+    function verifyTx(
+            Proof memory proof, uint[8] memory input
+        ) public view returns (bool r) {
+        uint[] memory inputValues = new uint[](8);
+
+        for(uint i = 0; i < input.length; i++){
+            inputValues[i] = input[i];
+        }
+        if (verify(inputValues, proof) == 0) {
+            return true;
+        } else {
+            return false;
+        }
+    }
 }

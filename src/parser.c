@@ -58,6 +58,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_Pragma,
     ASTNodeType_ModifierInvocation,
     ASTNodeType_Using,
+    ASTNodeType_UnicodeStringLitExpression,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -1297,6 +1298,12 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
             TokenId literal = peekLastTokenId(parser);
             listPushTokenId(&node->stringLitExpressionNode.values, literal, parser->arena);
         } while(acceptToken(parser, TokenType_HexStringLit));
+    } else if(acceptToken(parser, TokenType_UnicodeStringLit)) {
+        node->type = ASTNodeType_UnicodeStringLitExpression;
+        do {
+            TokenId literal = peekLastTokenId(parser);
+            listPushTokenId(&node->stringLitExpressionNode.values, literal, parser->arena);
+        } while(acceptToken(parser, TokenType_UnicodeStringLit));
     } else if(acceptToken(parser, TokenType_True) || acceptToken(parser, TokenType_False)) {
         node->type = ASTNodeType_BoolLitExpression;
         node->boolLitExpressionNode.value = peekLastTokenId(parser);

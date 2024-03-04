@@ -163,6 +163,7 @@ pushExpression(Serializer *s, ASTNode *node) {
             l += pushTokenStringById(s, node->numberLitExpressionNode.subdenomination);
         } break;
         case ASTNodeType_HexStringLitExpression:
+        case ASTNodeType_UnicodeStringLitExpression:
         case ASTNodeType_StringLitExpression: {
             ASTNodeStringLitExpression *expression = &node->stringLitExpressionNode;
 

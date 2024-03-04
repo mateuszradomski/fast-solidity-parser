@@ -56,6 +56,7 @@ const ASTNodeType_NameValue = 55
 const ASTNodeType_Pragma = 56
 const ASTNodeType_ModifierInvocation = 57
 const ASTNodeType_Using = 58
+const ASTNodeType_UnicodeStringLitExpression = 59
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -340,6 +341,21 @@ class Deserializer {
                 type: "HexLiteral",
                 value: parts.join(""),
                 parts,
+            }
+        } else if(type === ASTNodeType_UnicodeStringLitExpression) {
+            const count = this.popU32();
+            const parts = []
+            const isUnicode = []
+            for(let i = 0; i < count; i++) {
+                parts.push(this.popString());
+                isUnicode.push(true)
+            }
+
+            return {
+                type: "StringLiteral",
+                value: parts.join(""),
+                parts,
+                isUnicode
             }
         } else if(type === ASTNodeType_BoolLitExpression) {
             const value = this.popString();

@@ -537,7 +537,7 @@ isMultiplePO2(u32 a, u32 b) {
     if(a == 0 || b == 0) {
         return false;
     }
-    return (a & ((1 << b) - 1)) == 0;
+    return (a % b) == 0;
 }
 
 static String
@@ -556,9 +556,9 @@ neutralizeUnicode(const char *string, s32 len, Arena *arena) {
     };
 
     s32 i = 0;
-    u32 SIMD_LANE_SIZE = sizeof(v128_t);
+    s32 SIMD_LANE_SIZE = sizeof(v128_t);
 
-    for(; i < len && !isMultiplePO2(i, 4);) {
+    for(; i < len && !isMultiplePO2(len - i, 16);) {
         if(string[i] & 0x80) {
             u8 c = string[i++];
             u8 first5Bits = (c >> 3) & 0x1f;
@@ -582,7 +582,7 @@ neutralizeUnicode(const char *string, s32 len, Arena *arena) {
     }
 
     v128_t utfMask = wasm_i8x16_splat(0x80);
-    for(; i < len;) {
+    for(; i < len - SIMD_LANE_SIZE;) {
         v128_t bytes = wasm_v128_load(&string[i]);
         v128_t utf8 = wasm_v128_and(bytes, utfMask);
         v128_t utf8cmp = wasm_i8x16_eq(utf8, utfMask);
@@ -613,6 +613,29 @@ neutralizeUnicode(const char *string, s32 len, Arena *arena) {
             } else {
                 result.data[result.size++] = string[i++];
             }
+        }
+    }
+
+    for(; i < len;) {
+        if(string[i] & 0x80) {
+            u8 c = string[i++];
+            u8 first5Bits = (c >> 3) & 0x1f;
+            u8 bytesToFollow = followingByteCount[first5Bits];
+            u32 codePoint = c & (0x7f >> (bytesToFollow + 1));
+
+            assert(i + bytesToFollow < len);
+            for(int j = 0; j < bytesToFollow; j++) {
+                u8 b = string[i++];
+                assert((b & 0xc0) == 0x80);
+                codePoint = (codePoint << 6) | (b & 0x3f);
+            }
+
+            if(codePoint > 0xffff) {
+                result.data[result.size++] = 'u';
+            }
+            result.data[result.size++] = 'u';
+        } else {
+            result.data[result.size++] = string[i++];
         }
     }
 
