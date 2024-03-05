@@ -4200,8 +4200,7 @@ contract C {
         /// can be pre-computed. It is just there for illustration.
         /// You actually only need ``new D{salt: salt}(arg)``.
         address predictedAddress = address(bytes20(keccak256(abi.encodePacked(
-            // byte(0xff), // TODO: this also is stupido!!
-            address(0xff),
+            byte(0xff),
             address(this),
             salt,
             keccak256(abi.encodePacked(

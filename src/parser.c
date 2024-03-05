@@ -636,6 +636,7 @@ isBaseTypeName(String string) {
         LIT_TO_STR("address"),
         LIT_TO_STR("bool"),
         LIT_TO_STR("string"),
+        LIT_TO_STR("byte"),
         LIT_TO_STR("bytes"),
         LIT_TO_STR("int"),
         LIT_TO_STR("int8"),
