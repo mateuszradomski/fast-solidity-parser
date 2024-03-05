@@ -1,8 +1,7 @@
 typedef enum ASTNodeType_Enum {
     ASTNodeType_None,
     ASTNodeType_SourceUnit,
-    ASTNodeType_Import,
-    ASTNodeType_EnumDefinition,
+    ASTNodeType_Import, ASTNodeType_EnumDefinition,
     ASTNodeType_Struct,
     ASTNodeType_BaseType,
     ASTNodeType_FunctionType,
@@ -59,6 +58,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_ModifierInvocation,
     ASTNodeType_Using,
     ASTNodeType_UnicodeStringLitExpression,
+    ASTNodeType_InlineArrayExpression,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -323,6 +323,10 @@ typedef struct ASTNodeUsing {
     u8 global;
 } ASTNodeUsing;
 
+typedef struct ASTNodeInlineArrayExpression {
+    ASTNodeList expressions;
+} ASTNodeInlineArrayExpression;
+
 typedef struct ASTNode {
     ASTNodeType type;
 
@@ -366,6 +370,7 @@ typedef struct ASTNode {
         ASTNodeArraySliceExpression arraySliceExpressionNode;
         ASTNodeTerneryExpression terneryExpressionNode;
         ASTNodeNamedParametersExpression namedParametersExpressionNode;
+        ASTNodeInlineArrayExpression inlineArrayExpressionNode;
         ASTNodeFunctionDefinition functionDefinitionNode;
         ASTNodeBlockStatement blockStatementNode;
         ASTNodeUncheckedBlockStatement uncheckedBlockStatementNode;
@@ -1324,6 +1329,18 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
 
             expectToken(parser, TokenType_RParen);
         }
+    } else if(acceptToken(parser, TokenType_LBracket)) {
+        node->type = ASTNodeType_InlineArrayExpression;
+        ASTNodeInlineArrayExpression *array = &node->inlineArrayExpressionNode;
+
+        do {
+            ASTNodeLink *element = structPush(parser->arena, ASTNodeLink);
+            parseExpressionImpl(parser, &element->node, 0);
+            SLL_QUEUE_PUSH(array->expressions.head, array->expressions.last, element);
+            array->expressions.count += 1;
+        } while(acceptToken(parser, TokenType_Comma));
+
+        expectToken(parser, TokenType_RBracket);
     } else if(isUnaryOperator(peekToken(parser).type)) {
         u32 operator = peekToken(parser).type;
 

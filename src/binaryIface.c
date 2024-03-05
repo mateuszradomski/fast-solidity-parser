@@ -255,6 +255,15 @@ pushExpression(Serializer *s, ASTNode *node) {
                 l += pushExpression(s, array->rightFenceExpression);
             }
         } break;
+        case ASTNodeType_InlineArrayExpression: {
+            ASTNodeInlineArrayExpression *array = &node->inlineArrayExpressionNode;
+
+            l += pushU32(s, array->expressions.count);
+            ASTNodeLink *expression = array->expressions.head;
+            for(u32 i = 0; i < array->expressions.count; i++, expression = expression->next) {
+                l += pushExpression(s, &expression->node);
+            }
+        } break;
         case ASTNodeType_TerneryExpression: {
             ASTNodeTerneryExpression *ternery = &node->terneryExpressionNode;
             l += pushExpression(s, ternery->condition);

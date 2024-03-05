@@ -57,6 +57,7 @@ const ASTNodeType_Pragma = 56
 const ASTNodeType_ModifierInvocation = 57
 const ASTNodeType_Using = 58
 const ASTNodeType_UnicodeStringLitExpression = 59
+const ASTNodeType_InlineArrayExpression = 60
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -477,6 +478,18 @@ class Deserializer {
             }
 
             return result;
+        } else if(type === ASTNodeType_InlineArrayExpression) {
+            const expressionCount = this.popU32();
+            const expressions = []
+            for(let i = 0; i < expressionCount; i++) {
+                expressions.push(this.popExpression());
+            }
+
+            return {
+                type: "TupleExpression",
+                components: expressions,
+                isArray: true
+            }
         } else if(type === ASTNodeType_TerneryExpression) {
             const condition = this.popExpression();
             const trueExpression = this.popExpression();

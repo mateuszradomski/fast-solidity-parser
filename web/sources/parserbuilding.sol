@@ -1882,25 +1882,25 @@ int256 constant INT256_MIN = ~57896044618658097711785492504343953926634992332820
 int256 constant _INT256_MIN = !2**255;
 int256 constant INT256_MIN = !57896044618658097711785492504343953926634992332820282019728792003956564819968;
 int256 constant SFP_SCALING_FACTOR = 10**18;
-// string constant BLUE = "\u001b[94m";
-// string constant BOLD = "\u001b[1m";
-// string constant CYAN = "\u001b[96m";
-// string constant DIM = "\u001b[2m";
+string constant BLUE = "\u001b[94m";
+string constant BOLD = "\u001b[1m";
+string constant CYAN = "\u001b[96m";
+string constant DIM = "\u001b[2m";
 string constant GOVERNANCE_TAG = "STARKWARE_DEFAULT_GOVERNANCE_INFO";
-// string constant GREEN = "\u001b[92m";
-// string constant INVERSE = "\u001b[7m";
-// string constant ITALIC = "\u001b[3m";
+string constant GREEN = "\u001b[92m";
+string constant INVERSE = "\u001b[7m";
+string constant ITALIC = "\u001b[3m";
 string constant L1L2_MESSAGE_MAP_TAG = "STARKNET_1.0_MSGING_L1TOL2_MAPPPING_V2";
 string constant L1L2_MESSAGE_NONCE_TAG = "STARKNET_1.0_MSGING_L1TOL2_NONCE";
 string constant L2L1_MESSAGE_MAP_TAG = "STARKNET_1.0_MSGING_L2TOL1_MAPPPING";
-// string constant MAGENTA = "\u001b[95m";
+string constant MAGENTA = "\u001b[95m";
 string constant OPERATORS_MAPPING_TAG = "STARKNET_1.0_ROLES_OPERATORS_MAPPING_TAG";
-// string constant RED = "\u001b[91m";
-// string constant RESET = "\u001b[0m";
+string constant RED = "\u001b[91m";
+string constant RESET = "\u001b[0m";
 string constant STARKNET_GOVERNANCE_INFO_TAG = "STARKNET_1.0_GOVERNANCE_INFO";
 string constant STORAGE_TAG = "STARKWARE_CONTRACTS_GOVERENED_FINALIZABLE_1.0_TAG";
-// string constant UNDERLINE = "\u001b[4m";
-// string constant YELLOW = "\u001b[93m";
+string constant UNDERLINE = "\u001b[4m";
+string constant YELLOW = "\u001b[93m";
 string constant BRIDGED_TOKEN_TAG = "STARKNET_ERC20_TOKEN_BRIDGE_TOKEN_ADDRESS";
 string constant BRIDGE_IS_ACTIVE_TAG = "STARKNET_TOKEN_BRIDGE_IS_ACTIVE";
 string constant CONFIG_HASH_TAG = "STARKNET_1.0_STARKNET_CONFIG_HASH";
@@ -7385,11 +7385,10 @@ contract PolygonRollupManager is
         // Calulate the snark input
         uint256 inputSnark = uint256(sha256(snarkHashBytes)) % _RFIELD;
 
-        // TODO(radomski): Lower does not work
         // Verify proof
-        // if (!rollup.verifier.verifyProof(proof, [inputSnark])) {
-        //     revert InvalidProof();
-        // }
+        if (!rollup.verifier.verifyProof(proof, [inputSnark])) {
+            revert InvalidProof();
+        }
 
         // Pay POL rewards
         uint64 newVerifiedBatches = finalNewBatch - currentLastVerifiedBatch;
@@ -7707,11 +7706,10 @@ contract PolygonRollupManager is
         // Calulate the snark input
         uint256 inputSnark = uint256(sha256(snarkHashBytes)) % _RFIELD;
 
-        // TODO(radomski): Lower does not work
         // Verify proof
-        // if (!rollup.verifier.verifyProof(proof, [inputSnark])) {
-        //     revert InvalidProof();
-        // }
+        if (!rollup.verifier.verifyProof(proof, [inputSnark])) {
+            revert InvalidProof();
+        }
 
         if (
             rollup.pendingStateTransitions[finalPendingStateNum].stateRoot ==
@@ -9068,9 +9066,9 @@ contract PolygonZkEVM is
         // Calulate the snark input
         uint256 inputSnark = uint256(sha256(snarkHashBytes)) % _RFIELD;
         // Verify proof
-        // if (!rollupVerifier.verifyProof(proof, [inputSnark])) {
-        //     revert InvalidProof();
-        // }
+        if (!rollupVerifier.verifyProof(proof, [inputSnark])) {
+            revert InvalidProof();
+        }
 
         // Get MATIC reward
         matic.safeTransfer(
@@ -9762,9 +9760,9 @@ contract PolygonZkEVM is
         uint256 inputSnark = uint256(sha256(snarkHashBytes)) % _RFIELD;
 
         // Verify proof
-        // if (!rollupVerifier.verifyProof(proof, [inputSnark])) {
-        //     revert InvalidProof();
-        // }
+        if (!rollupVerifier.verifyProof(proof, [inputSnark])) {
+            revert InvalidProof();
+        }
 
         if (
             pendingStateTransitions[finalPendingStateNum].stateRoot ==
@@ -13724,12 +13722,12 @@ library Pairing {
     }
     /// @return the generator of G2
     function P2() pure internal returns (G2Point memory) {
-        //return G2Point(
-        //    [10857046999023057135944570762232829481370756359578518086990519993285655852781,
-        //     11559732032986387107991004021392285783925812861821192530917403151452391805634],
-        //    [8495653923123431417604973247489272438418190587263600148770280649306958101930,
-        //     4082367875863433681332203403145435568316851327593401208105741076214120093531]
-        //);
+        return G2Point(
+            [10857046999023057135944570762232829481370756359578518086990519993285655852781,
+             11559732032986387107991004021392285783925812861821192530917403151452391805634],
+            [8495653923123431417604973247489272438418190587263600148770280649306958101930,
+             4082367875863433681332203403145435568316851327593401208105741076214120093531]
+        );
     }
     /// @return the negation of p, i.e. p.addition(p.negate()) should be zero.
     function negate(G1Point memory p) pure internal returns (G1Point memory) {
@@ -13862,9 +13860,9 @@ contract Verifier {
     }
     function verifyingKey() pure internal returns (VerifyingKey memory vk) {
         vk.alpha = Pairing.G1Point(uint256(0x1e19a8a58ad52243374aeded373b7e89656ea339b9fa8ace98dd5fb221885ea2), uint256(0x2e66a9a67f1a9060a51da039c91c3402d1f46b71bbf10c7348ac4f13c3906736));
-        //vk.beta = Pairing.G2Point([uint256(0x1ca3e556290187c64a1057061f419a078dc71353f6af1066c03d7e1448bbc119), uint256(0x2bbc1b80e59743b489ec811b4ebf30a1ff540c2c37ced63d360b94f92f0a41fb)], [uint256(0x07eceb98d2fb10fa7363b45f51aa3d3ef3d511b482790645039a2562e2070f30), uint256(0x1c3e076d2aaf914abd6a49b72c4205669d3d1cbe4a4bf97b9ee49ac0fbbdbda9)]);
-        //vk.gamma = Pairing.G2Point([uint256(0x222c0019521d3e52881431be17cacaf8a7379398dd0833f60a2ac45f1c3fcd42), uint256(0x1018dbb94cd920bd55af4e2b12a9f740c6b38748a163b5dbd37c5ef6cf74708f)], [uint256(0x18bf34dc86b549a92f316f7a32070a3ce45a0f38fa45dda1162c4b6498baf286), uint256(0x12848d5a670b6102d5bd45d2b8250d50361001ea335ff6a1405a52504c22b8ac)]);
-        //vk.delta = Pairing.G2Point([uint256(0x13b8e16c40a6a299ea42107a97f881f9fa89986dcd5234ecb6919caf756ac1cb), uint256(0x25b64e4978690cd7cb531dbab0119148c96f5fc0c984c0cafb290bb75f033a09)], [uint256(0x1758eaa970929deff5e96e5852d21790c32591dbb13bc63e3df046f0271479a4), uint256(0x14d0b4222ad1710c6330e4bd8ad8f0d7b8f4cff0a37793d53001800e49f41192)]);
+        vk.beta = Pairing.G2Point([uint256(0x1ca3e556290187c64a1057061f419a078dc71353f6af1066c03d7e1448bbc119), uint256(0x2bbc1b80e59743b489ec811b4ebf30a1ff540c2c37ced63d360b94f92f0a41fb)], [uint256(0x07eceb98d2fb10fa7363b45f51aa3d3ef3d511b482790645039a2562e2070f30), uint256(0x1c3e076d2aaf914abd6a49b72c4205669d3d1cbe4a4bf97b9ee49ac0fbbdbda9)]);
+        vk.gamma = Pairing.G2Point([uint256(0x222c0019521d3e52881431be17cacaf8a7379398dd0833f60a2ac45f1c3fcd42), uint256(0x1018dbb94cd920bd55af4e2b12a9f740c6b38748a163b5dbd37c5ef6cf74708f)], [uint256(0x18bf34dc86b549a92f316f7a32070a3ce45a0f38fa45dda1162c4b6498baf286), uint256(0x12848d5a670b6102d5bd45d2b8250d50361001ea335ff6a1405a52504c22b8ac)]);
+        vk.delta = Pairing.G2Point([uint256(0x13b8e16c40a6a299ea42107a97f881f9fa89986dcd5234ecb6919caf756ac1cb), uint256(0x25b64e4978690cd7cb531dbab0119148c96f5fc0c984c0cafb290bb75f033a09)], [uint256(0x1758eaa970929deff5e96e5852d21790c32591dbb13bc63e3df046f0271479a4), uint256(0x14d0b4222ad1710c6330e4bd8ad8f0d7b8f4cff0a37793d53001800e49f41192)]);
         vk.gamma_abc = new Pairing.G1Point[](9);
         vk.gamma_abc[0] = Pairing.G1Point(uint256(0x0925dc800d3a577859439a049f8ed0ae7a37dcd36652de478d662c08907a7626), uint256(0x1f7f76e299220ebf3da17bb415d25e6574e142391972dbd1513cf81341975cb5));
         vk.gamma_abc[1] = Pairing.G1Point(uint256(0x0e67dddfd91adad72376c56cbd98d5cfa4df5217d6115ff26ec741d0154f0bd8), uint256(0x0b97b2ddfdf4c31916d98e384bee3b24bfa0fc59a21ab489153f4dcd1a9a48ca));
