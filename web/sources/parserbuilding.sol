@@ -1916,7 +1916,7 @@ string constant STATE_STRUCT_TAG = "STARKNET_1.0_INIT_STARKNET_STATE_STRUCT";
 string constant VERIFIER_ADDRESS_TAG = "STARKNET_1.0_INIT_VERIFIER_ADDRESS";
 string constant name = "ZkSync";
 string constant version = "1.0";
-// string constant EIP191_PREFIX_FOR_EIP712_STRUCTURED_DATA = '\x19\x01';
+string constant EIP191_PREFIX_FOR_EIP712_STRUCTURED_DATA = '\x19\x01';
 string constant ERROR_ADD_OVERFLOW = "MATH64_ADD_OVERFLOW";
 string constant ERROR_ADD_OVERFLOW = "MATH_ADD_OVERFLOW";
 string constant ERROR_ALREADY_INITIALIZED = "INIT_ALREADY_INITIALIZED";
@@ -4129,6 +4129,7 @@ contract Sharer {
     }
 }
 
+// TODO(radomski): Try catch statement
 // contract FeedConsumer {
 //     DataFeed feed;
 //     uint errorCount;
