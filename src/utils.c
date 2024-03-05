@@ -327,7 +327,6 @@ isBinDigit(char c) {
     return (c >= '0' && c <= '1');
 }
 
-
 typedef struct SplitIterator
 {
     char delim;
@@ -679,3 +678,49 @@ neutralizeUnicode(const char *string, s32 len, Arena *arena) {
     return result;
 #endif
 }
+
+typedef struct U16Bucket {
+    u16 values[256];
+    u32 count;
+    struct U16Bucket *next;
+} U16Bucket;
+
+typedef struct U16List {
+    U16Bucket *first;
+    U16Bucket *last;
+    u32 count;
+} U16List;
+
+static U16Bucket *
+listPushU16(U16List *list, u16 value, Arena *arena) {
+    U16Bucket *bucket = 0x0;
+    if(list->count == 0) {
+        assert(list->first == 0x0 && list->last == 0x0);
+        bucket = structPush(arena, U16Bucket);
+        SLL_QUEUE_PUSH(list->first, list->last, bucket);
+    } else {
+        bucket = list->last;
+    }
+
+    if(bucket->count >= ARRAY_LENGTH(bucket->values)) {
+        bucket = structPush(arena, U16Bucket);
+        SLL_QUEUE_PUSH(list->first, list->last, bucket);
+    }
+
+    bucket->values[bucket->count++] = value;
+    list->count += 1;
+
+    return bucket;
+}
+
+static u16
+listGetU16(U16List *list, u32 index) {
+    assert(index < list->count);
+    U16Bucket *bucket = list->first;
+    for(u32 i = 0; i < index / ARRAY_LENGTH(bucket->values); i++) {
+        bucket = bucket->next;
+    }
+
+    return bucket->values[index % ARRAY_LENGTH(bucket->values)];
+}
+

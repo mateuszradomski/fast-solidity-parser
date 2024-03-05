@@ -3537,11 +3537,11 @@ contract C {
 // issue #61
 type Fixed18 is int256;
 using Fixed18Lib for Fixed18 global;
-// using {plusOne, minusOne} for RestrictedNumber global; // TODO(radomski);
+using {plusOne, minusOne} for RestrictedNumber global;
 
-// // solc 0.8.19, user defined operators
-// using { add as + } for Fixed18 global;
-// using { add as +, sub as - } for Fixed18 global;
+// solc 0.8.19, user defined operators
+using { add as + } for Fixed18 global;
+using { add as +, sub as - } for Fixed18 global;
 
 contract GlobalVarName {
     function test() pure {

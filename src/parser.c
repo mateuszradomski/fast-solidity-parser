@@ -318,9 +318,11 @@ typedef struct ASTNodePragma {
 } ASTNodePragma;
 
 typedef struct ASTNodeUsing {
-    ASTNode *identifierPath;
+    ASTNodeList identifiers;
+    U16List operators;
     ASTNode *forType;
     u8 global;
+    u8 onLibrary;
 } ASTNodeUsing;
 
 typedef struct ASTNodeInlineArrayExpression {
@@ -954,6 +956,31 @@ parseImport(Parser *parser, ASTNode *node) {
     return true;
 }
 
+static u16
+parseUserDefinableOperator(Parser *parser) {
+    if(nextTokenIs(parser, TokenType_Ampersand) |
+       nextTokenIs(parser, TokenType_Tylde) |
+       nextTokenIs(parser, TokenType_Pipe) |
+       nextTokenIs(parser, TokenType_Carrot) |
+       nextTokenIs(parser, TokenType_Plus) |
+       nextTokenIs(parser, TokenType_Divide) |
+       nextTokenIs(parser, TokenType_Percent) |
+       nextTokenIs(parser, TokenType_Star) |
+       nextTokenIs(parser, TokenType_Minus) |
+       nextTokenIs(parser, TokenType_EqualEqual) |
+       nextTokenIs(parser, TokenType_RTick) |
+       nextTokenIs(parser, TokenType_RightEqual) |
+       nextTokenIs(parser, TokenType_LTick) |
+       nextTokenIs(parser, TokenType_LeftEqual) |
+       nextTokenIs(parser, TokenType_NotEqual)
+      ) {
+        return advanceToken(parser).type;
+    }
+
+    assert(0);
+    return 0;
+}
+
 static bool
 parseUsing(Parser *parser, ASTNode *node) {
     if(acceptToken(parser, TokenType_LParen)) { assert(0); }
@@ -961,8 +988,29 @@ parseUsing(Parser *parser, ASTNode *node) {
     node->type = ASTNodeType_Using;
     ASTNodeUsing *using = &node->usingNode;
 
-    using->identifierPath = structPush(parser->arena, ASTNode);
-    parseType(parser, using->identifierPath);
+    if(acceptToken(parser, TokenType_LBrace)) {
+        using->onLibrary = 0;
+        do {
+            ASTNodeLink *identifierLink = structPush(parser->arena, ASTNodeLink);
+            parseType(parser, &identifierLink->node);
+            SLL_QUEUE_PUSH(using->identifiers.head, using->identifiers.last, identifierLink);
+            using->identifiers.count += 1;
+
+            u16 operator = 0;
+            if(acceptToken(parser, TokenType_As)) {
+                operator = parseUserDefinableOperator(parser);
+            }
+            listPushU16(&using->operators, operator, parser->arena);
+        } while(acceptToken(parser, TokenType_Comma));
+
+        expectToken(parser, TokenType_RBrace);
+    } else {
+        using->onLibrary = 1;
+        ASTNodeLink *identifierLink = structPush(parser->arena, ASTNodeLink);
+        parseType(parser, &identifierLink->node);
+        SLL_QUEUE_PUSH(using->identifiers.head, using->identifiers.last, identifierLink);
+        using->identifiers.count += 1;
+    }
 
     expectToken(parser, TokenType_For);
 

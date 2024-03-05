@@ -712,21 +712,33 @@ class Deserializer {
     }
 
     popUsing() {
-        const libraryName = this.popType().namePath;
+        const count = this.popU32();
+        const idents = []
+        for(let i = 0; i < count; i++) {
+            idents.push(this.popType().namePath)
+        }
+
+        const operatorCount = this.popU32();
+        const operators = []
+        for(let i = 0; i < operatorCount; i++) {
+            operators.push(this.operatorStrings[this.popU16()]);
+        }
+
         const hasForType = this.popU16();
         let typeName = null;
         if(hasForType === 1) {
             typeName = this.popType();
         }
         const isGlobal = this.popU16() === 1;
+        const isLibrary = this.popU16() === 1;
 
         return {
             type: "UsingForDeclaration",
             isGlobal,
             typeName,
-            libraryName,
-            functions: [],
-            operators: [],
+            libraryName: isLibrary ? idents[0] : null,
+            functions: !isLibrary ? idents : [],
+            operators: !isLibrary ? operators : [],
         }
     }
 

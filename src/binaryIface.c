@@ -474,15 +474,25 @@ pushImportDirective(Serializer *s, ASTNode *node) {
 static u32
 pushUsing(Serializer *s, ASTNode *node) {
     u32 l = pushU32(s, node->type);
-
     ASTNodeUsing *using = &node->usingNode;
 
-    l += pushType(s, using->identifierPath);
+    ASTNodeLink *it = using->identifiers.head;
+    l += pushU32(s, using->identifiers.count);
+    for(u32 i = 0; i < using->identifiers.count; i++, it = it->next) {
+        l += pushType(s, &it->node);
+    }
+
+    l += pushU32(s, using->operators.count);
+    for(u32 i = 0; i < using->operators.count; i++) {
+        l += pushU16(s, listGetU16(&using->operators, i));
+    }
+
     l += pushU16(s, using->forType != 0x0);
     if(using->forType != 0x0) {
         l += pushType(s, using->forType);
     }
     l += pushU16(s, using->global);
+    l += pushU16(s, using->onLibrary);
 
     return l;
 }
