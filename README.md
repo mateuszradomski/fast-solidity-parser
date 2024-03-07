@@ -1,7 +1,6 @@
 # Stuff that @solidity-parser/parser will accept but is invalid
 
 - `import Test as Test2 from './abc.sol';`
-- `uint256 x = ([1, 2, 3 + 4][a/=9] - 3) ** 4;`
 
 # Stuff that @solidity-parser/parser will not accept but is valid
 
@@ -78,3 +77,8 @@
 Errors will have parameters `[]` if empty, functions have `null` if empty but contract functions will have parameters set to `[]` is empty and returnParameters will be `null` if empty.
 
 Array slices when they have index expressions are actuall `IndexRangeAccess`, if the colon is present but no index expressions are provided it defaults to `IndexAccess`. Addtionally, if indexing expression is provided in `IndexRangeAccess` the property does not exist instead of being set to null.
+
+# TODO
+
+`==== setset`
+Causes infinite loop
