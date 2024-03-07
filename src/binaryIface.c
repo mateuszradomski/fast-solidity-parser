@@ -181,6 +181,11 @@ pushExpression(Serializer *s, ASTNode *node) {
         case ASTNodeType_BoolLitExpression: {
             l += pushTokenStringById(s, node->boolLitExpressionNode.value);
         } break;
+        case ASTNodeType_IdentifierPath:
+        case ASTNodeType_ArrayType:
+        case ASTNodeType_MappingType: {
+            l += pushType(s, node);
+        } break;
         case ASTNodeType_IdentifierExpression: {
             l += pushTokenStringById(s, node->identifierExpressionNode.value);
         } break;

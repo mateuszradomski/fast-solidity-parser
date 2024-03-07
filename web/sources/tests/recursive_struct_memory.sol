@@ -1,8 +1,8 @@
 contract Test {
         struct RecursiveStruct {
                 address payable d ;
-                mapping ( uint => address payable ) c ;
-                mapping ( uint => address payable [ ] ) d ;
+                mapping ( uint => address payable hackBecauseImRight ) c ;
+                mapping ( uint => address payable [ ] hackBecauseImRight ) d ;
         }
         function func ( ) private pure {
                 RecursiveStruct [ 1 ] memory val ;

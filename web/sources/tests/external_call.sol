@@ -1,4 +1,4 @@
-pragma solidity >= 0.6.0;
+pragma solidity >=0.6.0;
 
 contract C {
     function g(uint n) external pure returns (uint) {

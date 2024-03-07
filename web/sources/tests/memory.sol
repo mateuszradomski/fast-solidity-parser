@@ -1,4 +1,4 @@
-pragma solidity >= 0.6.0;
+pragma solidity >=0.6.0;
 
 contract C {
     function h(uint[4] memory n) public pure returns (uint) {

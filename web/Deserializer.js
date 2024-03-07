@@ -525,6 +525,8 @@ class Deserializer {
                     arguments: parameters,
                 }
             }
+        } else if(type === ASTNodeType_ArrayType) {
+            return this.popType()
         } else if(type === ASTNodeType_NameValue) {
             const name = this.popString()
             const value = this.popExpression()

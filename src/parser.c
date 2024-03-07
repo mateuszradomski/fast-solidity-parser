@@ -857,6 +857,7 @@ parseType(Parser *parser, ASTNode *node) {
             node->type = ASTNodeType_BaseType;
             node->baseTypeNode.typeName = identifier;
 
+            node->baseTypeNode.payable = 0;
             if(acceptToken(parser, TokenType_Payable)) {
                 assert(stringMatch(parser->tokens[identifier].string, LIT_TO_STR("address")));
                 node->baseTypeNode.payable = 1;
@@ -1409,15 +1410,27 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
             parseExpressionImpl(parser, node->unaryExpressionNode.subExpression, precedence);
         }
     } else if(parseIdentifier(parser) != INVALID_TOKEN_ID) {
-        const Token ident = peekLastToken(parser);
-        if(isBaseTypeName(ident.string)) {
-            node->type = ASTNodeType_BaseType;
-            node->baseTypeNode.typeName = peekLastTokenId(parser);
-            node->baseTypeNode.payable = 0;
-        } else {
-            node->type = ASTNodeType_IdentifierExpression;
-            node->identifierExpressionNode.value = peekLastTokenId(parser);
-        }
+            const Token ident = peekLastToken(parser);
+
+            if(isBaseTypeName(ident.string)) {
+                u32 startPosition = getCurrentParserPosition(parser);
+                parser->current -= 1;
+                if(!parseType(parser, node)) {
+                    setCurrentParserPosition(parser, startPosition);
+                u32 startPosition = getCurrentParserPosition(parser);
+                node->type = ASTNodeType_BaseType;
+                node->baseTypeNode.typeName = peekLastTokenId(parser);
+
+                node->baseTypeNode.payable = 0;
+                if(acceptToken(parser, TokenType_Payable)) {
+                    assert(stringMatch(parser->tokens[node->baseTypeNode.typeName].string, LIT_TO_STR("address")));
+                    node->baseTypeNode.payable = 1;
+                }
+                }
+            } else {
+                node->type = ASTNodeType_IdentifierExpression;
+                node->identifierExpressionNode.value = peekLastTokenId(parser);
+            }
     } else if(acceptToken(parser, TokenType_Type)) {
         node->type = ASTNodeType_IdentifierExpression;
         node->identifierExpressionNode.value = peekLastTokenId(parser);
@@ -1801,14 +1814,19 @@ parseStateVariableDeclaration(Parser *parser, ASTNode *node, ASTNode *type) {
 
     for(;;) {
         if (acceptToken(parser, TokenType_Internal)) {
+            assert(decl->visibility == 0);
             decl->visibility = 3;
         } else if (acceptToken(parser, TokenType_Private)) {
+            assert(decl->visibility == 0);
             decl->visibility = 2;
         } else if (acceptToken(parser, TokenType_Public)) {
+            assert(decl->visibility == 0);
             decl->visibility = 1;
         } else if(acceptToken(parser, TokenType_Constant)) {
+            assert(decl->mutability == 0);
             decl->mutability = 1;
         } else if(acceptToken(parser, TokenType_Immutable)) {
+            assert(decl->mutability == 0);
             decl->mutability = 2;
         } else if(acceptToken(parser, TokenType_Override)) {
             assert(0 && "Unimplemented override-specifier");
@@ -1906,22 +1924,31 @@ parseFunction(Parser *parser, ASTNode *node) {
     function->virtual = 0;
     for(;;) {
         if (acceptToken(parser, TokenType_Internal)) {
+            assert(function->visibility == 0);
             function->visibility = 1;
         } else if (acceptToken(parser, TokenType_External)) {
+            assert(function->visibility == 0);
             function->visibility = 2;
         } else if (acceptToken(parser, TokenType_Private)) {
+            assert(function->visibility == 0);
             function->visibility = 3;
         } else if (acceptToken(parser, TokenType_Public)) {
+            assert(function->visibility == 0);
             function->visibility = 4;
         } else if (acceptToken(parser, TokenType_Pure)) {
+            assert(function->stateMutability == 0);
             function->stateMutability = 1;
         } else if (acceptToken(parser, TokenType_View)) {
+            assert(function->stateMutability == 0);
             function->stateMutability = 2;
         } else if (acceptToken(parser, TokenType_Payable)) {
+            assert(function->stateMutability == 0);
             function->stateMutability = 3;
         } else if (acceptToken(parser, TokenType_Virtual)) {
+            assert(function->virtual == 0);
             function->virtual = 1;
         } else if (acceptToken(parser, TokenType_Override)) {
+            assert(function->override == 0);
             function->override = 1;
             parseOverrideSpecifierArgs(parser, &function->overrides);
         } else {
@@ -2016,8 +2043,10 @@ parseModifier(Parser *parser, ASTNode *node) {
     modifier->virtual = 0;
     for(;;) {
         if (acceptToken(parser, TokenType_Virtual)) {
+            assert(modifier->virtual == 0);
             modifier->virtual = 1;
         } else if(acceptToken(parser, TokenType_Override)) {
+            assert(modifier->override == 0);
             modifier->override = 1;
             parseOverrideSpecifierArgs(parser, &modifier->overrides);
         } else {
@@ -2069,10 +2098,13 @@ parseConstructor(Parser *parser, ASTNode *node) {
     constructor->visibility = 0;
     for(;;) {
         if (acceptToken(parser, TokenType_Payable)) {
+            assert(constructor->stateMutability == 0);
             constructor->stateMutability = 3;
         } else if(acceptToken(parser, TokenType_Internal)) {
+            assert(constructor->visibility == 0);
             constructor->visibility = 1;
         } else if (acceptToken(parser, TokenType_Public)) {
+            assert(constructor->visibility == 0);
             constructor->visibility = 4;
         } else {
             ASTNode testExpression = { 0 };

@@ -1,5 +1,5 @@
 contract C {
-    function f(bytes10 x) public pure returns (address payable) {
+    function f(bytes10 x) public pure returns (address payable hackBecauseImRight) {
         return address(x);
     }
 }

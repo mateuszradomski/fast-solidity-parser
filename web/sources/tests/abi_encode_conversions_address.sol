@@ -1,5 +1,5 @@
 interface testInterface {
-    function A(address payable) external;
+    function A(address payable hackBecauseImRight) external;
 }
 
 contract testContract {
