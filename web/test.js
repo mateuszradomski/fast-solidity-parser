@@ -70,6 +70,7 @@ async function runAllTests(args) {
 				console.log(`[FAIL]: ${test.path}`);
 			}
 		} catch (_) {
+            console.log(`[FAUL]: ${test.path}`);
             crash += 1;
         }
 	}

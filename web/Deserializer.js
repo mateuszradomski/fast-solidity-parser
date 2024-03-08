@@ -58,6 +58,7 @@ const ASTNodeType_ModifierInvocation = 57
 const ASTNodeType_Using = 58
 const ASTNodeType_UnicodeStringLitExpression = 59
 const ASTNodeType_InlineArrayExpression = 60
+const ASTNodeType_DoWhileStatement = 61
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -230,6 +231,19 @@ class Deserializer {
                 keyName: stringToIdentifier(keyIdentifier),
                 valueType,
                 valueName: stringToIdentifier(valueIdentifier),
+            }
+        } else if(kind === ASTNodeType_FunctionType) {
+            const parameterTypes = this.popFunctionParameters();
+            const returnTypes = this.popFunctionParameters();
+            const visibility = this.popU16();
+            const stateMutability = this.popU16();
+
+            return {
+                type: "FunctionTypeName",
+                parameterTypes,
+                returnTypes,
+                visibility: this.visibilityString[visibility],
+                stateMutability: this.stateMutabilityString[stateMutability]
             }
         } else if(kind === ASTNodeType_ArrayType) {
             const baseType = this.popType();
@@ -434,6 +448,8 @@ class Deserializer {
                 names,
                 identifiers,
             }
+        } else if(type === ASTNodeType_IdentifierPath) {
+            return this.popType()
         } else if(type === ASTNodeType_BaseType) {
             return this.popType()
         } else if(type === ASTNodeType_MemberAccessExpression) {
@@ -631,6 +647,15 @@ class Deserializer {
 
             return {
                 type: "WhileStatement",
+                condition,
+                body
+            }
+        } else if(type === ASTNodeType_DoWhileStatement) {
+            const condition = this.popExpression();
+            const body = this.popStatement();
+
+            return {
+                type: "DoWhileStatement",
                 condition,
                 body
             }

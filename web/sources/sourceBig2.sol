@@ -898,7 +898,7 @@ contract DelegateProxyForwarder {
             // if the call returned error data, forward it
             switch result
                 case 0 {
-                    revert(ptr, size)
+                    revert Error(ptr, size)
                 }
                 default {
                     return(ptr, size)
@@ -1410,7 +1410,7 @@ contract ERC20NonTradable is ERC20 {
         address spender,
         uint256 value
     ) internal {
-        revert("disabled");
+        revert Error("disabled");
     }
 }
 
@@ -4441,7 +4441,7 @@ contract StakeManager is
         if (deactivationEpoch == 0) { // modify timeline only if validator didn't unstake
             updateTimeline(amount, 0, 0);
         } else if (deactivationEpoch > currentEpoch) { // validator just unstaked, need to wait till next checkpoint
-            revert("unstaking");
+            revert Error("unstaking");
         }
         
 
@@ -5530,10 +5530,10 @@ library Address {
                 /// @solidity memory-safe-assembly
                 assembly {
                     let returndata_size := mload(returndata)
-                    revert(add(32, returndata), returndata_size)
+                    revert Error(add(32, returndata), returndata_size)
                 }
             } else {
-                revert(errorMessage);
+                revert Error(errorMessage);
             }
         }
     }
@@ -6859,7 +6859,7 @@ contract DelegateProxyForwarder {
             // if the call returned error data, forward it
             switch result
                 case 0 {
-                    revert(ptr, size)
+                    revert Error(ptr, size)
                 }
                 default {
                     return(ptr, size)
@@ -7371,7 +7371,7 @@ contract ERC20NonTradable is ERC20 {
         address spender,
         uint256 value
     ) internal {
-        revert("disabled");
+        revert Error("disabled");
     }
 }
 
@@ -10402,7 +10402,7 @@ contract StakeManager is
         if (deactivationEpoch == 0) { // modify timeline only if validator didn't unstake
             updateTimeline(amount, 0, 0);
         } else if (deactivationEpoch > currentEpoch) { // validator just unstaked, need to wait till next checkpoint
-            revert("unstaking");
+            revert Error("unstaking");
         }
         
 
@@ -11491,10 +11491,10 @@ library Address {
                 /// @solidity memory-safe-assembly
                 assembly {
                     let returndata_size := mload(returndata)
-                    revert(add(32, returndata), returndata_size)
+                    revert Error(add(32, returndata), returndata_size)
                 }
             } else {
-                revert(errorMessage);
+                revert Error(errorMessage);
             }
         }
     }
@@ -12820,7 +12820,7 @@ contract DelegateProxyForwarder {
             // if the call returned error data, forward it
             switch result
                 case 0 {
-                    revert(ptr, size)
+                    revert Error(ptr, size)
                 }
                 default {
                     return(ptr, size)
@@ -13332,7 +13332,7 @@ contract ERC20NonTradable is ERC20 {
         address spender,
         uint256 value
     ) internal {
-        revert("disabled");
+        revert Error("disabled");
     }
 }
 
@@ -16363,7 +16363,7 @@ contract StakeManager is
         if (deactivationEpoch == 0) { // modify timeline only if validator didn't unstake
             updateTimeline(amount, 0, 0);
         } else if (deactivationEpoch > currentEpoch) { // validator just unstaked, need to wait till next checkpoint
-            revert("unstaking");
+            revert Error("unstaking");
         }
         
 
@@ -17452,10 +17452,10 @@ library Address {
                 /// @solidity memory-safe-assembly
                 assembly {
                     let returndata_size := mload(returndata)
-                    revert(add(32, returndata), returndata_size)
+                    revert Error(add(32, returndata), returndata_size)
                 }
             } else {
-                revert(errorMessage);
+                revert Error(errorMessage);
             }
         }
     }
@@ -18781,7 +18781,7 @@ contract DelegateProxyForwarder {
             // if the call returned error data, forward it
             switch result
                 case 0 {
-                    revert(ptr, size)
+                    revert Error(ptr, size)
                 }
                 default {
                     return(ptr, size)
@@ -19293,7 +19293,7 @@ contract ERC20NonTradable is ERC20 {
         address spender,
         uint256 value
     ) internal {
-        revert("disabled");
+        revert Error("disabled");
     }
 }
 
@@ -22324,7 +22324,7 @@ contract StakeManager is
         if (deactivationEpoch == 0) { // modify timeline only if validator didn't unstake
             updateTimeline(amount, 0, 0);
         } else if (deactivationEpoch > currentEpoch) { // validator just unstaked, need to wait till next checkpoint
-            revert("unstaking");
+            revert Error("unstaking");
         }
         
 
@@ -23413,10 +23413,10 @@ library Address {
                 /// @solidity memory-safe-assembly
                 assembly {
                     let returndata_size := mload(returndata)
-                    revert(add(32, returndata), returndata_size)
+                    revert Error(add(32, returndata), returndata_size)
                 }
             } else {
-                revert(errorMessage);
+                revert Error(errorMessage);
             }
         }
     }
@@ -24742,7 +24742,7 @@ contract DelegateProxyForwarder {
             // if the call returned error data, forward it
             switch result
                 case 0 {
-                    revert(ptr, size)
+                    revert Error(ptr, size)
                 }
                 default {
                     return(ptr, size)
@@ -25254,7 +25254,7 @@ contract ERC20NonTradable is ERC20 {
         address spender,
         uint256 value
     ) internal {
-        revert("disabled");
+        revert Error("disabled");
     }
 }
 
@@ -28285,7 +28285,7 @@ contract StakeManager is
         if (deactivationEpoch == 0) { // modify timeline only if validator didn't unstake
             updateTimeline(amount, 0, 0);
         } else if (deactivationEpoch > currentEpoch) { // validator just unstaked, need to wait till next checkpoint
-            revert("unstaking");
+            revert Error("unstaking");
         }
         
 
@@ -29374,10 +29374,10 @@ library Address {
                 /// @solidity memory-safe-assembly
                 assembly {
                     let returndata_size := mload(returndata)
-                    revert(add(32, returndata), returndata_size)
+                    revert Error(add(32, returndata), returndata_size)
                 }
             } else {
-                revert(errorMessage);
+                revert Error(errorMessage);
             }
         }
     }
@@ -30703,7 +30703,7 @@ contract DelegateProxyForwarder {
             // if the call returned error data, forward it
             switch result
                 case 0 {
-                    revert(ptr, size)
+                    revert Error(ptr, size)
                 }
                 default {
                     return(ptr, size)
@@ -31215,7 +31215,7 @@ contract ERC20NonTradable is ERC20 {
         address spender,
         uint256 value
     ) internal {
-        revert("disabled");
+        revert Error("disabled");
     }
 }
 
@@ -34246,7 +34246,7 @@ contract StakeManager is
         if (deactivationEpoch == 0) { // modify timeline only if validator didn't unstake
             updateTimeline(amount, 0, 0);
         } else if (deactivationEpoch > currentEpoch) { // validator just unstaked, need to wait till next checkpoint
-            revert("unstaking");
+            revert Error("unstaking");
         }
         
 
@@ -35335,10 +35335,10 @@ library Address {
                 /// @solidity memory-safe-assembly
                 assembly {
                     let returndata_size := mload(returndata)
-                    revert(add(32, returndata), returndata_size)
+                    revert Error(add(32, returndata), returndata_size)
                 }
             } else {
-                revert(errorMessage);
+                revert Error(errorMessage);
             }
         }
     }
@@ -36664,7 +36664,7 @@ contract DelegateProxyForwarder {
             // if the call returned error data, forward it
             switch result
                 case 0 {
-                    revert(ptr, size)
+                    revert Error(ptr, size)
                 }
                 default {
                     return(ptr, size)
@@ -37176,7 +37176,7 @@ contract ERC20NonTradable is ERC20 {
         address spender,
         uint256 value
     ) internal {
-        revert("disabled");
+        revert Error("disabled");
     }
 }
 
@@ -40207,7 +40207,7 @@ contract StakeManager is
         if (deactivationEpoch == 0) { // modify timeline only if validator didn't unstake
             updateTimeline(amount, 0, 0);
         } else if (deactivationEpoch > currentEpoch) { // validator just unstaked, need to wait till next checkpoint
-            revert("unstaking");
+            revert Error("unstaking");
         }
         
 
@@ -41296,10 +41296,10 @@ library Address {
                 /// @solidity memory-safe-assembly
                 assembly {
                     let returndata_size := mload(returndata)
-                    revert(add(32, returndata), returndata_size)
+                    revert Error(add(32, returndata), returndata_size)
                 }
             } else {
-                revert(errorMessage);
+                revert Error(errorMessage);
             }
         }
     }
@@ -42625,7 +42625,7 @@ contract DelegateProxyForwarder {
             // if the call returned error data, forward it
             switch result
                 case 0 {
-                    revert(ptr, size)
+                    revert Error(ptr, size)
                 }
                 default {
                     return(ptr, size)
@@ -43137,7 +43137,7 @@ contract ERC20NonTradable is ERC20 {
         address spender,
         uint256 value
     ) internal {
-        revert("disabled");
+        revert Error("disabled");
     }
 }
 
@@ -46168,7 +46168,7 @@ contract StakeManager is
         if (deactivationEpoch == 0) { // modify timeline only if validator didn't unstake
             updateTimeline(amount, 0, 0);
         } else if (deactivationEpoch > currentEpoch) { // validator just unstaked, need to wait till next checkpoint
-            revert("unstaking");
+            revert Error("unstaking");
         }
         
 
@@ -47257,10 +47257,10 @@ library Address {
                 /// @solidity memory-safe-assembly
                 assembly {
                     let returndata_size := mload(returndata)
-                    revert(add(32, returndata), returndata_size)
+                    revert Error(add(32, returndata), returndata_size)
                 }
             } else {
-                revert(errorMessage);
+                revert Error(errorMessage);
             }
         }
     }
@@ -48586,7 +48586,7 @@ contract DelegateProxyForwarder {
             // if the call returned error data, forward it
             switch result
                 case 0 {
-                    revert(ptr, size)
+                    revert Error(ptr, size)
                 }
                 default {
                     return(ptr, size)
@@ -49098,7 +49098,7 @@ contract ERC20NonTradable is ERC20 {
         address spender,
         uint256 value
     ) internal {
-        revert("disabled");
+        revert Error("disabled");
     }
 }
 
@@ -52129,7 +52129,7 @@ contract StakeManager is
         if (deactivationEpoch == 0) { // modify timeline only if validator didn't unstake
             updateTimeline(amount, 0, 0);
         } else if (deactivationEpoch > currentEpoch) { // validator just unstaked, need to wait till next checkpoint
-            revert("unstaking");
+            revert Error("unstaking");
         }
         
 
@@ -53218,10 +53218,10 @@ library Address {
                 /// @solidity memory-safe-assembly
                 assembly {
                     let returndata_size := mload(returndata)
-                    revert(add(32, returndata), returndata_size)
+                    revert Error(add(32, returndata), returndata_size)
                 }
             } else {
-                revert(errorMessage);
+                revert Error(errorMessage);
             }
         }
     }
@@ -54547,7 +54547,7 @@ contract DelegateProxyForwarder {
             // if the call returned error data, forward it
             switch result
                 case 0 {
-                    revert(ptr, size)
+                    revert Error(ptr, size)
                 }
                 default {
                     return(ptr, size)
@@ -55059,7 +55059,7 @@ contract ERC20NonTradable is ERC20 {
         address spender,
         uint256 value
     ) internal {
-        revert("disabled");
+        revert Error("disabled");
     }
 }
 
@@ -58090,7 +58090,7 @@ contract StakeManager is
         if (deactivationEpoch == 0) { // modify timeline only if validator didn't unstake
             updateTimeline(amount, 0, 0);
         } else if (deactivationEpoch > currentEpoch) { // validator just unstaked, need to wait till next checkpoint
-            revert("unstaking");
+            revert Error("unstaking");
         }
         
 
@@ -59179,10 +59179,10 @@ library Address {
                 /// @solidity memory-safe-assembly
                 assembly {
                     let returndata_size := mload(returndata)
-                    revert(add(32, returndata), returndata_size)
+                    revert Error(add(32, returndata), returndata_size)
                 }
             } else {
-                revert(errorMessage);
+                revert Error(errorMessage);
             }
         }
     }
@@ -60508,7 +60508,7 @@ contract DelegateProxyForwarder {
             // if the call returned error data, forward it
             switch result
                 case 0 {
-                    revert(ptr, size)
+                    revert Error(ptr, size)
                 }
                 default {
                     return(ptr, size)
@@ -61020,7 +61020,7 @@ contract ERC20NonTradable is ERC20 {
         address spender,
         uint256 value
     ) internal {
-        revert("disabled");
+        revert Error("disabled");
     }
 }
 
@@ -64051,7 +64051,7 @@ contract StakeManager is
         if (deactivationEpoch == 0) { // modify timeline only if validator didn't unstake
             updateTimeline(amount, 0, 0);
         } else if (deactivationEpoch > currentEpoch) { // validator just unstaked, need to wait till next checkpoint
-            revert("unstaking");
+            revert Error("unstaking");
         }
         
 
@@ -65140,10 +65140,10 @@ library Address {
                 /// @solidity memory-safe-assembly
                 assembly {
                     let returndata_size := mload(returndata)
-                    revert(add(32, returndata), returndata_size)
+                    revert Error(add(32, returndata), returndata_size)
                 }
             } else {
-                revert(errorMessage);
+                revert Error(errorMessage);
             }
         }
     }
@@ -66469,7 +66469,7 @@ contract DelegateProxyForwarder {
             // if the call returned error data, forward it
             switch result
                 case 0 {
-                    revert(ptr, size)
+                    revert Error(ptr, size)
                 }
                 default {
                     return(ptr, size)
@@ -66981,7 +66981,7 @@ contract ERC20NonTradable is ERC20 {
         address spender,
         uint256 value
     ) internal {
-        revert("disabled");
+        revert Error("disabled");
     }
 }
 
@@ -70012,7 +70012,7 @@ contract StakeManager is
         if (deactivationEpoch == 0) { // modify timeline only if validator didn't unstake
             updateTimeline(amount, 0, 0);
         } else if (deactivationEpoch > currentEpoch) { // validator just unstaked, need to wait till next checkpoint
-            revert("unstaking");
+            revert Error("unstaking");
         }
         
 
@@ -71101,10 +71101,10 @@ library Address {
                 /// @solidity memory-safe-assembly
                 assembly {
                     let returndata_size := mload(returndata)
-                    revert(add(32, returndata), returndata_size)
+                    revert Error(add(32, returndata), returndata_size)
                 }
             } else {
-                revert(errorMessage);
+                revert Error(errorMessage);
             }
         }
     }
@@ -72430,7 +72430,7 @@ contract DelegateProxyForwarder {
             // if the call returned error data, forward it
             switch result
                 case 0 {
-                    revert(ptr, size)
+                    revert Error(ptr, size)
                 }
                 default {
                     return(ptr, size)
@@ -72942,7 +72942,7 @@ contract ERC20NonTradable is ERC20 {
         address spender,
         uint256 value
     ) internal {
-        revert("disabled");
+        revert Error("disabled");
     }
 }
 
@@ -75973,7 +75973,7 @@ contract StakeManager is
         if (deactivationEpoch == 0) { // modify timeline only if validator didn't unstake
             updateTimeline(amount, 0, 0);
         } else if (deactivationEpoch > currentEpoch) { // validator just unstaked, need to wait till next checkpoint
-            revert("unstaking");
+            revert Error("unstaking");
         }
         
 
@@ -77062,10 +77062,10 @@ library Address {
                 /// @solidity memory-safe-assembly
                 assembly {
                     let returndata_size := mload(returndata)
-                    revert(add(32, returndata), returndata_size)
+                    revert Error(add(32, returndata), returndata_size)
                 }
             } else {
-                revert(errorMessage);
+                revert Error(errorMessage);
             }
         }
     }
@@ -78391,7 +78391,7 @@ contract DelegateProxyForwarder {
             // if the call returned error data, forward it
             switch result
                 case 0 {
-                    revert(ptr, size)
+                    revert Error(ptr, size)
                 }
                 default {
                     return(ptr, size)
@@ -78903,7 +78903,7 @@ contract ERC20NonTradable is ERC20 {
         address spender,
         uint256 value
     ) internal {
-        revert("disabled");
+        revert Error("disabled");
     }
 }
 
@@ -81934,7 +81934,7 @@ contract StakeManager is
         if (deactivationEpoch == 0) { // modify timeline only if validator didn't unstake
             updateTimeline(amount, 0, 0);
         } else if (deactivationEpoch > currentEpoch) { // validator just unstaked, need to wait till next checkpoint
-            revert("unstaking");
+            revert Error("unstaking");
         }
         
 
@@ -83023,10 +83023,10 @@ library Address {
                 /// @solidity memory-safe-assembly
                 assembly {
                     let returndata_size := mload(returndata)
-                    revert(add(32, returndata), returndata_size)
+                    revert Error(add(32, returndata), returndata_size)
                 }
             } else {
-                revert(errorMessage);
+                revert Error(errorMessage);
             }
         }
     }
@@ -84352,7 +84352,7 @@ contract DelegateProxyForwarder {
             // if the call returned error data, forward it
             switch result
                 case 0 {
-                    revert(ptr, size)
+                    revert Error(ptr, size)
                 }
                 default {
                     return(ptr, size)
@@ -84864,7 +84864,7 @@ contract ERC20NonTradable is ERC20 {
         address spender,
         uint256 value
     ) internal {
-        revert("disabled");
+        revert Error("disabled");
     }
 }
 
@@ -87895,7 +87895,7 @@ contract StakeManager is
         if (deactivationEpoch == 0) { // modify timeline only if validator didn't unstake
             updateTimeline(amount, 0, 0);
         } else if (deactivationEpoch > currentEpoch) { // validator just unstaked, need to wait till next checkpoint
-            revert("unstaking");
+            revert Error("unstaking");
         }
         
 
@@ -88984,10 +88984,10 @@ library Address {
                 /// @solidity memory-safe-assembly
                 assembly {
                     let returndata_size := mload(returndata)
-                    revert(add(32, returndata), returndata_size)
+                    revert Error(add(32, returndata), returndata_size)
                 }
             } else {
-                revert(errorMessage);
+                revert Error(errorMessage);
             }
         }
     }
@@ -90313,7 +90313,7 @@ contract DelegateProxyForwarder {
             // if the call returned error data, forward it
             switch result
                 case 0 {
-                    revert(ptr, size)
+                    revert Error(ptr, size)
                 }
                 default {
                     return(ptr, size)
@@ -90825,7 +90825,7 @@ contract ERC20NonTradable is ERC20 {
         address spender,
         uint256 value
     ) internal {
-        revert("disabled");
+        revert Error("disabled");
     }
 }
 
@@ -93856,7 +93856,7 @@ contract StakeManager is
         if (deactivationEpoch == 0) { // modify timeline only if validator didn't unstake
             updateTimeline(amount, 0, 0);
         } else if (deactivationEpoch > currentEpoch) { // validator just unstaked, need to wait till next checkpoint
-            revert("unstaking");
+            revert Error("unstaking");
         }
         
 
@@ -94945,10 +94945,10 @@ library Address {
                 /// @solidity memory-safe-assembly
                 assembly {
                     let returndata_size := mload(returndata)
-                    revert(add(32, returndata), returndata_size)
+                    revert Error(add(32, returndata), returndata_size)
                 }
             } else {
-                revert(errorMessage);
+                revert Error(errorMessage);
             }
         }
     }

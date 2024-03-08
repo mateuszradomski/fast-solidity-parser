@@ -3072,6 +3072,7 @@ bool constant IS_FALSE = false;
 
 function helper(uint x) pure returns (uint) {
     return x * 2;
+    return 14.mul(x);
 }
 
 function ifElsees(uint x) pure returns (uint) {
@@ -4146,13 +4147,13 @@ contract Sharer {
 //             errorCount++;
 //             return (0, false);
 //         } catch (bytes memory /*lowLevelData*/) {
-//             // This is executed in case revert() was used
+//             // This is executed in case revert Error() was used
 //             // or there was a failing assertion, division
 //             // by zero, etc. inside getData.
 //             errorCount++;
 //             return (0, false);
 //         } catch {
-//             // This is also executed in case revert() was used
+//             // This is also executed in case revert Error() was used
 //             // or there was a failing assertion, division
 //             // by zero, etc. inside getData.
 //             errorCount++;
@@ -4361,10 +4362,10 @@ contract FallbackWithArgs {
 // issue #54
 contract Foo {
   function f() public {
-    //(uint[][] memory x, uint y) = abi.decode(data, (uint[][], uint));
-    //(uint[3][] memory x, uint y) = abi.decode(data, (uint[3][], uint));
-    //(uint[][3] memory x, uint y) = abi.decode(data, (uint[][3], uint));
-    //(uint[][][] memory x, uint y) = abi.decode(data, (uint[][][], uint));
+    (uint[][] memory x, uint y) = abi.decode(data, (uint[][], uint));
+    (uint[3][] memory x, uint y) = abi.decode(data, (uint[3][], uint));
+    (uint[][3] memory x, uint y) = abi.decode(data, (uint[][3], uint));
+    (uint[][][] memory x, uint y) = abi.decode(data, (uint[][][], uint));
   }
 }
 
@@ -7758,6 +7759,27 @@ contract PolygonRollupManager is
             }
         }
 
+        do  {
+            // Load sequenced batchdata
+            SequencedBatchData storage currentSequencedBatchData = rollup
+                .sequencedBatches[currentBatch];
+
+            // Check if timestamp is below the verifyBatchTimeTarget
+            if (
+                targetTimestamp < currentSequencedBatchData.sequencedTimestamp
+            ) {
+                // update currentBatch
+                currentBatch = currentSequencedBatchData
+                    .previousLastBatchSequenced;
+            } else {
+                // The rest of batches will be above
+                totalBatchesAboveTarget =
+                    currentBatch -
+                    currentLastVerifiedBatch;
+                break;
+            }
+        } while(currentBatch != currentLastVerifiedBatch);
+
         uint256 totalBatchesBelowTarget = newBatchesVerified -
             totalBatchesAboveTarget;
 
@@ -10452,7 +10474,7 @@ pragma solidity ^0.5.2;
 //        address spender,
 //        uint256 value
 //    ) internal {
-//        revert("disabled");
+//        revert Error("disabled");
 //    }
 //}
 
@@ -12036,7 +12058,7 @@ library SwapUtils {
         ++i;
       }
     }
-    // revert("Approximation did not converge");
+    // revert Error("Approximation did not converge");
   }
 
   /**
@@ -12093,7 +12115,7 @@ library SwapUtils {
     // Convergence should occur in 4 loops or less. If this is reached, there may be something wrong
     // with the pool. If this were to occur repeatedly, LPs should withdraw via `removeLiquidity()`
     // function which does not rely on D.
-    // revert("D does not converge");
+    // revert Error("D does not converge");
   }
 
   /**
@@ -12220,7 +12242,7 @@ library SwapUtils {
         ++i;
       }
     }
-    // revert("Approximation did not converge");
+    // revert Error("Approximation did not converge");
   }
 
   /**

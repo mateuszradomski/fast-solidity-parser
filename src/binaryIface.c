@@ -75,6 +75,7 @@ pushTokenStringById(Serializer *s, TokenId token) {
 }
 
 static u32 pushExpression(Serializer *s, ASTNode *node);
+static u32 pushFunctionParameters(Serializer *s, FunctionParameterList *parameters);
 
 static u32
 pushType(Serializer *s, ASTNode *node) {
@@ -108,6 +109,13 @@ pushType(Serializer *s, ASTNode *node) {
             if(node->arrayTypeNode.lengthExpression != 0x0) {
                 l += pushExpression(s, node->arrayTypeNode.lengthExpression);
             }
+        } break;
+        case ASTNodeType_FunctionType: {
+            l += pushU32(s, node->type);
+            l += pushFunctionParameters(s, &node->functionTypeNode.parameters);
+            l += pushFunctionParameters(s, &node->functionTypeNode.returnParameters);
+            l += pushU16(s, node->functionTypeNode.visibility);
+            l += pushU16(s, node->functionTypeNode.stateMutability);
         } break;
         default: {
             assert(0);
@@ -363,6 +371,7 @@ pushStatement(Serializer *s, ASTNode *node) {
 
             l += pushExpression(s, statement->initialValue);
         } break;
+        case ASTNodeType_DoWhileStatement:
         case ASTNodeType_WhileStatement: {
             ASTNodeWhileStatement *statement = &node->whileStatementNode;
 

@@ -633,7 +633,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -645,7 +645,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -790,13 +790,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -1706,7 +1706,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -1718,7 +1718,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -1863,13 +1863,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -2779,7 +2779,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -2791,7 +2791,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -2936,13 +2936,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -3852,7 +3852,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -3864,7 +3864,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -4009,13 +4009,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -4925,7 +4925,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -4937,7 +4937,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -5082,13 +5082,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -5998,7 +5998,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -6010,7 +6010,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -6155,13 +6155,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -7071,7 +7071,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -7083,7 +7083,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -7228,13 +7228,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -8144,7 +8144,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -8156,7 +8156,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -8301,13 +8301,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -9217,7 +9217,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -9229,7 +9229,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -9374,13 +9374,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -10290,7 +10290,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -10302,7 +10302,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -10447,13 +10447,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -11363,7 +11363,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -11375,7 +11375,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -11520,13 +11520,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -12436,7 +12436,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -12448,7 +12448,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -12593,13 +12593,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -13509,7 +13509,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -13521,7 +13521,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -13666,13 +13666,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -14582,7 +14582,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -14594,7 +14594,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -14739,13 +14739,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -15655,7 +15655,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -15667,7 +15667,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -15812,13 +15812,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -16728,7 +16728,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -16740,7 +16740,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -16885,13 +16885,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -17801,7 +17801,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -17813,7 +17813,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -17958,13 +17958,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -18874,7 +18874,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -18886,7 +18886,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -19031,13 +19031,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -19947,7 +19947,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -19959,7 +19959,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -20104,13 +20104,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -21020,7 +21020,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -21032,7 +21032,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -21177,13 +21177,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -22093,7 +22093,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -22105,7 +22105,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -22250,13 +22250,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -23166,7 +23166,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -23178,7 +23178,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -23323,13 +23323,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -24239,7 +24239,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -24251,7 +24251,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -24396,13 +24396,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -25312,7 +25312,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -25324,7 +25324,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -25469,13 +25469,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -26385,7 +26385,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -26397,7 +26397,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -26542,13 +26542,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -27458,7 +27458,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -27470,7 +27470,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -27615,13 +27615,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -28531,7 +28531,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -28543,7 +28543,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -28688,13 +28688,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -29604,7 +29604,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -29616,7 +29616,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -29761,13 +29761,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -30677,7 +30677,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -30689,7 +30689,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -30834,13 +30834,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -31750,7 +31750,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -31762,7 +31762,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -31907,13 +31907,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -32823,7 +32823,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -32835,7 +32835,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -32980,13 +32980,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -33896,7 +33896,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -33908,7 +33908,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -34053,13 +34053,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -34969,7 +34969,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -34981,7 +34981,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -35126,13 +35126,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -36042,7 +36042,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -36054,7 +36054,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -36199,13 +36199,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -37115,7 +37115,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -37127,7 +37127,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -37272,13 +37272,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -38188,7 +38188,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -38200,7 +38200,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -38345,13 +38345,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -39261,7 +39261,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -39273,7 +39273,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -39418,13 +39418,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -40334,7 +40334,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -40346,7 +40346,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -40491,13 +40491,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -41407,7 +41407,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -41419,7 +41419,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -41564,13 +41564,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -42480,7 +42480,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -42492,7 +42492,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -42637,13 +42637,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -43553,7 +43553,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -43565,7 +43565,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -43710,13 +43710,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -44626,7 +44626,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -44638,7 +44638,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -44783,13 +44783,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -45699,7 +45699,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -45711,7 +45711,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -45856,13 +45856,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -46772,7 +46772,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -46784,7 +46784,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -46929,13 +46929,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -47845,7 +47845,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -47857,7 +47857,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -48002,13 +48002,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -48918,7 +48918,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -48930,7 +48930,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -49075,13 +49075,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -49991,7 +49991,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -50003,7 +50003,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -50148,13 +50148,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -51064,7 +51064,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -51076,7 +51076,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -51221,13 +51221,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -52137,7 +52137,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -52149,7 +52149,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -52294,13 +52294,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -53210,7 +53210,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -53222,7 +53222,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -53367,13 +53367,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -54283,7 +54283,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -54295,7 +54295,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -54440,13 +54440,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -55356,7 +55356,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -55368,7 +55368,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -55513,13 +55513,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -56429,7 +56429,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -56441,7 +56441,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -56586,13 +56586,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -57502,7 +57502,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -57514,7 +57514,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -57659,13 +57659,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -58575,7 +58575,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -58587,7 +58587,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -58732,13 +58732,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -59648,7 +59648,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -59660,7 +59660,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -59805,13 +59805,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -60721,7 +60721,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -60733,7 +60733,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -60878,13 +60878,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -61794,7 +61794,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -61806,7 +61806,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -61951,13 +61951,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -62867,7 +62867,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -62879,7 +62879,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -63024,13 +63024,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -63940,7 +63940,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -63952,7 +63952,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -64097,13 +64097,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -65013,7 +65013,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -65025,7 +65025,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -65170,13 +65170,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -66086,7 +66086,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -66098,7 +66098,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -66243,13 +66243,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -67159,7 +67159,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -67171,7 +67171,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -67316,13 +67316,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -68232,7 +68232,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -68244,7 +68244,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -68389,13 +68389,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -69305,7 +69305,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -69317,7 +69317,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -69462,13 +69462,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -70378,7 +70378,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -70390,7 +70390,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -70535,13 +70535,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -71451,7 +71451,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -71463,7 +71463,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -71608,13 +71608,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -72524,7 +72524,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -72536,7 +72536,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -72681,13 +72681,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -73597,7 +73597,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -73609,7 +73609,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -73754,13 +73754,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -74670,7 +74670,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -74682,7 +74682,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -74827,13 +74827,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -75743,7 +75743,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -75755,7 +75755,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -75900,13 +75900,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -76816,7 +76816,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -76828,7 +76828,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -76973,13 +76973,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -77889,7 +77889,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -77901,7 +77901,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -78046,13 +78046,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -78962,7 +78962,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -78974,7 +78974,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -79119,13 +79119,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -80035,7 +80035,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -80047,7 +80047,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -80192,13 +80192,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -81108,7 +81108,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -81120,7 +81120,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -81265,13 +81265,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -82181,7 +82181,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -82193,7 +82193,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -82338,13 +82338,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -83254,7 +83254,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -83266,7 +83266,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -83411,13 +83411,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -84327,7 +84327,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -84339,7 +84339,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -84484,13 +84484,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -85400,7 +85400,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -85412,7 +85412,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -85557,13 +85557,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -86473,7 +86473,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -86485,7 +86485,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -86630,13 +86630,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -87546,7 +87546,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -87558,7 +87558,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -87703,13 +87703,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -88619,7 +88619,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -88631,7 +88631,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -88776,13 +88776,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -89692,7 +89692,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -89704,7 +89704,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -89849,13 +89849,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -90765,7 +90765,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -90777,7 +90777,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -90922,13 +90922,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -91838,7 +91838,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -91850,7 +91850,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -91995,13 +91995,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -92911,7 +92911,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -92923,7 +92923,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -93068,13 +93068,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -93984,7 +93984,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -93996,7 +93996,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -94141,13 +94141,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -95057,7 +95057,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -95069,7 +95069,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -95214,13 +95214,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -96130,7 +96130,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -96142,7 +96142,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -96287,13 +96287,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -97203,7 +97203,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -97215,7 +97215,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -97360,13 +97360,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -98276,7 +98276,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -98288,7 +98288,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -98433,13 +98433,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -99349,7 +99349,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -99361,7 +99361,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -99506,13 +99506,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -100422,7 +100422,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -100434,7 +100434,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -100579,13 +100579,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -101495,7 +101495,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -101507,7 +101507,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -101652,13 +101652,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -102568,7 +102568,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -102580,7 +102580,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -102725,13 +102725,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -103641,7 +103641,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -103653,7 +103653,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -103798,13 +103798,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -104714,7 +104714,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -104726,7 +104726,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -104871,13 +104871,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -105787,7 +105787,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -105799,7 +105799,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -105944,13 +105944,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -106860,7 +106860,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -106872,7 +106872,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -107017,13 +107017,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -107933,7 +107933,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -107945,7 +107945,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -108090,13 +108090,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -109006,7 +109006,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -109018,7 +109018,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -109163,13 +109163,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -110079,7 +110079,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -110091,7 +110091,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -110236,13 +110236,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -111152,7 +111152,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -111164,7 +111164,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -111309,13 +111309,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -112225,7 +112225,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -112237,7 +112237,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -112382,13 +112382,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -113298,7 +113298,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -113310,7 +113310,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -113455,13 +113455,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -114371,7 +114371,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -114383,7 +114383,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -114528,13 +114528,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -115444,7 +115444,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -115456,7 +115456,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -115601,13 +115601,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
@@ -116517,7 +116517,7 @@ contract test {
 				mstore(ret, r)
 				return(ret, 0x20)
 			}
-			default { revert(0, 0) }
+			default { revert Error(0, 0) }
 			// memory allocator
 			function $allocate(size) -> pos {
 				pos := mload(0x40)
@@ -116529,7 +116529,7 @@ contract test {
 				for { let i := 0 } lt(i, x) { i := add(i, 1) } {
 					y := mul(2, y)
 				}
-				if gt(y, 2) { revert(0, 0) }
+				if gt(y, 2) { revert Error(0, 0) }
 			}
 		}
   }
@@ -116674,13 +116674,13 @@ contract FeedConsumer {
             errorCount++;
             return (0, false);
         } catch (bytes memory /*lowLevelData*/) {
-            // This is executed in case revert() was used
+            // This is executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;
             return (0, false);
         } catch {
-            // This is also executed in case revert() was used
+            // This is also executed in case revert Error() was used
             // or there was a failing assertion, division
             // by zero, etc. inside getData.
             errorCount++;

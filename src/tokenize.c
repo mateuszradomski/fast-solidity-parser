@@ -404,7 +404,7 @@ tokenizeNumberLiteral(ByteConsumer *c, u8 byte) {
             consumeByte(c);
         }
 
-        if(peekByte(c) == '.') {
+        if(peekByte(c) == '.' && isDigit(peekString(c, 2).data[1])) {
             symbol.size += 1;
             consumeByte(c);
         }

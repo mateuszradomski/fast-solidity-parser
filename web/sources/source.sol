@@ -400,10 +400,10 @@ library Address {
                 /// @solidity memory-safe-assembly
                 assembly {
                     let returndata_size := mload(returndata)
-                    revert(add(32, returndata), returndata_size)
+                    revert Error(add(32, returndata), returndata_size)
                 }
             } else {
-                revert(errorMessage);
+                revert Error(errorMessage);
             }
         }
     }

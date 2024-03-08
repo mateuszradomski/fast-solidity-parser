@@ -59,6 +59,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_Using,
     ASTNodeType_UnicodeStringLitExpression,
     ASTNodeType_InlineArrayExpression,
+    ASTNodeType_DoWhileStatement,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -383,6 +384,7 @@ typedef struct ASTNode {
         ASTNodeVariableDeclaration variableDeclarationNode;
         ASTNodeVariableDeclarationTupleStatement variableDeclarationTupleStatementNode;
         ASTNodeWhileStatement whileStatementNode;
+        ASTNodeWhileStatement doWhileStatementNode;
         ASTNodeInheritanceSpecifier inheritanceSpecifierNode;
         ASTNodeModifierInvocation modifierInvocationNode;
         ASTNodeContractDefinition contractDefinitionNode;
@@ -502,7 +504,7 @@ nextTokenIs(Parser *parser, TokenType type) {
 }
 
 static void
-expectToken(Parser *parser, TokenType type) {
+_expectToken(Parser *parser, TokenType type, const char *file, u32 line) {
     bool success = acceptToken(parser, type);
     if(!success) {
         String error = { 0 };
@@ -531,10 +533,13 @@ expectToken(Parser *parser, TokenType type) {
         head += myError.size;
 
         error.size = head - error.data;
+        javascriptPrintNumber(line);
         reportError(parser, error);
     }
     assert(success);
 }
+
+#define expectToken(parser, type) _expectToken(parser, type, __FILE__, __LINE__)
 
 static u32
 getCurrentParserPosition(Parser *parser) {
@@ -786,24 +791,23 @@ parseType(Parser *parser, ASTNode *node) {
                 FunctionParameter *parameter = structPush(parser->arena, FunctionParameter);
                 parameter->type = structPush(parser->arena, ASTNode);
                 parseType(parser, parameter->type);
-                if(acceptToken(parser, TokenType_Payable)) {
+
+                parameter->dataLocation = 0;
+                if(acceptToken(parser, TokenType_Memory)) {
                     parameter->dataLocation = 1;
                 } else if(acceptToken(parser, TokenType_Storage)) {
                     parameter->dataLocation = 2;
                 } else if(acceptToken(parser, TokenType_Calldata)) {
                     parameter->dataLocation = 3;
-                } else {
-                    assert(0);
-                }
+                } 
 
                 parameter->identifier = parseIdentifier(parser);
 
                 SLL_QUEUE_PUSH(function->parameters.head, function->parameters.last, parameter);
                 function->parameters.count += 1;
             } while(acceptToken(parser, TokenType_Comma));
+            expectToken(parser, TokenType_RParen);
         }
-
-        expectToken(parser, TokenType_RParen);
         
         if(acceptToken(parser, TokenType_Internal)) {
             function->visibility = 1;
@@ -827,31 +831,32 @@ parseType(Parser *parser, ASTNode *node) {
             function->stateMutability = 0;
         }
 
-        expectToken(parser, TokenType_Returns);
-        expectToken(parser, TokenType_LParen);
+        if(acceptToken(parser, TokenType_Returns)) {
+            expectToken(parser, TokenType_LParen);
 
-        if(!acceptToken(parser, TokenType_RParen)) {
-            do {
-                FunctionParameter *parameter = structPush(parser->arena, FunctionParameter);
-                parameter->type = structPush(parser->arena, ASTNode);
-                parseType(parser, parameter->type);
-                if(acceptToken(parser, TokenType_Payable)) {
-                    parameter->dataLocation = 1;
-                } else if(acceptToken(parser, TokenType_Storage)) {
-                    parameter->dataLocation = 2;
-                } else if(acceptToken(parser, TokenType_Calldata)) {
-                    parameter->dataLocation = 3;
-                } else {
-                    assert(0);
-                }
+            if(!acceptToken(parser, TokenType_RParen)) {
+                do {
+                    FunctionParameter *parameter = structPush(parser->arena, FunctionParameter);
+                    parameter->type = structPush(parser->arena, ASTNode);
+                    parseType(parser, parameter->type);
+                    if(acceptToken(parser, TokenType_Payable)) {
+                        parameter->dataLocation = 1;
+                    } else if(acceptToken(parser, TokenType_Storage)) {
+                        parameter->dataLocation = 2;
+                    } else if(acceptToken(parser, TokenType_Calldata)) {
+                        parameter->dataLocation = 3;
+                    } else {
+                        assert(0);
+                    }
 
-                parameter->identifier = parseIdentifier(parser);
+                    parameter->identifier = parseIdentifier(parser);
 
-                SLL_QUEUE_PUSH(function->parameters.head, function->parameters.last, parameter);
-                function->parameters.count += 1;
-            } while(acceptToken(parser, TokenType_Comma));
+                    SLL_QUEUE_PUSH(function->parameters.head, function->parameters.last, parameter);
+                    function->parameters.count += 1;
+                } while(acceptToken(parser, TokenType_Comma));
+            }
+            expectToken(parser, TokenType_RParen);
         }
-        expectToken(parser, TokenType_RParen);
     } else if((identifier = parseIdentifier(parser)) != INVALID_TOKEN_ID) {
         if(isBaseTypeName(parser->tokens[identifier].string)) {
             node->type = ASTNodeType_BaseType;
@@ -884,7 +889,9 @@ parseType(Parser *parser, ASTNode *node) {
         if(!acceptToken(parser, TokenType_RBracket)) {
             node->arrayTypeNode.lengthExpression = structPush(parser->arena, ASTNode);
             parseExpression(parser, node->arrayTypeNode.lengthExpression);
-            expectToken(parser, TokenType_RBracket);
+            if(!acceptToken(parser, TokenType_RBracket)) {
+                return false;
+            }
         }
     }
 
@@ -1698,6 +1705,19 @@ parseStatement(Parser *parser, ASTNode *node) {
 
         statement->body = structPush(parser->arena, ASTNode);
         parseStatement(parser, statement->body);
+    } else if(acceptToken(parser, TokenType_Do)) {
+        node->type = ASTNodeType_DoWhileStatement;
+        ASTNodeWhileStatement *statement = &node->doWhileStatementNode;
+
+        statement->body = structPush(parser->arena, ASTNode);
+        parseStatement(parser, statement->body);
+
+        expectToken(parser, TokenType_While);
+        expectToken(parser, TokenType_LParen);
+        statement->expression = structPush(parser->arena, ASTNode);
+        parseExpression(parser, statement->expression);
+        expectToken(parser, TokenType_RParen);
+        expectToken(parser, TokenType_Semicolon);
     } else if(acceptToken(parser, TokenType_For)) {
         node->type = ASTNodeType_ForStatement;
         ASTNodeForStatement *statement = &node->forStatementNode;
