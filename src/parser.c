@@ -1268,7 +1268,7 @@ getUnaryOperatorPrecedence(Parser *parser, TokenType type) {
     return 0;
 }
 
-static ASTNode *parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence);
+static bool parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence);
 
 static void
 parseCallArgumentList(Parser *parser, ASTNodeList *expressions, TokenIdList *names) {
@@ -1316,8 +1316,10 @@ parseFunctionCallExpression(Parser *parser, ASTNode *node) {
     return node;
 }
 
-static ASTNode *
+static bool
 parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
+    u32 startPosition = getCurrentParserPosition(parser);
+
     if(acceptToken(parser, TokenType_HexNumberLit)) {
         node->type = ASTNodeType_NumberLitExpression;
         node->numberLitExpressionNode.value = peekLastTokenId(parser);
@@ -1428,6 +1430,7 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
     }
 
     while(true) {
+        startPosition = getCurrentParserPosition(parser);
         TokenType type = peekToken(parser).type;
         if(!isOperator(type)) {
             break;
@@ -1487,10 +1490,21 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
 
             do {
                 TokenId identifier = parseIdentifier(parser);
+
+                if(identifier == INVALID_TOKEN_ID) {
+                    setCurrentParserPosition(parser, startPosition);
+                    *node = *expression;
+                    return false;
+                }
+
                 assert(identifier != INVALID_TOKEN_ID);
                 listPushTokenId(&node->namedParametersExpressionNode.names, identifier, parser->arena);
 
-                expectToken(parser, TokenType_Colon);
+                if(!acceptToken(parser, TokenType_Colon)) {
+                    setCurrentParserPosition(parser, startPosition);
+                    *node = *expression;
+                    return false;
+                }
 
                 ASTNodeLink *expression = structPush(parser->arena, ASTNodeLink);
                 parseExpressionImpl(parser, &expression->node, 0);
@@ -1542,15 +1556,20 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
         node->binaryExpressionNode.right = structPush(parser->arena, ASTNode);
         node->binaryExpressionNode.operator = type;
 
-        parseExpressionImpl(parser, node->binaryExpressionNode.right, precedence);
+        // Exponentiation has right associativity
+        precedence -= type == TokenType_StarStar;
+
+        if(!parseExpressionImpl(parser, node->binaryExpressionNode.right, precedence)) {
+            break;
+        }
     }
 
-    return node;
+    return true;
 }
 
 static bool
 parseExpression(Parser *parser, ASTNode *node) {
-    return parseExpressionImpl(parser, node, 0) != 0x0;
+    return parseExpressionImpl(parser, node, 0);
 }
 
 static bool
