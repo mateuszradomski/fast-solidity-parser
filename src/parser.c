@@ -857,6 +857,10 @@ parseType(Parser *parser, ASTNode *node) {
         node->type = ASTNodeType_ArrayType;
         node->arrayTypeNode.elementType = copy;
         node->arrayTypeNode.lengthExpression = 0x0;
+        if(acceptToken(parser, TokenType_Colon)) {
+            return false;
+        }
+
         if(!acceptToken(parser, TokenType_RBracket)) {
             node->arrayTypeNode.lengthExpression = structPush(parser->arena, ASTNode);
             parseExpression(parser, node->arrayTypeNode.lengthExpression);
