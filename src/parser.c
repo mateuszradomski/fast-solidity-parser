@@ -444,41 +444,20 @@ createParser(TokenizeResult tokens, Arena *arena) {
     return parser;
 }
 
+#define reportError(parser, userErrorFormat, ...) _reportError(parser, __FILE__, __LINE__, userErrorFormat, ##__VA_ARGS__)
+
 static void
-reportError(Parser *parser, String userError) {
-    String error = { 0 };
-
-    u8 *head = arrayPush(parser->arena, u8, userError.size + 4096);
-    error.data = head;
-
-    String m = LIT_TO_STR("ERROR [");
-    memcpy(head, m.data, m.size);
-    head += m.size;
+_reportError(Parser *parser, const char *file, u32 line, const char *userErrorFormat, ...) {
+    va_list args;
+    va_start(args, userErrorFormat);
+    String userError = stringPushfv(parser->arena, userErrorFormat, args);
+    va_end(args);
 
     u32 byteOffset = parser->tokens[parser->current].string.data - parser->tokens[0].string.data;
-    u32 digits = 0;
-    do {
-        digits += 1;
-        byteOffset /= 10;
-    } while(byteOffset != 0);
+    String error = stringPushf(parser->arena, "ERROR [%s:%d] - [%d]: %S", file, line, byteOffset, userError);
 
-    byteOffset = parser->tokens[parser->current].string.data - parser->tokens[0].string.data;
-    for(u32 i = 0; i < digits; i++) {
-        head[digits - i - 1] = (byteOffset % 10) + '0';
-        byteOffset /= 10;
-    }
-
-    head += digits;
-
-    m = LIT_TO_STR("]: ");
-    memcpy(head, m.data, m.size);
-    head += m.size;
-
-    memcpy(head, userError.data, userError.size);
-    head += userError.size;
-
-    error.size = head - error.data;
     javascriptPrintStringPtr(&error);
+    unreachable();
 }
 
 static Token
@@ -526,34 +505,7 @@ static void
 _expectToken(Parser *parser, TokenType type, const char *file, u32 line) {
     bool success = acceptToken(parser, type);
     if(!success) {
-        String error = { 0 };
-
-        u8 *head = arrayPush(parser->arena, u8, 4096);
-        error.data = head;
-
-        String myError = LIT_TO_STR("Unexpected token => encountered (");
-        memcpy(head, myError.data, myError.size);
-        head += myError.size;
-
-        String tokenName = tokenTypeToString(peekToken(parser).type);
-        memcpy(head, tokenName.data, tokenName.size);
-        head += tokenName.size;
-
-        myError = LIT_TO_STR(") but wanted (");
-        memcpy(head, myError.data, myError.size);
-        head += myError.size;
-
-        tokenName = tokenTypeToString(type);
-        memcpy(head, tokenName.data, tokenName.size);
-        head += tokenName.size;
-
-        myError = LIT_TO_STR(")");
-        memcpy(head, myError.data, myError.size);
-        head += myError.size;
-
-        error.size = head - error.data;
-        javascriptPrintNumber(line);
-        reportError(parser, error);
+        _reportError(parser, file, line, "Unexpected token => encountered (%S) but wanted (%S)", tokenTypeToString(peekToken(parser).type), tokenTypeToString(type));
     }
     assert(success);
 }
@@ -1004,13 +956,16 @@ parseUserDefinableOperator(Parser *parser) {
         return advanceToken(parser).type;
     }
 
-    assert(0);
+    reportError(parser, "Unexpected token while parsing user definable operators - %S",
+                tokenTypeToString(peekToken(parser).type));
     return 0;
 }
 
 static bool
 parseUsing(Parser *parser, ASTNode *node) {
-    if(acceptToken(parser, TokenType_LParen)) { assert(0); }
+    if(acceptToken(parser, TokenType_LParen)) { 
+        reportError(parser, "Using statement with parenthesis is not supported");
+    }
 
     node->type = ASTNodeType_Using;
     ASTNodeUsing *using = &node->usingNode;
@@ -1231,7 +1186,7 @@ isOperator(TokenType type) {
 }
 
 static u32
-getOperatorPrecedence(TokenType type) {
+getOperatorPrecedence(Parser *parser, TokenType type) {
     switch(type) {
         case TokenType_PlusPlus:
         case TokenType_MinusMinus:
@@ -1271,7 +1226,7 @@ getOperatorPrecedence(TokenType type) {
         case TokenType_StarEqual:
         case TokenType_DivideEqual:
         case TokenType_PercentEqual: return -15;
-        default: assert(0);
+        default: reportError(parser, "Found token is not an operator - %S", tokenTypeToString(type));
     }
 
     return 0;
@@ -1293,7 +1248,7 @@ isUnaryOperator(TokenType type) {
 }
 
 static u32
-getUnaryOperatorPrecedence(TokenType type) {
+getUnaryOperatorPrecedence(Parser *parser, TokenType type) {
     switch(type) {
         case TokenType_New: return -1;
         case TokenType_Exclamation:
@@ -1303,7 +1258,7 @@ getUnaryOperatorPrecedence(TokenType type) {
         case TokenType_PlusPlus:
         case TokenType_MinusMinus:
         case TokenType_Delete: return -2;
-        default: assert(0);
+        default: reportError(parser, "Found token is not an unary operator - %S", tokenTypeToString(type));
     }
 
     return 0;
@@ -1432,7 +1387,7 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
             node->unaryExpressionNode.subExpression = structPush(parser->arena, ASTNode);
             advanceToken(parser);
 
-            u32 precedence = getUnaryOperatorPrecedence(node->unaryExpressionNode.operator);
+            u32 precedence = getUnaryOperatorPrecedence(parser, node->unaryExpressionNode.operator);
             parseExpressionImpl(parser, node->unaryExpressionNode.subExpression, precedence);
         }
     } else if(parseIdentifier(parser) != INVALID_TOKEN_ID) {
@@ -1464,10 +1419,8 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
         expectToken(parser, TokenType_LParen);
         parseFunctionCallExpression(parser, node);
     } else {
-        reportError(parser, LIT_TO_STR("Unexpected token"));
-        String type = tokenTypeToString(peekToken(parser).type);
-        javascriptPrintStringPtr(&type);
-        assert(false);
+        reportError(parser, "Unexpected token while parsing expression - %S",
+                    tokenTypeToString(peekToken(parser).type));
     }
 
     while(true) {
@@ -1476,7 +1429,7 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
             break;
         }
 
-        u32 precedence = getOperatorPrecedence(type);
+        u32 precedence = getOperatorPrecedence(parser, type);
         if(precedence <= previousPrecedence) {
             break;
         }
@@ -2298,7 +2251,13 @@ parseContractBody(Parser *parser, ASTNodeList *elements) {
         } else if(acceptToken(parser, TokenType_Event)) {
             assert(parseEvent(parser, &element->node));
         } else if(acceptToken(parser, TokenType_Error)) {
-            assert(parseError(parser, &element->node));
+            parser->current -= 1;
+            if(!tryParseStateVariableDeclaration(parser, &element->node)) {
+                parser->current += 1;
+                memset(&element->node, 0, sizeof(ASTNode));
+
+                assert(parseError(parser, &element->node));
+            }
         } else if(acceptToken(parser, TokenType_EOF)) {
             break;
         } else if(acceptToken(parser, TokenType_Comment)) {

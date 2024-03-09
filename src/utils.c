@@ -74,6 +74,10 @@ extern void javascriptPrintNumber(u32 n);
 extern void traceBegin(u32 n);
 extern void traceEnd();
 
+static void unreachable() {
+    __builtin_unreachable();
+}
+
 static void __assert(void *boolean, int line) {
     if (!boolean) {
         javascriptPrintNumber(line);
@@ -108,6 +112,13 @@ memset(void *dst, u8 value, int n) {
         d[i] = value;
     }
 }
+
+typedef __builtin_va_list va_list;
+#define va_start(v,l)   __builtin_va_start(v,l)
+#define va_end(v)       __builtin_va_end(v)
+#define va_arg(v,l)     __builtin_va_arg(v,l)
+#define va_copy(d,s)    __builtin_va_copy(d,s)
+
 #endif
 
 typedef struct MemoryCursor {
@@ -478,6 +489,90 @@ subStringUntilDelimiter(String string, u32 startOffset, u32 endOffset, char deli
     while(((result.size-1) + startOffset) < string.size && result.data[result.size-1] != '\n') {
         result.size += 1;
     }
+
+    return result;
+}
+
+static int
+vsnprintf(char *buffer, size_t size, const char *format, va_list args) {
+    u32 written = 0;
+
+    while(*format) {
+        char c = *format++;
+
+        if(c != '%') {
+            if(written < size) {
+                buffer[written] = c;
+            }
+            written += 1;
+        } else {
+            char next = *format++;
+            if(next == 's') {
+                char *s = va_arg(args, char *);
+                while(*s) {
+                    if(written < size) {
+                        buffer[written] = *s;
+                    }
+                    written += 1;
+                    s += 1;
+                }
+            } else if(next == 'S') {
+                String s = va_arg(args, String);
+                for(u32 i = 0; i < s.size; i++) {
+                    if(written < size) {
+                        buffer[written] = s.data[i];
+                    }
+                    written += 1;
+                }
+            } else if(next == 'd') {
+                int n = va_arg(args, int);
+                if(n < 0) {
+                    if(written < size) {
+                        buffer[written] = '-';
+                    }
+                    written += 1;
+                    n = -n;
+                }
+
+                u32 divisor = 1;
+                while(n / divisor >= 10) {
+                    divisor *= 10;
+                }
+
+                while(divisor > 0) {
+                    u32 digit = (n / divisor) % 10;
+                    if(written < size) {
+                        buffer[written] = '0' + digit;
+                    }
+                    written += 1;
+                    divisor /= 10;
+                }
+            } else {
+                assert(0);
+            }
+        }
+    }
+
+    return written;
+}
+
+static String
+stringPushfv(Arena *arena, const char *format, va_list args) {
+    va_list args2;
+    va_copy(args2, args);
+
+    u32 size = vsnprintf(0x0, 0, format, args);
+    String result = stringPush(arena, size);
+    vsnprintf((char *)result.data, size, format, args2);
+    return result;
+}
+
+static String
+stringPushf(Arena *arena, const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+    String result = stringPushfv(arena, format, args);
+    va_end(args);
 
     return result;
 }
