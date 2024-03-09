@@ -955,6 +955,15 @@ class Deserializer {
         const typeName = this.popType();
         const visibility = this.popU16();
         const mutability = this.popU16();
+        const isOverride = this.popU16();
+        let override = null 
+        if(isOverride === 1) {
+            override = []
+            const count = this.popU32();
+            for(let i = 0; i < count; i++) {
+                override.push(this.popType());
+            }
+        }
         const hasExpression = this.popU32();
 
         let expression = null
@@ -976,7 +985,7 @@ class Deserializer {
                     isDeclaredConst: mutability === 1,
                     isIndexed: false,
                     isImmutable: mutability === 2,
-                    override: null,
+                    override,
                     storageLocation: null,
                 }
             ],

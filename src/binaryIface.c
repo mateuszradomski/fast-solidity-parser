@@ -630,6 +630,16 @@ pushStateVariableDeclaration(Serializer *s, ASTNode *node) {
     l += pushType(s, decl->type);
     l += pushU16(s, decl->visibility);
     l += pushU16(s, decl->mutability);
+    l += pushU16(s, decl->override);
+
+    if(decl->override != 0) {
+        l += pushU32(s, decl->overrides.count);
+        ASTNodeLink *override = decl->overrides.head;
+        for(u32 i = 0; i < decl->overrides.count; i++, override = override->next) {
+            l += pushType(s, &override->node);
+        }
+    }
+
     l += pushU32(s, decl->expression != 0x0);
     if(decl->expression != 0x0) {
         l += pushExpression(s, decl->expression);

@@ -143,8 +143,10 @@ typedef struct ASTNodeConstVariable {
     TokenId identifier;
     ASTNode *type;
     ASTNode *expression;
-    u16 visibility;
-    u16 mutability;
+    u8 visibility;
+    u8 mutability;
+    u8 override;
+    ASTNodeList overrides;
 } ASTNodeConstVariable;
 
 typedef struct ASTNodeNumberLitExpression {
@@ -1922,6 +1924,22 @@ parseConstVariable(Parser *parser, ASTNode *node, ASTNode *type) {
     return true;
 }
 
+static void
+parseOverrideSpecifierArgs(Parser *parser, ASTNodeList *list) {
+    if(acceptToken(parser, TokenType_LParen)) {
+        do {
+            ASTNodeLink *argument = structPush(parser->arena, ASTNodeLink);
+            parseType(parser, &argument->node);
+            assert(argument->node.type == ASTNodeType_IdentifierPath);
+
+            SLL_QUEUE_PUSH(list->head, list->last, argument);
+            list->count += 1;
+        } while(acceptToken(parser, TokenType_Comma));
+
+        expectToken(parser, TokenType_RParen);
+    }
+}
+
 static bool
 tryParseStateVariableDeclaration(Parser *parser, ASTNode *node) {
     u32 startPosition = getCurrentParserPosition(parser);
@@ -1952,7 +1970,9 @@ tryParseStateVariableDeclaration(Parser *parser, ASTNode *node) {
             assert(decl->mutability == 0);
             decl->mutability = 2;
         } else if(acceptToken(parser, TokenType_Override)) {
-            assert(0 && "Unimplemented override-specifier");
+            assert(decl->override == 0);
+            decl->override = 1;
+            parseOverrideSpecifierArgs(parser, &decl->overrides);
         } else {
             break;
         }
@@ -1975,22 +1995,6 @@ tryParseStateVariableDeclaration(Parser *parser, ASTNode *node) {
     }
 
     return true;
-}
-
-static void
-parseOverrideSpecifierArgs(Parser *parser, ASTNodeList *list) {
-    if(acceptToken(parser, TokenType_LParen)) {
-        do {
-            ASTNodeLink *argument = structPush(parser->arena, ASTNodeLink);
-            parseType(parser, &argument->node);
-            assert(argument->node.type == ASTNodeType_IdentifierPath);
-
-            SLL_QUEUE_PUSH(list->head, list->last, argument);
-            list->count += 1;
-        } while(acceptToken(parser, TokenType_Comma));
-
-        expectToken(parser, TokenType_RParen);
-    }
 }
 
 static void
