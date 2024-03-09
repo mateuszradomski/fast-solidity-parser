@@ -801,7 +801,9 @@ parseType(Parser *parser, ASTNode *node) {
     } else if(acceptToken(parser, TokenType_Function)) {
         node->type = ASTNodeType_FunctionType;
         ASTNodeFunctionType *function = &node->functionTypeNode;
-        expectToken(parser, TokenType_LParen);
+        if(!acceptToken(parser, TokenType_LParen)) {
+            return false;
+        }
 
         if(!acceptToken(parser, TokenType_RParen)) {
             do {
@@ -1921,14 +1923,18 @@ parseConstVariable(Parser *parser, ASTNode *node, ASTNode *type) {
 }
 
 static bool
-parseStateVariableDeclaration(Parser *parser, ASTNode *node, ASTNode *type) {
+tryParseStateVariableDeclaration(Parser *parser, ASTNode *node) {
+    u32 startPosition = getCurrentParserPosition(parser);
     node->type = ASTNodeType_StateVariableDeclaration;
     ASTNodeConstVariable *decl = &node->constVariableNode;
 
-    decl->type = type;
+    decl->type = structPush(parser->arena, ASTNode);
+    if(!parseType(parser, decl->type)) {
+        setCurrentParserPosition(parser, startPosition);
+        return false;
+    }
+
     decl->visibility = 0;
-
-
     for(;;) {
         if (acceptToken(parser, TokenType_Internal)) {
             assert(decl->visibility == 0);
@@ -1953,14 +1959,21 @@ parseStateVariableDeclaration(Parser *parser, ASTNode *node, ASTNode *type) {
     }
 
     decl->identifier = parseIdentifier(parser);
-    assert(decl->identifier > 0);
+    if(decl->identifier == INVALID_TOKEN_ID) {
+        setCurrentParserPosition(parser, startPosition);
+        return false;
+    }
 
     if(acceptToken(parser, TokenType_Equal)) {
         decl->expression = structPush(parser->arena, ASTNode);
         parseExpression(parser, decl->expression);
     }
 
-    expectToken(parser, TokenType_Semicolon);
+    if(!acceptToken(parser, TokenType_Semicolon)) {
+        setCurrentParserPosition(parser, startPosition);
+        return false;
+    }
+
     return true;
 }
 
@@ -2255,7 +2268,13 @@ parseContractBody(Parser *parser, ASTNodeList *elements) {
         if(acceptToken(parser, TokenType_Constructor)) {
             assert(parseConstructor(parser, &element->node));
         } else if(acceptToken(parser, TokenType_Function)) {
-            assert(parseFunction(parser, &element->node));
+            parser->current -= 1;
+            if(!tryParseStateVariableDeclaration(parser, &element->node)) {
+                parser->current += 1;
+                memset(&element->node, 0, sizeof(ASTNode));
+
+                assert(parseFunction(parser, &element->node));
+            }
         } else if(acceptToken(parser, TokenType_Modifier)) {
             assert(parseModifier(parser, &element->node));
         } else if(acceptToken(parser, TokenType_Fallback)) {
@@ -2281,9 +2300,7 @@ parseContractBody(Parser *parser, ASTNodeList *elements) {
         } else if(acceptToken(parser, TokenType_Comment)) {
             continue;
         } else {
-            ASTNode *type = structPush(parser->arena, ASTNode);
-            parseType(parser, type);
-            parseStateVariableDeclaration(parser, &element->node, type);
+            assert(tryParseStateVariableDeclaration(parser, &element->node));
         }
 
         SLL_QUEUE_PUSH(elements->head, elements->last, element);
