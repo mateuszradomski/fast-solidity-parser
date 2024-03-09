@@ -59,6 +59,7 @@ const ASTNodeType_Using = 58
 const ASTNodeType_UnicodeStringLitExpression = 59
 const ASTNodeType_InlineArrayExpression = 60
 const ASTNodeType_DoWhileStatement = 61
+const ASTNodeType_TryStatement = 62
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -691,6 +692,33 @@ class Deserializer {
             return {
                 type: "EmitStatement",
                 eventCall,
+            }
+        } else if(type === ASTNodeType_TryStatement) {
+            const expression = this.popExpression();
+            const returnParameters = this.popFunctionParameters();
+            const body = this.popStatement();
+
+            const catchCount = this.popU32();
+            const catchClauses = []
+            for(let i = 0; i < catchCount; i++) {
+                const identifier = this.popString();
+                const catchParams = this.popFunctionParameters();
+                const catchBody = this.popStatement();
+                catchClauses.push({
+                    type: "CatchClause",
+                    isReasonStringType: identifier !== null,
+                    kind: identifier,
+                    parameters: catchParams,
+                    body: catchBody
+                })
+            }
+
+            return {
+                type: "TryStatement",
+                expression,
+                returnParameters,
+                body,
+                catchClauses
             }
         } else {
             throw new Error("Unknown/Unsupported statement kind " + type)

@@ -52,7 +52,7 @@ const u32 Gigabyte = Megabyte * 1024;
 
 #define WASM_PAGE_SIZE 65536
 
-#define assert(expression) __assert((void*)(expression))
+#define assert(expression) __assert((void*)(expression), __LINE__)
 
 #ifdef LINUX
 #include <assert.h>
@@ -74,8 +74,9 @@ extern void javascriptPrintNumber(u32 n);
 extern void traceBegin(u32 n);
 extern void traceEnd();
 
-static void __assert(void *boolean) {
+static void __assert(void *boolean, int line) {
     if (!boolean) {
+        javascriptPrintNumber(line);
         __builtin_unreachable();
     }
 }

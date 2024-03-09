@@ -49,6 +49,7 @@ async function runAllTests(args) {
 	let passed = 0;
     let failed = 0;
     let crash = 0;
+    let goPath = ""
 	for (const test of testFiles) {
 		try {
             let antlrAST = "";
@@ -57,10 +58,15 @@ async function runAllTests(args) {
                 antlrAST = JSON.stringify(antlrASTObj, null, 2);
             } 
 
-			const wasmParser = new WasmParser();
-			wasmParser.loadParserNode();
-			const myASTObj = wasmParser.parseBinaryInterface(test.content);
-			const myAST = JSON.stringify(myASTObj, null, 2);
+            let myAST = "";
+            if(true) {
+                const wasmParser = new WasmParser();
+                wasmParser.loadParserNode();
+                console.log(`[ GO ]: ${test.path}`);
+                goPath = test.path;
+                const myASTObj = wasmParser.parseBinaryInterface(test.content);
+                myAST = JSON.stringify(myASTObj, null, 2);
+            }
 
 			if (antlrAST === myAST) {
 				// console.log(`[STAT]: ${passed}/${testFiles.length} tests passed`);
@@ -70,7 +76,9 @@ async function runAllTests(args) {
 				console.log(`[FAIL]: ${test.path}`);
 			}
 		} catch (_) {
-            console.log(`[FAUL]: ${test.path}`);
+            if(goPath === test.path) {
+                console.log(`[FAUL]: ${test.path}`);
+            }
             crash += 1;
         }
 	}

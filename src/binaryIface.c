@@ -407,6 +407,22 @@ pushStatement(Serializer *s, ASTNode *node) {
 
             l += pushExpression(s, statement->expression);
         } break;
+        case ASTNodeType_TryStatement: {
+            ASTNodeTryStatement *statement = &node->tryStatementNode;
+
+            l += pushExpression(s, statement->expression);
+            l += pushFunctionParameters(s, &statement->returnParameters);
+            l += pushStatement(s, statement->body);
+
+            l += pushU32(s, statement->catches.count);
+            ASTNodeLink *catchLink = statement->catches.head;
+            for(u32 i = 0; i < statement->catches.count; i++, catchLink = catchLink->next) {
+                ASTNodeCatchStatement *catch = &catchLink->node.catchStatementNode;
+                l += pushTokenStringById(s, catch->identifier);
+                l += pushFunctionParameters(s, &catch->parameters);
+                l += pushStatement(s, catch->body);
+            }
+        } break;
         case ASTNodeType_BreakStatement:
         case ASTNodeType_ContinueStatement: {
         } break;
