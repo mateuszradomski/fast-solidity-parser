@@ -426,6 +426,15 @@ pushStatement(Serializer *s, ASTNode *node) {
         case ASTNodeType_BreakStatement:
         case ASTNodeType_ContinueStatement: {
         } break;
+        case ASTNodeType_AssemblyStatement: {
+            ASTNodeAssemblyStatement *statement = &node->assemblyStatementNode;
+
+            l += pushU16(s, statement->isEVMAsm);
+            l += pushU16(s, statement->flags.count);
+            for(u32 i = 0; i < statement->flags.count; i++) {
+                l += pushTokenStringById(s, listGetTokenId(&statement->flags, i));
+            }
+        } break;
         default: {
             javascriptPrintString("Unreachable, unhandled statement type = ");
             javascriptPrintNumber(node->type);

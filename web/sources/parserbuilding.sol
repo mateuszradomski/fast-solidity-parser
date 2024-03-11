@@ -13929,3 +13929,16 @@ contract Verifier {
         }
     }
 }
+
+contract AssemblyStarter {
+  function f() {
+    assembly {}
+    assembly "evmasm" {}
+    assembly ("memory-safe") {}
+    assembly "evmasm" ("memory-safe") {}
+
+    // NOTE(radomski): For some reason this is not accepted by the original
+    // solidity parser.
+    // assembly "evmasm" ("memory-safe", "memory-unsafe-just-for-fun") {}
+  }
+}

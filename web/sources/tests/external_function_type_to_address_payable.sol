@@ -1,5 +1,5 @@
 contract C {
-    function f() public view returns (address payable) {
+    function f() public view returns (address payable z) {
         return this.f.address;
     }
 }

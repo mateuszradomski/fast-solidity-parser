@@ -60,6 +60,7 @@ const ASTNodeType_UnicodeStringLitExpression = 59
 const ASTNodeType_InlineArrayExpression = 60
 const ASTNodeType_DoWhileStatement = 61
 const ASTNodeType_TryStatement = 62
+const ASTNodeType_AssemblyStatement = 64
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -706,7 +707,7 @@ class Deserializer {
                 const catchBody = this.popStatement();
                 catchClauses.push({
                     type: "CatchClause",
-                    isReasonStringType: identifier !== null,
+                    isReasonStringType: identifier === "Error",
                     kind: identifier,
                     parameters: catchParams,
                     body: catchBody
@@ -719,6 +720,23 @@ class Deserializer {
                 returnParameters,
                 body,
                 catchClauses
+            }
+        } else if(type === ASTNodeType_AssemblyStatement) {
+            const isEVMAsm = this.popU16() === 1;
+            const flagCount = this.popU16();
+            const flags = []
+            for(let i = 0; i < flagCount; i++) {
+                flags.push(this.popString());
+            }
+
+            return {
+                type: "InlineAssemblyStatement",
+                language: isEVMAsm ? "evmasm" : null,
+                flags,
+                body: {
+                    type: "AssemblyBlock",
+                    operations: []
+                }
             }
         } else {
             throw new Error("Unknown/Unsupported statement kind " + type)

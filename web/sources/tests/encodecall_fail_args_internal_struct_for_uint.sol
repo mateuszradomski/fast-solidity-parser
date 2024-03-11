@@ -13,7 +13,7 @@ contract C {
     function h(string memory) external {}
     function i(bool) external {}
     function j(address) external {}
-    function k(address payable) external {}
+    function k(address payable z) external {}
     function l(testEnum) external {}
 
     function main() external view {

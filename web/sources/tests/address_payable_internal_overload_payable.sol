@@ -1,5 +1,5 @@
 contract C {
-    function f(address payable) internal pure {}
+    function f(address payable hackBecauseImRight) internal pure {}
     function f(address) internal pure {}
     function g() internal pure {
         address payable a = payable(0);

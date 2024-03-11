@@ -62,6 +62,7 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_DoWhileStatement,
     ASTNodeType_TryStatement,
     ASTNodeType_CatchStatement,
+    ASTNodeType_AssemblyStatement,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -347,6 +348,11 @@ typedef struct ASTNodeCatchStatement {
     ASTNode *body;
 } ASTNodeCatchStatement;
 
+typedef struct ASTNodeAssemblyStatement {
+    u8 isEVMAsm;
+    TokenIdList flags;
+} ASTNodeAssemblyStatement;
+
 typedef struct ASTNode {
     ASTNodeType type;
 
@@ -411,6 +417,7 @@ typedef struct ASTNode {
         ASTNodeEmitStatement emitStatementNode;
         ASTNodeTryStatement tryStatementNode;
         ASTNodeCatchStatement catchStatementNode;
+        ASTNodeAssemblyStatement assemblyStatementNode;
         ASTNodeConstructorDefinition constructorDefinitionNode;
         ASTNodeNameValue nameValueNode;
         ASTNodeUsing usingNode;
@@ -786,12 +793,28 @@ parseType(Parser *parser, ASTNode *node) {
         function->visibility = 0;
         for(;;) {
             if(acceptToken(parser, TokenType_Internal)) {
+                if(function->visibility != 0) {
+                    parser->current -= 1;
+                    break;
+                }
                 function->visibility = 1;
             } else if(acceptToken(parser, TokenType_External)) {
+                if(function->visibility != 0) { 
+                    parser->current -= 1;
+                    break;
+                }
                 function->visibility = 2;
             } else if(acceptToken(parser, TokenType_Private)) {
+                if(function->visibility != 0) {
+                    parser->current -= 1;
+                    break;
+                }
                 function->visibility = 3;
             } else if(acceptToken(parser, TokenType_Public)) {
+                if(function->visibility != 0) {
+                    parser->current -= 1;
+                    break;
+                }
                 function->visibility = 4;
             } else if(acceptToken(parser, TokenType_Pure)) {
                 function->stateMutability = 1;
@@ -799,7 +822,7 @@ parseType(Parser *parser, ASTNode *node) {
                 function->stateMutability = 2;
             } else if(acceptToken(parser, TokenType_Payable)) {
                 function->stateMutability = 3;
-            }  else {
+            } else {
                 break;
             }
         }
@@ -1843,7 +1866,26 @@ parseStatement(Parser *parser, ASTNode *node) {
             SLL_QUEUE_PUSH(statement->catches.head, statement->catches.last, catchLink);
             statement->catches.count += 1;
         }
+    } else if(acceptToken(parser, TokenType_Assembly)) {
+        node->type = ASTNodeType_AssemblyStatement;
+        ASTNodeAssemblyStatement *statement = &node->assemblyStatementNode;
+        if(acceptToken(parser, TokenType_StringLit)) {
+            statement->isEVMAsm = stringMatch(peekLastToken(parser).string, LIT_TO_STR("evmasm"));
+            if(!statement->isEVMAsm) {
+                reportError(parser, "Expected (\"evmasm\") as string literal, but got (\"%S\")", peekLastToken(parser).string);
+            }
+        }
 
+        if(acceptToken(parser, TokenType_LParen)) {
+            do {
+                expectToken(parser, TokenType_StringLit);
+                listPushTokenId(&statement->flags, peekLastTokenId(parser), parser->arena);
+            } while(acceptToken(parser, TokenType_Comma));
+            expectToken(parser, TokenType_RParen);
+        }
+
+        expectToken(parser, TokenType_LBrace);
+        expectToken(parser, TokenType_RBrace);
     } else if(acceptToken(parser, TokenType_Comment)) {
         return false;
     } else {

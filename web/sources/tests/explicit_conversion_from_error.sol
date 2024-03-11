@@ -4,7 +4,7 @@ interface MyInterface {
         uint256,
         bool,
         bool[],
-        address payable,
+        address payable z,
         MyInterface,
         MyEnum,
         function (string memory) external returns (uint)

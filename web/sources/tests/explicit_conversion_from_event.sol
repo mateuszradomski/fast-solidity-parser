@@ -9,7 +9,7 @@ contract Test {
         uint256,
         bool,
         bool[],
-        address payable,
+        address payable z,
         MyInterface,
         MyInterface.MyEnum,
         function (string memory) external returns (uint)
