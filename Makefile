@@ -5,7 +5,7 @@ INCLUDES = -I./
 WASM_FLAGS = -DWASM --target=wasm32 -nostdlib -Wl,--no-entry -Wl,--export-all -Wl,--allow-undefined -Wl,-z,stack-size=8388608
 LINUX_FLAGS = -DLINUX
 DEBUG_FLAGS = -g -O0 -msimd128 -mbulk-memory -mmultivalue
-RELEASE_FLAGS = -O2 -DNDEBUG -msimd128
+RELEASE_FLAGS = -O2 -DNDEBUG -msimd128 -mbulk-memory -mmultivalue
 
 .PHONY: all debug release
 

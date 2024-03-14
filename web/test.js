@@ -1,4 +1,4 @@
-const WasmParser = require("./wasmParse");
+const {wasmParse} = require("./wasmParse");
 const parser = require("@solidity-parser/parser");
 const { readFileSync } = require("fs");
 const fs = require("fs/promises");
@@ -23,9 +23,7 @@ async function main() {
                 const antlrASTObj = parser.parse(input);
                 const antlrAST = JSON.stringify(antlrASTObj, null, 2);
 
-                const wasmParser = new WasmParser();
-                wasmParser.loadParserNode();
-                const myASTObj = wasmParser.parseBinaryInterface(input);
+                const myASTObj = wasmParse(input);
                 const myAST = JSON.stringify(myASTObj, null, 2);
 
                 if (antlrAST === myAST) {
@@ -50,9 +48,7 @@ async function runSingleTest(args) {
     const antlrASTObj = parser.parse(input);
     const antlrAST = JSON.stringify(antlrASTObj, null, 2);
 
-    const wasmParser = new WasmParser();
-    wasmParser.loadParserNode();
-    const myASTObj = wasmParser.parseBinaryInterface(input);
+    const myASTObj = wasmParse(input);
     const myAST = JSON.stringify(myASTObj, null, 2);
 
     if (antlrAST === myAST) {
@@ -91,11 +87,9 @@ async function runAllTests(args) {
 
             let myAST = "";
             if(true) {
-                const wasmParser = new WasmParser();
-                wasmParser.loadParserNode();
                 console.log(`[ GO ]: ${test.path}`);
                 goPath = test.path;
-                const myASTObj = wasmParser.parseBinaryInterface(test.content);
+                const myASTObj = wasmParse(test.content);
                 myAST = JSON.stringify(myASTObj, null, 2);
             }
 

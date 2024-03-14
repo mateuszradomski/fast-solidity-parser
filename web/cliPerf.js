@@ -1,19 +1,16 @@
 const fs = require('fs');
-const WasmParser = require('./wasmParse');
+const { wasmParse, saveProfileToDisk } = require('./wasmParse');
 const parser = require('@solidity-parser/parser')
 
 async function runBinaryInterface(input) {
-    const parser = new WasmParser();
-    parser.loadParserNode()
-
     let elapsed = -performance.now()
-    parser.parseBinaryInterface(input)
+    wasmParse(input)
     elapsed += performance.now();
     const lines = input.split('\n').length;
     const linesPerSeconds = lines / (elapsed / 1000);
     console.error("WASM: Lines per second:", formatSI(linesPerSeconds, "LPS"));
 
-    parser.saveProfileToDisk();
+    saveProfileToDisk();
 }
 
 async function runAntlrParser(input) {
@@ -28,7 +25,9 @@ async function runAntlrParser(input) {
 async function main() {
     const input = fs.readFileSync("web/sources/parserbuilding.sol", 'utf-8')
 
-    await runBinaryInterface(input)
+    for(let i = 0; i < 100; i++) {
+        await runBinaryInterface(input)
+    }
     await runAntlrParser(input)
 }
 

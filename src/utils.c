@@ -67,6 +67,7 @@ void traceEnd() {}
 
 #ifdef WASM
 extern unsigned char __heap_base;
+unsigned int bumpPointerBase = 0;
 unsigned int bumpPointer = (unsigned int)(&__heap_base);
 
 extern void javascriptPrintStringPtr(void *s);
@@ -87,7 +88,13 @@ static void __assert(void *boolean, int line) {
 
 void*
 malloc(unsigned long n) {
-    __builtin_wasm_memory_grow(0, n / WASM_PAGE_SIZE + 1);
+    u32 memorySize = __builtin_wasm_memory_size(0) * WASM_PAGE_SIZE;
+    u32 heapSize = memorySize - bumpPointerBase;
+    u32 availableMemory = heapSize - (bumpPointer - bumpPointerBase);
+    if(n > availableMemory) {
+        __builtin_wasm_memory_grow(0, n / WASM_PAGE_SIZE + 1);
+    }
+
     unsigned int r = bumpPointer;
     bumpPointer += n;
     return (void *)r;
@@ -111,6 +118,15 @@ memset(void *dst, u8 value, int n) {
     for (int i = 0; i < n; i++) {
         d[i] = value;
     }
+}
+
+void resetBumpPointer() {
+    if(bumpPointerBase == 0) {
+        bumpPointerBase = bumpPointer;
+    }
+
+    memset((void *)bumpPointerBase, 0, bumpPointer - bumpPointerBase);
+    bumpPointer = bumpPointerBase;
 }
 
 typedef __builtin_va_list va_list;
