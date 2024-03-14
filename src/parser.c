@@ -376,12 +376,18 @@ typedef struct ASTNodeYulVariableDeclaration {
     ASTNode *value;
 } ASTNodeYulVariableDeclaration;
 
+typedef struct ASTNodeYulVariableAssignment {
+    ASTNodeList paths;
+    ASTNode *value;
+} ASTNodeYulVariableAssignment;
+
 typedef struct ASTNodeYulNumberLitExpression {
     TokenId value;
 } ASTNodeYulNumberLitExpression;
 
 typedef struct ASTNodeYulIdentifierPathExpression {
-    TokenIdList identifiers;
+    u32 count;
+    TokenId identifiers[2];
 } ASTNodeYulIdentifierPathExpression;
 
 typedef struct ASTNodeYulFunctionCallExpression {
@@ -493,7 +499,7 @@ typedef struct ASTNode {
         ASTNodeYulNumberLitExpression yulHexStringLitExpressionNode;
         ASTNodeYulIdentifierPathExpression yulIdentifierPathExpressionNode;
         ASTNodeYulFunctionCallExpression yulFunctionCallExpressionNode;
-        ASTNodeYulVariableDeclaration yulVariableAssignmentNode;
+        ASTNodeYulVariableAssignment yulVariableAssignmentNode;
         ASTNodeYulIfStatement yulIfStatementNode;
         ASTNodeYulForStatement yulForStatementNode;
         ASTNodeYulFunctionDefinition yulFunctionDefinitionNode;
@@ -1784,11 +1790,12 @@ parseYulExpression(Parser *parser, ASTNode *node, YulLexer *lexer) {
     } else if(acceptYulToken(lexer, YulTokenType_Identifier)) {
         TokenId identifier = peekYulLastToken(lexer);
 
+
         if(acceptYulToken(lexer, YulTokenType_Dot)) {
             node->type = ASTNodeType_YulMemberAccessExpression;
-            listPushTokenId(&node->yulIdentifierPathExpressionNode.identifiers, identifier, parser->arena);
-            identifier = parseYulIdentifier(lexer);
-            listPushTokenId(&node->yulIdentifierPathExpressionNode.identifiers, identifier, parser->arena);
+            node->yulIdentifierPathExpressionNode.identifiers[0] = identifier;
+            node->yulIdentifierPathExpressionNode.identifiers[1] = parseYulIdentifier(lexer);
+            node->yulIdentifierPathExpressionNode.count = 2;
         } else {
             node->type = ASTNodeType_YulFunctionCallExpression;
             ASTNodeYulFunctionCallExpression *functionCall = &node->yulFunctionCallExpressionNode;
@@ -1859,12 +1866,31 @@ parseYulStatement(Parser *parser, ASTNode *node, YulLexer *lexer) {
             }
         } else {
             node->type = ASTNodeType_YulVariableAssignment;
-            ASTNodeYulVariableDeclaration *assignment = &node->yulVariableAssignmentNode;
+            ASTNodeYulVariableAssignment *assignment = &node->yulVariableAssignmentNode;
 
-            assignment->identifiers.count = 0;
-            listPushTokenId(&assignment->identifiers, identifier, parser->arena);
+            assignment->paths.count = 0;
+            ASTNodeLink *path = structPush(parser->arena, ASTNodeLink);
+            path->node.type = ASTNodeType_YulMemberAccessExpression;
+            path->node.yulIdentifierPathExpressionNode.count = 1;
+            path->node.yulIdentifierPathExpressionNode.identifiers[0] = identifier;
+            if(acceptYulToken(lexer, YulTokenType_Dot)) {
+                path->node.yulIdentifierPathExpressionNode.count++;
+                path->node.yulIdentifierPathExpressionNode.identifiers[1] = parseYulIdentifier(lexer);
+            }
+            SLL_QUEUE_PUSH(assignment->paths.head, assignment->paths.last, path);
+            assignment->paths.count += 1;
+
             while(acceptYulToken(lexer, YulTokenType_Comma)) {
-                listPushTokenId(&assignment->identifiers, parseYulIdentifier(lexer), parser->arena);
+                ASTNodeLink *path = structPush(parser->arena, ASTNodeLink);
+                path->node.type = ASTNodeType_YulMemberAccessExpression;
+                path->node.yulIdentifierPathExpressionNode.count = 1;
+                path->node.yulIdentifierPathExpressionNode.identifiers[0] = identifier;
+                if(acceptYulToken(lexer, YulTokenType_Dot)) {
+                    path->node.yulIdentifierPathExpressionNode.count++;
+                    path->node.yulIdentifierPathExpressionNode.identifiers[1] = parseYulIdentifier(lexer);
+                }
+                SLL_QUEUE_PUSH(assignment->paths.head, assignment->paths.last, path);
+                assignment->paths.count += 1;
             }
             if(acceptYulToken(lexer, YulTokenType_ColonEqual)) {
                 assignment->value = structPush(parser->arena, ASTNode);
@@ -2350,7 +2376,6 @@ parseFunction(Parser *parser, ASTNode *node) {
             name = peekLastTokenId(parser);
         }
     }
-    assert(name != INVALID_TOKEN_ID);
     ASTNodeFunctionDefinition *function = &node->functionDefinitionNode;
     function->name = name;
 

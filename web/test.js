@@ -1,5 +1,6 @@
 const WasmParser = require("./wasmParse");
 const parser = require("@solidity-parser/parser");
+const { readFileSync } = require("fs");
 const fs = require("fs/promises");
 const posix = require("path");
 
@@ -9,6 +10,36 @@ async function main() {
 
     if(kind === "all") {
         runAllTests(args);
+    } else if(kind === "list") {
+        const listPath = args[0];
+        const list = readFileSync(listPath, "utf-8").split("\n");
+
+        let passed = 0;
+        let failed = 0;
+        let crash = 0;
+        for(const filePath of list) {
+            try {
+                const input = await fs.readFile(filePath, "utf-8")
+                const antlrASTObj = parser.parse(input);
+                const antlrAST = JSON.stringify(antlrASTObj, null, 2);
+
+                const wasmParser = new WasmParser();
+                wasmParser.loadParserNode();
+                const myASTObj = wasmParser.parseBinaryInterface(input);
+                const myAST = JSON.stringify(myASTObj, null, 2);
+
+                if (antlrAST === myAST) {
+                    passed += 1;
+                    // console.log(`[ OK ][${passed}/${failed}/${crash}]`);
+                } else {
+                    failed += 1;
+                    console.log(`[FAIL][${passed}/${failed}/${crash}]: ${filePath}`);
+                }
+            } catch (_) {
+                crash += 1;
+                console.log(`[FAUL][${passed}/${failed}/${crash}]: ${filePath}`);
+            }
+        }
     } else if(kind === "single") {
         runSingleTest(args);
     }

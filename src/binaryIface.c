@@ -348,15 +348,16 @@ pushYulExpression(Serializer *s, ASTNode *node) {
             l += pushTokenStringById(s, node->yulHexStringLitExpressionNode.value);
         } break;
         case ASTNodeType_YulMemberAccessExpression: {
-            l += pushU32(s, node->yulIdentifierPathExpressionNode.identifiers.count);
-            for(u32 i = 0; i < node->yulIdentifierPathExpressionNode.identifiers.count; i++) {
-                l += pushTokenStringById(s, listGetTokenId(&node->yulIdentifierPathExpressionNode.identifiers, i));
+            l += pushU32(s, node->yulIdentifierPathExpressionNode.count);
+            for(u32 i = 0; i < node->yulIdentifierPathExpressionNode.count; i++) {
+                l += pushTokenStringById(s, node->yulIdentifierPathExpressionNode.identifiers[i]);
             }
         } break;
         case ASTNodeType_YulFunctionCallExpression: {
             l += pushYulFunctionCall(s, node);
         } break;
         default: {
+            javascriptPrintNumber(node->type);
             assert(0);
         }
     }
@@ -501,13 +502,26 @@ pushStatement(Serializer *s, ASTNode *node) {
                 l += pushStatement(s, &it->node);
             }
         } break;
-        case ASTNodeType_YulVariableAssignment:
         case ASTNodeType_YulVariableDeclaration: {
             ASTNodeYulVariableDeclaration *statement = &node->yulVariableDeclarationNode;
 
             l += pushU32(s, statement->identifiers.count);
             for(u32 i = 0; i < statement->identifiers.count; i++) {
                 l += pushTokenStringById(s, listGetTokenId(&statement->identifiers, i));
+            }
+
+            l += pushU16(s, statement->value != 0x0);
+            if(statement->value != 0x0) {
+                l += pushYulExpression(s, statement->value);
+            }
+        } break;
+        case ASTNodeType_YulVariableAssignment: {
+            ASTNodeYulVariableAssignment *statement = &node->yulVariableAssignmentNode;
+
+            l += pushU32(s, statement->paths.count);
+            ASTNodeLink *it = statement->paths.head;
+            for(u32 i = 0; i < statement->paths.count; i++, it = it->next) {
+                l += pushYulExpression(s, &it->node);
             }
 
             l += pushU16(s, statement->value != 0x0);

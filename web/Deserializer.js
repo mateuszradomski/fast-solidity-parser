@@ -610,14 +610,22 @@ class Deserializer {
             }
         } else if(type === ASTNodeType_YulMemberAccessExpression) {
             const count = this.popU32();
-            const parts = []
-            for(let i = 0; i < count; i++) {
-                parts.push(this.popString());
-            }
-            return {
-                type: "AssemblyMemberAccess",
-                expression: stringToIdentifier(parts[0]),
-                memberName: stringToIdentifier(parts[1])
+            if(count === 1) {
+                const name = this.popString();
+                return {
+                    type: "Identifier",
+                    name
+                }
+            } else {
+                const parts = []
+                for(let i = 0; i < count; i++) {
+                    parts.push(this.popString());
+                }
+                return {
+                    type: "AssemblyMemberAccess",
+                    expression: stringToIdentifier(parts[0]),
+                    memberName: stringToIdentifier(parts[1])
+                }
             }
         } else if(type === ASTNodeType_YulFunctionCallExpression) {
             const functionName = this.popString();
@@ -842,7 +850,7 @@ class Deserializer {
             const count = this.popU32();
             const names = []
             for(let i = 0; i < count; i++) {
-                names.push(stringToIdentifier(this.popString()));
+                names.push(this.popYulExpression());
             }
             const hasValue = this.popU16() === 1;
             const value = hasValue ? this.popYulExpression() : null;
@@ -1217,7 +1225,7 @@ class Deserializer {
     }
 
     popFunctionDefinition() {
-        const name = this.popString();
+        const name = this.popString() ?? "";
         const parameters = this.popFunctionParameters();
         const visibility = this.popU16();
         const stateMutability = this.popU16();
@@ -1263,7 +1271,7 @@ class Deserializer {
             override,
             isConstructor: false,
             isReceiveEther: false,
-            isFallback: false,
+            isFallback: name === "",
             isVirtual: isVirtual == 1,
             stateMutability: this.stateMutabilityString[stateMutability]
         }
