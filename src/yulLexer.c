@@ -66,6 +66,59 @@ advanceYulToken(YulLexer *lexer) {
     lexer->lastPosition = lexer->currentPosition;
     Token token = lexer->tokens[lexer->currentPosition++];
     switch(token.type) {
+        case TokenType_As:
+        case TokenType_Do:
+        case TokenType_Is:
+        case TokenType_New:
+        case TokenType_Try:
+        case TokenType_Wei:
+        case TokenType_Days:
+        case TokenType_Else:
+        case TokenType_Emit:
+        case TokenType_Enum:
+        case TokenType_Gwei:
+        case TokenType_Pure:
+        case TokenType_Type:
+        case TokenType_View:
+        case TokenType_Catch:
+        case TokenType_Ether:
+        case TokenType_Event:
+        case TokenType_Hours:
+        case TokenType_Using:
+        case TokenType_Weeks:
+        case TokenType_While:
+        case TokenType_Years:
+        case TokenType_Delete:
+        case TokenType_Import:
+        case TokenType_Memory:
+        case TokenType_Pragma:
+        case TokenType_Public:
+        case TokenType_Return:
+        case TokenType_Struct:
+        case TokenType_Indexed:
+        case TokenType_Library:
+        case TokenType_Mapping:
+        case TokenType_Minutes:
+        case TokenType_Private:
+        case TokenType_Returns:
+        case TokenType_Seconds:
+        case TokenType_Storage:
+        case TokenType_Virtual:
+        case TokenType_Abstract:
+        case TokenType_Assembly:
+        case TokenType_Calldata:
+        case TokenType_Constant:
+        case TokenType_Contract:
+        case TokenType_External:
+        case TokenType_Fallback:
+        case TokenType_Internal:
+        case TokenType_Modifier:
+        case TokenType_Override:
+        case TokenType_Anonymous:
+        case TokenType_Immutable:
+        case TokenType_Interface:
+        case TokenType_Unchecked:
+        case TokenType_Constructor:
         case TokenType_From:
         case TokenType_Receive:
         case TokenType_Revert:
@@ -169,6 +222,8 @@ advanceYulToken(YulLexer *lexer) {
             result.string = token.string;
         } break;
         default: {
+            javascriptPrintString("Unknown token type in Yul lexer\n");
+            javascriptPrintNumber(token.type);
             assert(0);
         }
     }
@@ -196,12 +251,65 @@ parseYulIdentifier(YulLexer *lexer) {
     Token token = lexer->tokens[lexer->currentPosition];
 
     u32 isIdent =
-        token.type == TokenType_Symbol |
+        token.type == TokenType_As |
+        token.type == TokenType_Do |
+        token.type == TokenType_Is |
+        token.type == TokenType_New |
+        token.type == TokenType_Try |
+        token.type == TokenType_Wei |
+        token.type == TokenType_Days |
+        token.type == TokenType_Else |
         token.type == TokenType_From |
-        token.type == TokenType_Receive |
-        token.type == TokenType_Revert |
+        token.type == TokenType_Emit |
+        token.type == TokenType_Enum |
+        token.type == TokenType_Gwei |
+        token.type == TokenType_Pure |
+        token.type == TokenType_Type |
+        token.type == TokenType_View |
         token.type == TokenType_Error |
+        token.type == TokenType_Catch |
+        token.type == TokenType_Ether |
+        token.type == TokenType_Event |
+        token.type == TokenType_Hours |
+        token.type == TokenType_Using |
+        token.type == TokenType_Weeks |
+        token.type == TokenType_While |
+        token.type == TokenType_Years |
+        token.type == TokenType_Delete |
+        token.type == TokenType_Import |
+        token.type == TokenType_Memory |
+        token.type == TokenType_Symbol |
+        token.type == TokenType_Revert |
         token.type == TokenType_Global |
+        token.type == TokenType_Pragma |
+        token.type == TokenType_Public |
+        token.type == TokenType_Return |
+        token.type == TokenType_Struct |
+        token.type == TokenType_Indexed |
+        token.type == TokenType_Library |
+        token.type == TokenType_Mapping |
+        token.type == TokenType_Minutes |
+        token.type == TokenType_Private |
+        token.type == TokenType_Returns |
+        token.type == TokenType_Seconds |
+        token.type == TokenType_Receive |
+        token.type == TokenType_Storage |
+        token.type == TokenType_Virtual |
+        token.type == TokenType_Abstract |
+        token.type == TokenType_Assembly |
+        token.type == TokenType_Calldata |
+        token.type == TokenType_Constant |
+        token.type == TokenType_Contract |
+        token.type == TokenType_External |
+        token.type == TokenType_Fallback |
+        token.type == TokenType_Internal |
+        token.type == TokenType_Modifier |
+        token.type == TokenType_Override |
+        token.type == TokenType_Anonymous |
+        token.type == TokenType_Immutable |
+        token.type == TokenType_Interface |
+        token.type == TokenType_Unchecked |
+        token.type == TokenType_Constructor |
         token.type == TokenType_Payable;
 
     if(isIdent) {

@@ -372,7 +372,7 @@ typedef struct ASTNodeAssemblyStatement {
 } ASTNodeAssemblyStatement;
 
 typedef struct ASTNodeYulVariableDeclaration {
-    TokenId identifier;
+    TokenIdList identifiers;
     ASTNode *value;
 } ASTNodeYulVariableDeclaration;
 
@@ -1831,7 +1831,11 @@ parseYulStatement(Parser *parser, ASTNode *node, YulLexer *lexer) {
         node->type = ASTNodeType_YulVariableDeclaration;
         ASTNodeYulVariableDeclaration *declaration = &node->yulVariableDeclarationNode;
 
-        declaration->identifier = parseYulIdentifier(lexer);
+        declaration->identifiers.count = 0;
+        listPushTokenId(&declaration->identifiers, parseYulIdentifier(lexer), parser->arena);
+        while(acceptYulToken(lexer, YulTokenType_Comma)) {
+            listPushTokenId(&declaration->identifiers, parseYulIdentifier(lexer), parser->arena);
+        }
         if(acceptYulToken(lexer, YulTokenType_ColonEqual)) {
             declaration->value = structPush(parser->arena, ASTNode);
             parseYulExpression(parser, declaration->value, lexer);
@@ -1857,7 +1861,11 @@ parseYulStatement(Parser *parser, ASTNode *node, YulLexer *lexer) {
             node->type = ASTNodeType_YulVariableAssignment;
             ASTNodeYulVariableDeclaration *assignment = &node->yulVariableAssignmentNode;
 
-            assignment->identifier = identifier;
+            assignment->identifiers.count = 0;
+            listPushTokenId(&assignment->identifiers, identifier, parser->arena);
+            while(acceptYulToken(lexer, YulTokenType_Comma)) {
+                listPushTokenId(&assignment->identifiers, parseYulIdentifier(lexer), parser->arena);
+            }
             if(acceptYulToken(lexer, YulTokenType_ColonEqual)) {
                 assignment->value = structPush(parser->arena, ASTNode);
                 parseYulExpression(parser, assignment->value, lexer);

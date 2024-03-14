@@ -825,27 +825,31 @@ class Deserializer {
                 operations,
             }
         } else if(type === ASTNodeType_YulVariableDeclaration) {
-            const identifier = this.popString();
+            const count = this.popU32();
+            const names = []
+            for(let i = 0; i < count; i++) {
+                names.push(stringToIdentifier(this.popString()));
+            }
             const hasValue = this.popU16() === 1;
             const value = hasValue ? this.popYulExpression() : null;
 
             return {
                 type: "AssemblyLocalDefinition",
-                names: [
-                    stringToIdentifier(identifier)
-                ],
+                names,
                 expression: value
             }
         } else if(type === ASTNodeType_YulVariableAssignment) {
-            const identifier = this.popString();
+            const count = this.popU32();
+            const names = []
+            for(let i = 0; i < count; i++) {
+                names.push(stringToIdentifier(this.popString()));
+            }
             const hasValue = this.popU16() === 1;
             const value = hasValue ? this.popYulExpression() : null;
 
             return {
                 type: "AssemblyAssignment",
-                names: [
-                    stringToIdentifier(identifier)
-                ],
+                names,
                 expression: value
             }
         } else if(type === ASTNodeType_YulFunctionCallExpression) {

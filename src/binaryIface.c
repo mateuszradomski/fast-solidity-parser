@@ -505,7 +505,11 @@ pushStatement(Serializer *s, ASTNode *node) {
         case ASTNodeType_YulVariableDeclaration: {
             ASTNodeYulVariableDeclaration *statement = &node->yulVariableDeclarationNode;
 
-            l += pushTokenStringById(s, statement->identifier);
+            l += pushU32(s, statement->identifiers.count);
+            for(u32 i = 0; i < statement->identifiers.count; i++) {
+                l += pushTokenStringById(s, listGetTokenId(&statement->identifiers, i));
+            }
+
             l += pushU16(s, statement->value != 0x0);
             if(statement->value != 0x0) {
                 l += pushYulExpression(s, statement->value);
