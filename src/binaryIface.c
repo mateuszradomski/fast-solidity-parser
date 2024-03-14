@@ -309,6 +309,61 @@ pushExpression(Serializer *s, ASTNode *node) {
     return l;
 }
 
+static u32 pushYulExpression(Serializer *s, ASTNode *node);
+
+static u32
+pushYulFunctionCall(Serializer *s, ASTNode *node) {
+    u32 l = 0;
+
+    ASTNodeYulFunctionCallExpression *function = &node->yulFunctionCallExpressionNode;
+
+    l += pushTokenStringById(s, function->identifier);
+    l += pushU32(s, function->arguments.count);
+    ASTNodeLink *argument = function->arguments.head;
+    for(u32 i = 0; i < function->arguments.count; i++, argument = argument->next) {
+        l += pushYulExpression(s, &argument->node);
+    }
+
+    return l;
+}
+
+static u32
+pushYulExpression(Serializer *s, ASTNode *node) {
+    u32 l = pushU32(s, node->type);
+    
+    switch(node->type) {
+        case ASTNodeType_YulNumberLitExpression: {
+            l += pushTokenStringById(s, node->yulNumberLitExpressionNode.value);
+        } break;
+        case ASTNodeType_YulStringLitExpression: {
+            l += pushTokenStringById(s, node->yulStringLitExpressionNode.value);
+        } break;
+        case ASTNodeType_YulHexNumberLitExpression: {
+            l += pushTokenStringById(s, node->yulHexNumberLitExpressionNode.value);
+        } break;
+        case ASTNodeType_YulBoolLitExpression: {
+            l += pushTokenStringById(s, node->yulBoolLitExpressionNode.value);
+        } break;
+        case ASTNodeType_YulHexStringLitExpression: {
+            l += pushTokenStringById(s, node->yulHexStringLitExpressionNode.value);
+        } break;
+        case ASTNodeType_YulMemberAccessExpression: {
+            l += pushU32(s, node->yulIdentifierPathExpressionNode.identifiers.count);
+            for(u32 i = 0; i < node->yulIdentifierPathExpressionNode.identifiers.count; i++) {
+                l += pushTokenStringById(s, listGetTokenId(&node->yulIdentifierPathExpressionNode.identifiers, i));
+            }
+        } break;
+        case ASTNodeType_YulFunctionCallExpression: {
+            l += pushYulFunctionCall(s, node);
+        } break;
+        default: {
+            assert(0);
+        }
+    }
+
+    return l;
+}
+
 static u32
 pushStatement(Serializer *s, ASTNode *node) {
     u32 l = pushU32(s, node->type);
@@ -434,6 +489,81 @@ pushStatement(Serializer *s, ASTNode *node) {
             for(u32 i = 0; i < statement->flags.count; i++) {
                 l += pushTokenStringById(s, listGetTokenId(&statement->flags, i));
             }
+
+            l += pushStatement(s, statement->body);
+        } break;
+        case ASTNodeType_YulBlockStatement: {
+            ASTNodeBlockStatement *statement = &node->blockStatementNode;
+
+            l += pushU32(s, statement->statements.count);
+            ASTNodeLink *it = statement->statements.head;
+            for(u32 i = 0; i < statement->statements.count; i++, it = it->next) {
+                l += pushStatement(s, &it->node);
+            }
+        } break;
+        case ASTNodeType_YulVariableAssignment:
+        case ASTNodeType_YulVariableDeclaration: {
+            ASTNodeYulVariableDeclaration *statement = &node->yulVariableDeclarationNode;
+
+            l += pushTokenStringById(s, statement->identifier);
+            l += pushU16(s, statement->value != 0x0);
+            if(statement->value != 0x0) {
+                l += pushYulExpression(s, statement->value);
+            }
+        } break;
+        case ASTNodeType_YulFunctionCallExpression: {
+            l += pushYulFunctionCall(s, node);
+        } break;
+        case ASTNodeType_YulIfStatement: {
+            ASTNodeYulIfStatement *statement = &node->yulIfStatementNode;
+
+            l += pushYulExpression(s, statement->expression);
+            l += pushStatement(s, statement->body);
+        } break;
+        case ASTNodeType_YulForStatement: {
+            ASTNodeYulForStatement *statement = &node->yulForStatementNode;
+
+            l += pushStatement(s, statement->variableDeclaration);
+            l += pushYulExpression(s, statement->condition);
+            l += pushStatement(s, statement->increment);
+            l += pushStatement(s, statement->body);
+        } break;
+        case ASTNodeType_YulFunctionDefinition: {
+            ASTNodeYulFunctionDefinition *statement = &node->yulFunctionDefinitionNode;
+
+            l += pushTokenStringById(s, statement->identifier);
+            l += pushU32(s, statement->parameters.count);
+            for(u32 i = 0; i < statement->parameters.count; i++) {
+                l += pushTokenStringById(s, listGetTokenId(&statement->parameters, i));
+            }
+            l += pushU32(s, statement->returnParameters.count);
+            for(u32 i = 0; i < statement->returnParameters.count; i++) {
+                l += pushTokenStringById(s, listGetTokenId(&statement->returnParameters, i));
+            }
+            l += pushStatement(s, statement->body);
+        } break;
+        case ASTNodeType_YulSwitchStatement: {
+            ASTNodeYulSwitchStatement *statement = &node->yulSwitchStatementNode;
+
+            l += pushYulExpression(s, statement->expression);
+            assert(statement->caseLiterals.count == statement->caseBlocks.count);
+            l += pushU32(s, statement->caseLiterals.count);
+
+            ASTNodeLink *blkIt = statement->caseBlocks.head;
+            ASTNodeLink *litIt = statement->caseLiterals.head;
+            for(u32 i = 0; i < statement->caseLiterals.count; i++, litIt = litIt->next, blkIt = blkIt->next) {
+                l += pushStatement(s, &blkIt->node);
+                l += pushYulExpression(s, &litIt->node);
+            }
+
+            l += pushU16(s, statement->defaultBlock != 0x0);
+            if(statement->defaultBlock != 0x0) {
+                l += pushStatement(s, statement->defaultBlock);
+            }
+        } break;
+        case ASTNodeType_YulLeaveStatement:
+        case ASTNodeType_YulBreakStatement:
+        case ASTNodeType_YulContinueStatement: {
         } break;
         default: {
             javascriptPrintString("Unreachable, unhandled statement type = ");

@@ -61,6 +61,23 @@ const ASTNodeType_InlineArrayExpression = 60
 const ASTNodeType_DoWhileStatement = 61
 const ASTNodeType_TryStatement = 62
 const ASTNodeType_AssemblyStatement = 64
+const ASTNodeType_YulBlockStatement = 65
+const ASTNodeType_YulVariableDeclaration = 66
+const ASTNodeType_YulNumberLitExpression = 67
+const ASTNodeType_YulStringLitExpression = 68
+const ASTNodeType_YulHexNumberLitExpression = 69
+const ASTNodeType_YulBoolLitExpression = 70
+const ASTNodeType_YulHexStringLitExpression = 71
+const ASTNodeType_YulMemberAccessExpression = 72
+const ASTNodeType_YulFunctionCallExpression = 73
+const ASTNodeType_YulVariableAssignment = 74
+const ASTNodeType_YulIfStatement = 75
+const ASTNodeType_YulForStatement = 76
+const ASTNodeType_YulLeaveStatement = 77
+const ASTNodeType_YulBreakStatement = 78
+const ASTNodeType_YulContinueStatement = 79
+const ASTNodeType_YulFunctionDefinition = 80
+const ASTNodeType_YulSwitchStatement = 81
 
 function stringToStringLiteral(str) {
     if(str === null) {
@@ -558,6 +575,67 @@ class Deserializer {
         }
     }
 
+    popYulExpression() {
+        const type = this.popU32();
+
+        if(type === ASTNodeType_YulNumberLitExpression) {
+            return {
+                type: "DecimalNumber",
+                value: this.popString()
+            }
+        } else if(type === ASTNodeType_YulStringLitExpression) {
+            const value = this.popString();
+            return {
+                type: "StringLiteral",
+                value,
+                parts: [value],
+                isUnicode: [false]
+            }
+        } else if(type === ASTNodeType_YulHexNumberLitExpression) {
+            return {
+                type: "HexNumber",
+                value: this.popString()
+            }
+        } else if(type === ASTNodeType_YulBoolLitExpression) {
+            return {
+                type: "BooleanLiteral",
+                value: this.popString() === "true"
+            }
+        } else if(type === ASTNodeType_YulHexStringLitExpression) {
+            const value = this.popString();
+            return {
+                type: "HexLiteral",
+                value,
+                parts: [value],
+            }
+        } else if(type === ASTNodeType_YulMemberAccessExpression) {
+            const count = this.popU32();
+            const parts = []
+            for(let i = 0; i < count; i++) {
+                parts.push(this.popString());
+            }
+            return {
+                type: "AssemblyMemberAccess",
+                expression: stringToIdentifier(parts[0]),
+                memberName: stringToIdentifier(parts[1])
+            }
+        } else if(type === ASTNodeType_YulFunctionCallExpression) {
+            const functionName = this.popString();
+            const argCount = this.popU32();
+            const args = []
+            for(let i = 0; i < argCount; i++) {
+                args.push(this.popYulExpression());
+            }
+            return {
+                type: "AssemblyCall",
+                functionName,
+                arguments: args,
+            }
+        } else {
+            throw new Error(`Unknown/Unsupported Yul expression type: ${type}`);
+        }
+    }
+
     popStatement() {
         const type = this.popU32();
 
@@ -728,16 +806,139 @@ class Deserializer {
             for(let i = 0; i < flagCount; i++) {
                 flags.push(this.popString());
             }
+            const body = this.popStatement();
 
             return {
                 type: "InlineAssemblyStatement",
                 language: isEVMAsm ? "evmasm" : null,
                 flags,
-                body: {
-                    type: "AssemblyBlock",
-                    operations: []
-                }
+                body
             }
+        } else if(type === ASTNodeType_YulBlockStatement) {
+            const count = this.popU32();
+            const operations = []
+            for(let i = 0; i < count; i++) {
+                operations.push(this.popStatement())
+            }
+            return {
+                type: "AssemblyBlock",
+                operations,
+            }
+        } else if(type === ASTNodeType_YulVariableDeclaration) {
+            const identifier = this.popString();
+            const hasValue = this.popU16() === 1;
+            const value = hasValue ? this.popYulExpression() : null;
+
+            return {
+                type: "AssemblyLocalDefinition",
+                names: [
+                    stringToIdentifier(identifier)
+                ],
+                expression: value
+            }
+        } else if(type === ASTNodeType_YulVariableAssignment) {
+            const identifier = this.popString();
+            const hasValue = this.popU16() === 1;
+            const value = hasValue ? this.popYulExpression() : null;
+
+            return {
+                type: "AssemblyAssignment",
+                names: [
+                    stringToIdentifier(identifier)
+                ],
+                expression: value
+            }
+        } else if(type === ASTNodeType_YulFunctionCallExpression) {
+            const functionName = this.popString();
+            const argCount = this.popU32();
+            const args = []
+            for(let i = 0; i < argCount; i++) {
+                args.push(this.popYulExpression());
+            }
+            return {
+                type: "AssemblyCall",
+                functionName,
+                arguments: args,
+            }
+        } else if(type === ASTNodeType_YulIfStatement) {
+            const expression = this.popYulExpression();
+            const body = this.popStatement();
+
+            return {
+                type: "AssemblyIf",
+                condition: expression,
+                body
+            }
+        } else if(type === ASTNodeType_YulForStatement) {
+            const pre = this.popStatement();
+            const condition = this.popYulExpression();
+            const post = this.popStatement();
+            const body = this.popStatement();
+
+            return {
+                type: "AssemblyFor",
+                pre,
+                condition,
+                post,
+                body
+            }
+        } else if(type === ASTNodeType_YulFunctionDefinition) {
+            const identifier = this.popString();
+            const parameterCount = this.popU32();
+            const parameters = []
+            for(let i = 0; i < parameterCount; i++) {
+                parameters.push(stringToIdentifier(this.popString()));
+            }
+            const returnCount = this.popU32();
+            const returns = []
+            for(let i = 0; i < returnCount; i++) {
+                returns.push(stringToIdentifier(this.popString()));
+            }
+            const body = this.popStatement();
+
+            return {
+                type: "AssemblyFunctionDefinition",
+                name: identifier,
+                arguments: parameters,
+                returnArguments: returns,
+                body
+            }
+        } else if(type === ASTNodeType_YulSwitchStatement) {
+            const expression = this.popYulExpression();
+            const count = this.popU32();
+            const cases = []
+            for(let i = 0; i < count; i++) {
+                cases.push({
+                      type: "AssemblyCase",
+                      block: this.popStatement(),
+                      value: this.popYulExpression(),
+                       default: false,
+                });
+            }
+            const hasDefault = this.popU16() === 1;
+            if(hasDefault) {
+                cases.push({
+                    type: "AssemblyCase",
+                    block: this.popStatement(),
+                    value: null,
+                    default: true,
+                })
+            }
+
+            return {
+                type: "AssemblySwitch",
+                expression,
+                cases,
+            }
+        } else if(type === ASTNodeType_YulLeaveStatement) {
+            return {
+                type: "Identifier",
+                name: "leave"
+            }
+        } else if(type === ASTNodeType_YulContinueStatement) {
+            return { type: "Continue" }
+        } else if(type === ASTNodeType_YulBreakStatement) {
+            return { type: "Break" }
         } else {
             throw new Error("Unknown/Unsupported statement kind " + type)
         }

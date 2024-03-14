@@ -63,6 +63,23 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_TryStatement,
     ASTNodeType_CatchStatement,
     ASTNodeType_AssemblyStatement,
+    ASTNodeType_YulBlockStatement,
+    ASTNodeType_YulVariableDeclaration,
+    ASTNodeType_YulNumberLitExpression,
+    ASTNodeType_YulStringLitExpression,
+    ASTNodeType_YulHexNumberLitExpression,
+    ASTNodeType_YulBoolLitExpression,
+    ASTNodeType_YulHexStringLitExpression,
+    ASTNodeType_YulMemberAccessExpression,
+    ASTNodeType_YulFunctionCallExpression,
+    ASTNodeType_YulVariableAssignment,
+    ASTNodeType_YulIfStatement,
+    ASTNodeType_YulForStatement,
+    ASTNodeType_YulLeaveStatement,
+    ASTNodeType_YulBreakStatement,
+    ASTNodeType_YulContinueStatement,
+    ASTNodeType_YulFunctionDefinition,
+    ASTNodeType_YulSwitchStatement,
     ASTNodeType_Count,
 } ASTNodeType_Enum;
 
@@ -351,7 +368,52 @@ typedef struct ASTNodeCatchStatement {
 typedef struct ASTNodeAssemblyStatement {
     u8 isEVMAsm;
     TokenIdList flags;
+    ASTNode *body;
 } ASTNodeAssemblyStatement;
+
+typedef struct ASTNodeYulVariableDeclaration {
+    TokenId identifier;
+    ASTNode *value;
+} ASTNodeYulVariableDeclaration;
+
+typedef struct ASTNodeYulNumberLitExpression {
+    TokenId value;
+} ASTNodeYulNumberLitExpression;
+
+typedef struct ASTNodeYulIdentifierPathExpression {
+    TokenIdList identifiers;
+} ASTNodeYulIdentifierPathExpression;
+
+typedef struct ASTNodeYulFunctionCallExpression {
+    TokenId identifier;
+    ASTNodeList arguments;
+} ASTNodeYulFunctionCallExpression;
+
+typedef struct ASTNodeYulIfStatement {
+    ASTNode *expression;
+    ASTNode *body;
+} ASTNodeYulIfStatement;
+
+typedef struct ASTNodeYulForStatement {
+    ASTNode *variableDeclaration;
+    ASTNode *condition;
+    ASTNode *increment;
+    ASTNode *body;
+} ASTNodeYulForStatement;
+
+typedef struct ASTNodeYulFunctionDefinition {
+    TokenId identifier;
+    TokenIdList parameters;
+    TokenIdList returnParameters;
+    ASTNode *body;
+} ASTNodeYulFunctionDefinition;
+
+typedef struct ASTNodeYulSwitchStatement {
+    ASTNode *expression;
+    ASTNodeList caseLiterals;
+    ASTNodeList caseBlocks;
+    ASTNode *defaultBlock;
+} ASTNodeYulSwitchStatement;
 
 typedef struct ASTNode {
     ASTNodeType type;
@@ -421,6 +483,21 @@ typedef struct ASTNode {
         ASTNodeConstructorDefinition constructorDefinitionNode;
         ASTNodeNameValue nameValueNode;
         ASTNodeUsing usingNode;
+
+        ASTNodeBlockStatement yulBlockStatementNode;
+        ASTNodeYulVariableDeclaration yulVariableDeclarationNode;
+        ASTNodeYulNumberLitExpression yulNumberLitExpressionNode;
+        ASTNodeYulNumberLitExpression yulStringLitExpressionNode;
+        ASTNodeYulNumberLitExpression yulHexNumberLitExpressionNode;
+        ASTNodeYulNumberLitExpression yulBoolLitExpressionNode;
+        ASTNodeYulNumberLitExpression yulHexStringLitExpressionNode;
+        ASTNodeYulIdentifierPathExpression yulIdentifierPathExpressionNode;
+        ASTNodeYulFunctionCallExpression yulFunctionCallExpressionNode;
+        ASTNodeYulVariableDeclaration yulVariableAssignmentNode;
+        ASTNodeYulIfStatement yulIfStatementNode;
+        ASTNodeYulForStatement yulForStatementNode;
+        ASTNodeYulFunctionDefinition yulFunctionDefinitionNode;
+        ASTNodeYulSwitchStatement yulSwitchStatementNode;
     };
 } ASTNode;
 
@@ -530,6 +607,27 @@ setCurrentParserPosition(Parser *parser, u32 newPosition) {
 }
 
 static bool parseExpression(Parser *parser, ASTNode *node);
+
+static bool
+acceptYulToken(YulLexer *lexer, YulTokenType type) {
+    if(peekYulToken(lexer).type == type) {
+        advanceYulToken(lexer);
+        return true;
+    }
+
+    return false;
+}
+
+#define expectYulToken(parser, lexer, type) _expectYulToken(parser, lexer, type, __FILE__, __LINE__)
+
+static void
+_expectYulToken(Parser *parser, YulLexer *lexer, YulTokenType type, const char *file, u32 line) {
+    bool success = acceptYulToken(lexer, type);
+    if(!success) {
+        _reportError(parser, file, line, "Unexpected token => encountered (%d) but wanted (%d)", peekYulToken(lexer).type, type);
+    }
+    assert(success);
+}
 
 static TokenId
 parseIdentifier(Parser *parser) {
@@ -1667,6 +1765,208 @@ tryParseVariableDeclarationTuple(Parser *parser, ASTNode *node) {
 }
 
 static bool
+parseYulExpression(Parser *parser, ASTNode *node, YulLexer *lexer) {
+    if(acceptYulToken(lexer, YulTokenType_NumberLit)) {
+        node->type = ASTNodeType_YulNumberLitExpression;
+        node->yulNumberLitExpressionNode.value = peekYulLastToken(lexer);
+    } else if(acceptYulToken(lexer, YulTokenType_StringLit)) {
+        node->type = ASTNodeType_YulStringLitExpression;
+        node->yulStringLitExpressionNode.value = peekYulLastToken(lexer);
+    } else if(acceptYulToken(lexer, YulTokenType_HexNumberLit)) {
+        node->type = ASTNodeType_YulHexNumberLitExpression;
+        node->yulHexNumberLitExpressionNode.value = peekYulLastToken(lexer);
+    } else if(acceptYulToken(lexer, YulTokenType_BoolLit)) {
+        node->type = ASTNodeType_YulBoolLitExpression;
+        node->yulBoolLitExpressionNode.value = peekYulLastToken(lexer);
+    } else if(acceptYulToken(lexer, YulTokenType_HexStringLit)) {
+        node->type = ASTNodeType_YulHexStringLitExpression;
+        node->yulHexStringLitExpressionNode.value = peekYulLastToken(lexer);
+    } else if(acceptYulToken(lexer, YulTokenType_Identifier)) {
+        TokenId identifier = peekYulLastToken(lexer);
+
+        if(acceptYulToken(lexer, YulTokenType_Dot)) {
+            node->type = ASTNodeType_YulMemberAccessExpression;
+            listPushTokenId(&node->yulIdentifierPathExpressionNode.identifiers, identifier, parser->arena);
+            identifier = parseYulIdentifier(lexer);
+            listPushTokenId(&node->yulIdentifierPathExpressionNode.identifiers, identifier, parser->arena);
+        } else {
+            node->type = ASTNodeType_YulFunctionCallExpression;
+            ASTNodeYulFunctionCallExpression *functionCall = &node->yulFunctionCallExpressionNode;
+            functionCall->identifier = identifier;
+
+            if(acceptYulToken(lexer, YulTokenType_LParen)) {
+                if(!acceptYulToken(lexer, YulTokenType_RParen)) {
+                    do {
+                        ASTNodeLink *argument = structPush(parser->arena, ASTNodeLink);
+                        parseYulExpression(parser, &argument->node, lexer);
+                        SLL_QUEUE_PUSH(functionCall->arguments.head, functionCall->arguments.last, argument);
+                        functionCall->arguments.count += 1;
+                    } while(acceptYulToken(lexer, YulTokenType_Comma));
+                    expectYulToken(parser, lexer, YulTokenType_RParen);
+                }
+            }
+        }
+    } else {
+        reportError(parser, "Unexpected token while parsing Yul expression - %S", peekYulToken(lexer).string);
+    }
+
+    return true;
+}
+
+static bool
+parseYulStatement(Parser *parser, ASTNode *node, YulLexer *lexer) {
+    if(acceptYulToken(lexer, YulTokenType_LBrace)) {
+        node->type = ASTNodeType_YulBlockStatement;
+
+        while(!acceptYulToken(lexer, YulTokenType_RBrace)) {
+            ASTNodeLink *statement = structPush(parser->arena, ASTNodeLink);
+            if(!parseYulStatement(parser, &statement->node, lexer)) {
+                continue;
+            }
+
+            SLL_QUEUE_PUSH(node->blockStatementNode.statements.head, node->blockStatementNode.statements.last, statement);
+            node->blockStatementNode.statements.count += 1;
+        }
+    } else if(acceptYulToken(lexer, YulTokenType_Let)) {
+        node->type = ASTNodeType_YulVariableDeclaration;
+        ASTNodeYulVariableDeclaration *declaration = &node->yulVariableDeclarationNode;
+
+        declaration->identifier = parseYulIdentifier(lexer);
+        if(acceptYulToken(lexer, YulTokenType_ColonEqual)) {
+            declaration->value = structPush(parser->arena, ASTNode);
+            parseYulExpression(parser, declaration->value, lexer);
+        }
+    } else if(acceptYulToken(lexer, YulTokenType_Identifier)) {
+        TokenId identifier = peekYulLastToken(lexer);
+
+        if(acceptYulToken(lexer, YulTokenType_LParen)) {
+            node->type = ASTNodeType_YulFunctionCallExpression;
+            ASTNodeYulFunctionCallExpression *functionCall = &node->yulFunctionCallExpressionNode;
+            functionCall->identifier = identifier;
+
+            if(!acceptYulToken(lexer, YulTokenType_RParen)) {
+                do {
+                    ASTNodeLink *argument = structPush(parser->arena, ASTNodeLink);
+                    parseYulExpression(parser, &argument->node, lexer);
+                    SLL_QUEUE_PUSH(functionCall->arguments.head, functionCall->arguments.last, argument);
+                    functionCall->arguments.count += 1;
+                } while(acceptYulToken(lexer, YulTokenType_Comma));
+                expectYulToken(parser, lexer, YulTokenType_RParen);
+            }
+        } else {
+            node->type = ASTNodeType_YulVariableAssignment;
+            ASTNodeYulVariableDeclaration *assignment = &node->yulVariableAssignmentNode;
+
+            assignment->identifier = identifier;
+            if(acceptYulToken(lexer, YulTokenType_ColonEqual)) {
+                assignment->value = structPush(parser->arena, ASTNode);
+                parseYulExpression(parser, assignment->value, lexer);
+            }
+        }
+    } else if(acceptYulToken(lexer, YulTokenType_If)) {
+        node->type = ASTNodeType_YulIfStatement;
+        ASTNodeYulIfStatement *ifStatement = &node->yulIfStatementNode;
+
+        ifStatement->expression = structPush(parser->arena, ASTNode);
+        parseYulExpression(parser, ifStatement->expression, lexer);
+        ifStatement->body = structPush(parser->arena, ASTNode);
+        parseYulStatement(parser, ifStatement->body, lexer);
+    } else if(acceptYulToken(lexer, YulTokenType_For)) {
+        node->type = ASTNodeType_YulForStatement;
+        ASTNodeYulForStatement *forStatement = &node->yulForStatementNode;
+        
+        forStatement->variableDeclaration = structPush(parser->arena, ASTNode);
+        forStatement->condition = structPush(parser->arena, ASTNode);
+        forStatement->increment = structPush(parser->arena, ASTNode);
+        forStatement->body = structPush(parser->arena, ASTNode);
+
+        parseYulStatement(parser, forStatement->variableDeclaration, lexer);
+        parseYulExpression(parser, forStatement->condition, lexer);
+        parseYulStatement(parser, forStatement->increment, lexer);
+        parseYulStatement(parser, forStatement->body, lexer);
+    } else if(acceptYulToken(lexer, YulTokenType_Function)) {
+        node->type = ASTNodeType_YulFunctionDefinition;
+        ASTNodeYulFunctionDefinition *function = &node->yulFunctionDefinitionNode;
+
+        function->identifier = parseYulIdentifier(lexer);
+        expectYulToken(parser, lexer, YulTokenType_LParen);
+        if(!acceptYulToken(lexer, YulTokenType_RParen)) {
+            do {
+                TokenId identifier = parseYulIdentifier(lexer);
+                assert(identifier != INVALID_TOKEN_ID);
+                listPushTokenId(&function->parameters, identifier, parser->arena);
+            } while(acceptYulToken(lexer, YulTokenType_Comma));
+            expectYulToken(parser, lexer, YulTokenType_RParen);
+        }
+
+        if(acceptYulToken(lexer, YulTokenType_RightArrow)) {
+            do {
+                TokenId identifier = parseYulIdentifier(lexer);
+                assert(identifier != INVALID_TOKEN_ID);
+                listPushTokenId(&function->returnParameters, identifier, parser->arena);
+            } while(acceptYulToken(lexer, YulTokenType_Comma));
+        }
+
+        function->body = structPush(parser->arena, ASTNode);
+        parseYulStatement(parser, function->body, lexer);
+    } else if(acceptYulToken(lexer, YulTokenType_Switch)) {
+        node->type = ASTNodeType_YulSwitchStatement;
+        ASTNodeYulSwitchStatement *switchStatement = &node->yulSwitchStatementNode;
+
+        switchStatement->expression = structPush(parser->arena, ASTNode);
+        parseYulExpression(parser, switchStatement->expression, lexer);
+
+        switchStatement->caseLiterals.count = 0;
+        while(acceptYulToken(lexer, YulTokenType_Case)) {
+            ASTNodeLink *literal = structPush(parser->arena, ASTNodeLink);
+            parseYulExpression(parser, &literal->node, lexer);
+            SLL_QUEUE_PUSH(switchStatement->caseLiterals.head, switchStatement->caseLiterals.last, literal);
+            switchStatement->caseLiterals.count += 1;
+            // TODO(radomski): error on non-literal
+
+            ASTNodeLink *statement = structPush(parser->arena, ASTNodeLink);
+            parseYulStatement(parser, &statement->node, lexer);
+            SLL_QUEUE_PUSH(switchStatement->caseBlocks.head, switchStatement->caseBlocks.last, statement);
+            switchStatement->caseBlocks.count += 1;
+        }
+
+        bool defaultRequired = switchStatement->caseLiterals.count == 0;
+        bool hasDefault = acceptYulToken(lexer, YulTokenType_Default);
+
+        if(hasDefault) {
+            ASTNode *node = structPush(parser->arena, ASTNode);
+            parseYulStatement(parser, node, lexer);
+            switchStatement->defaultBlock = node;
+        }
+
+        if(defaultRequired && !hasDefault) {
+            reportError(parser, "Switch statement requires a default case");
+        }
+    } else if(acceptYulToken(lexer, YulTokenType_Leave)) {
+        node->type = ASTNodeType_YulLeaveStatement;
+    } else if(acceptYulToken(lexer, YulTokenType_Break)) {
+        node->type = ASTNodeType_YulBreakStatement;
+    } else if(acceptYulToken(lexer, YulTokenType_Continue)) {
+        node->type = ASTNodeType_YulContinueStatement;
+    } else if(acceptYulToken(lexer, YulTokenType_Comment)) {
+        return false;
+    } else {
+        reportError(parser, "Unhandeled Yul statement for token - %S", peekYulToken(lexer).string);
+    }
+
+    return true;
+}
+
+static bool
+parseYulBlock(Parser *parser, ASTNode *node) {
+    YulLexer lexer = createYulLexer(parser->tokens, parser->tokenCount, parser->current);
+    bool result = parseYulStatement(parser, node, &lexer);
+
+    parser->current = lexer.currentPosition;
+    return result;
+}
+
+static bool
 parseStatement(Parser *parser, ASTNode *node) {
     if(acceptToken(parser, TokenType_Return)) {
         ASTNode *returnStatement = node;
@@ -1884,8 +2184,8 @@ parseStatement(Parser *parser, ASTNode *node) {
             expectToken(parser, TokenType_RParen);
         }
 
-        expectToken(parser, TokenType_LBrace);
-        expectToken(parser, TokenType_RBrace);
+        statement->body = structPush(parser->arena, ASTNode);
+        parseYulBlock(parser, statement->body);
     } else if(acceptToken(parser, TokenType_Comment)) {
         return false;
     } else {
