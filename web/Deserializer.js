@@ -1073,19 +1073,7 @@ class Deserializer {
 		}
 		const params = [];
 		for (let i = 0; i < paramCount; i++) {
-			const typeName = this.popType();
-			const paramName = this.popString();
-			const dataLocation = this.popU32();
-			params.push({
-				type: "VariableDeclaration",
-				typeName,
-				name: paramName,
-				identifier: stringToIdentifier(paramName),
-				storageLocation: this.storageLocationString[dataLocation],
-				isStateVar: false,
-				isIndexed: false,
-				expression: null,
-			});
+            params.push(this.popVariableDeclaration());
 		}
 		return params;
 	}

@@ -88,19 +88,6 @@ typedef u32 ASTNodeType;
 typedef struct ASTNode ASTNode;
 typedef struct ASTNodeLink ASTNodeLink;
 
-typedef struct FunctionParameter {
-    ASTNode *type;
-    u32 dataLocation;
-    TokenId identifier;
-    struct FunctionParameter *next;
-} FunctionParameter;
-
-typedef struct FunctionParameterList {
-    FunctionParameter *head;
-    FunctionParameter *last;
-    u32 count;
-} FunctionParameterList;
-
 typedef struct ASTNodeList {
     ASTNodeLink *head;
     ASTNodeLink *last;
@@ -129,10 +116,10 @@ typedef struct ASTNodeMapping {
 } ASTNodeMapping;
 
 typedef struct ASTNodeFunctionType {
-    FunctionParameterList parameters;
+    ASTNodeList parameters;
     u16 visibility;
     u16 stateMutability;
-    FunctionParameterList returnParameters;
+    ASTNodeList returnParameters;
 } ASTNodeFunctionType;
 
 typedef struct ASTNodeArrayType {
@@ -227,16 +214,16 @@ typedef struct ASTNodeTerneryExpression {
 } ASTNodeTerneryExpression;
 
 typedef struct ASTNodeFunctionDefinition {
-    TokenId name;                           // 4 bytes
-    FunctionParameterList parameters;       // 12 bytes
-    u8 visibility;                          // 1 byte
-    u8 stateMutability;                     // 1 byte
-    u8 virtual;                             // 1 byte
-    u8 override;                            // 1 byte
-    ASTNodeList overrides;                  // 12 bytes
-    ASTNodeList modifiers;                  // 12 bytes
-    FunctionParameterList returnParameters; // 12 bytes
-    ASTNode *body;                          // 4 bytes
+    TokenId name;                 // 4 bytes
+    ASTNodeList parameters;       // 12 bytes
+    u8 visibility;                // 1 byte
+    u8 stateMutability;           // 1 byte
+    u8 virtual;                   // 1 byte
+    u8 override;                  // 1 byte
+    ASTNodeList overrides;        // 12 bytes
+    ASTNodeList modifiers;        // 12 bytes
+    ASTNodeList returnParameters; // 12 bytes
+    ASTNode *body;                // 4 bytes
 } ASTNodeFunctionDefinition;
 
 typedef struct ASTNodeBlockStatement {
@@ -315,7 +302,7 @@ typedef struct ASTNodeEmitStatement {
 } ASTNodeEmitStatement;
 
 typedef struct ASTNodeConstructorDefinition {
-    FunctionParameterList parameters;
+    ASTNodeList parameters;
     u8 visibility;
     u8 stateMutability;
     u8 virtual;
@@ -353,14 +340,14 @@ typedef struct ASTNodeInlineArrayExpression {
 
 typedef struct ASTNodeTryStatement {
     ASTNode *expression;
-    FunctionParameterList returnParameters;
+    ASTNodeList returnParameters;
     ASTNode *body;
     ASTNodeList catches;
 } ASTNodeTryStatement;
 
 typedef struct ASTNodeCatchStatement {
     TokenId identifier;
-    FunctionParameterList parameters;
+    ASTNodeList parameters;
     ASTNode *body;
 } ASTNodeCatchStatement;
 
@@ -845,29 +832,6 @@ isBaseTypeName(String string) {
 
 static bool parseType(Parser *parser, ASTNode *node);
 
-static void
-parseFunctionParameters(Parser *parser, FunctionParameterList *parameters) {
-    do {
-        FunctionParameter *parameter = structPush(parser->arena, FunctionParameter);
-        parameter->type = structPush(parser->arena, ASTNode);
-        parseType(parser, parameter->type);
-
-        parameter->dataLocation = 0;
-        if(acceptToken(parser, TokenType_Memory)) {
-            parameter->dataLocation = 1;
-        } else if(acceptToken(parser, TokenType_Storage)) {
-            parameter->dataLocation = 2;
-        } else if(acceptToken(parser, TokenType_Calldata)) {
-            parameter->dataLocation = 3;
-        } 
-
-        parameter->identifier = parseIdentifier(parser);
-
-        SLL_QUEUE_PUSH(parameters->head, parameters->last, parameter);
-        parameters->count += 1;
-    } while(acceptToken(parser, TokenType_Comma));
-}
-
 static void parseVariableDeclarationIntoList(Parser *parser, ASTNodeList *list) {
     ASTNodeLink *parameter = structPush(parser->arena, ASTNodeLink);
     ASTNode *node = &parameter->node;
@@ -895,7 +859,7 @@ static void parseVariableDeclarationIntoList(Parser *parser, ASTNodeList *list) 
 }
 
 static void
-parseFunctionParametersNew(Parser *parser, ASTNodeList *list) {
+parseFunctionParameters(Parser *parser, ASTNodeList *list) {
     do {
         parseVariableDeclarationIntoList(parser, list);
     } while(acceptToken(parser, TokenType_Comma));
@@ -1219,7 +1183,7 @@ parseError(Parser *parser, ASTNode *node) {
 
     expectToken(parser, TokenType_LParen);
     if(!acceptToken(parser, TokenType_RParen)) {
-        parseFunctionParametersNew(parser, &error->parameters);
+        parseFunctionParameters(parser, &error->parameters);
         expectToken(parser, TokenType_RParen);
     }
     expectToken(parser, TokenType_Semicolon);
@@ -1236,7 +1200,7 @@ parseEvent(Parser *parser, ASTNode *node) {
     expectToken(parser, TokenType_LParen);
 
     if(!acceptToken(parser, TokenType_RParen)) {
-        parseFunctionParametersNew(parser, &event->parameters);
+        parseFunctionParameters(parser, &event->parameters);
         expectToken(parser, TokenType_RParen);
     }
 
