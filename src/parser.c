@@ -228,16 +228,16 @@ typedef struct ASTNodeTerneryExpression {
 } ASTNodeTerneryExpression;
 
 typedef struct ASTNodeFunctionDefinition {
-    TokenId name;                      // 4 bytes
-    FunctionParameterList parameters;  // 12 bytes
-    u8 visibility;                     // 1 byte
-    u8 stateMutability;                // 1 byte
-    u8 virtual;                        // 1 byte
-    u8 override;                       // 1 byte
-    ASTNodeList overrides;             // 12 bytes
-    ASTNodeList modifiers;             // 12 bytes
+    TokenId name;                           // 4 bytes
+    FunctionParameterList parameters;       // 12 bytes
+    u8 visibility;                          // 1 byte
+    u8 stateMutability;                     // 1 byte
+    u8 virtual;                             // 1 byte
+    u8 override;                            // 1 byte
+    ASTNodeList overrides;                  // 12 bytes
+    ASTNodeList modifiers;                  // 12 bytes
     FunctionParameterList returnParameters; // 12 bytes
-    ASTNode *body;                     // 4 bytes
+    ASTNode *body;                          // 4 bytes
 } ASTNodeFunctionDefinition;
 
 typedef struct ASTNodeBlockStatement {
@@ -423,6 +423,9 @@ typedef struct ASTNodeYulSwitchStatement {
 
 typedef struct ASTNode {
     ASTNodeType type;
+
+    u32 startToken;
+    u32 endToken;
 
     union {
         struct { // ASTNodeType_SourceUnit
@@ -841,6 +844,31 @@ isBaseTypeName(String string) {
     return isFixed || isUFixed;
 }
 
+static bool parseType(Parser *parser, ASTNode *node);
+
+static void
+parseFunctionParameters(Parser *parser, FunctionParameterList *parameters) {
+    do {
+        FunctionParameter *parameter = structPush(parser->arena, FunctionParameter);
+        parameter->type = structPush(parser->arena, ASTNode);
+        parseType(parser, parameter->type);
+
+        parameter->dataLocation = 0;
+        if(acceptToken(parser, TokenType_Memory)) {
+            parameter->dataLocation = 1;
+        } else if(acceptToken(parser, TokenType_Storage)) {
+            parameter->dataLocation = 2;
+        } else if(acceptToken(parser, TokenType_Calldata)) {
+            parameter->dataLocation = 3;
+        } 
+
+        parameter->identifier = parseIdentifier(parser);
+
+        SLL_QUEUE_PUSH(parameters->head, parameters->last, parameter);
+        parameters->count += 1;
+    } while(acceptToken(parser, TokenType_Comma));
+}
+
 static bool
 parseType(Parser *parser, ASTNode *node) {
     TokenId identifier = INVALID_TOKEN_ID;
@@ -870,28 +898,10 @@ parseType(Parser *parser, ASTNode *node) {
             return false;
         }
 
-        if(!acceptToken(parser, TokenType_RParen)) {
-            do {
-                FunctionParameter *parameter = structPush(parser->arena, FunctionParameter);
-                parameter->type = structPush(parser->arena, ASTNode);
-                parseType(parser, parameter->type);
-
-                parameter->dataLocation = 0;
-                if(acceptToken(parser, TokenType_Memory)) {
-                    parameter->dataLocation = 1;
-                } else if(acceptToken(parser, TokenType_Storage)) {
-                    parameter->dataLocation = 2;
-                } else if(acceptToken(parser, TokenType_Calldata)) {
-                    parameter->dataLocation = 3;
-                } 
-
-                parameter->identifier = parseIdentifier(parser);
-
-                SLL_QUEUE_PUSH(function->parameters.head, function->parameters.last, parameter);
-                function->parameters.count += 1;
-            } while(acceptToken(parser, TokenType_Comma));
-            expectToken(parser, TokenType_RParen);
-        }
+    if(!acceptToken(parser, TokenType_RParen)) {
+        parseFunctionParameters(parser, &function->parameters);
+        expectToken(parser, TokenType_RParen);
+    }
 
         function->stateMutability = 0;
         function->visibility = 0;
@@ -934,26 +944,10 @@ parseType(Parser *parser, ASTNode *node) {
         if(acceptToken(parser, TokenType_Returns)) {
             expectToken(parser, TokenType_LParen);
 
-            if(!acceptToken(parser, TokenType_RParen)) {
-                do {
-                    FunctionParameter *parameter = structPush(parser->arena, FunctionParameter);
-                    parameter->type = structPush(parser->arena, ASTNode);
-                    parseType(parser, parameter->type);
-                    if(acceptToken(parser, TokenType_Memory)) {
-                        parameter->dataLocation = 1;
-                    } else if(acceptToken(parser, TokenType_Storage)) {
-                        parameter->dataLocation = 2;
-                    } else if(acceptToken(parser, TokenType_Calldata)) {
-                        parameter->dataLocation = 3;
-                    }
-
-                    parameter->identifier = parseIdentifier(parser);
-
-                    SLL_QUEUE_PUSH(function->returnParameters.head, function->returnParameters.last, parameter);
-                    function->returnParameters.count += 1;
-                } while(acceptToken(parser, TokenType_Comma));
-            }
-            expectToken(parser, TokenType_RParen);
+    if(!acceptToken(parser, TokenType_RParen)) {
+            parseFunctionParameters(parser, &function->returnParameters);
+        expectToken(parser, TokenType_RParen);
+    }
         }
     } else if((identifier = parseIdentifier(parser)) != INVALID_TOKEN_ID) {
         if(isBaseTypeName(parser->tokens[identifier].string)) {
@@ -2130,25 +2124,8 @@ parseStatement(Parser *parser, ASTNode *node) {
         if(acceptToken(parser, TokenType_Returns)) {
             statement->returnParameters.count = 0;
             expectToken(parser, TokenType_LParen);
-            do {
-                FunctionParameter *parameter = structPush(parser->arena, FunctionParameter);
-                parameter->type = structPush(parser->arena, ASTNode);
-                parseType(parser, parameter->type);
-                if(acceptToken(parser, TokenType_Memory)) {
-                    parameter->dataLocation = 1;
-                } else if(acceptToken(parser, TokenType_Storage)) {
-                    parameter->dataLocation = 2;
-                } else if(acceptToken(parser, TokenType_Calldata)) {
-                    parameter->dataLocation = 3;
-                } else {
-                    parameter->dataLocation = 0;
-                }
 
-                parameter->identifier = parseIdentifier(parser);
-
-                SLL_QUEUE_PUSH(statement->returnParameters.head, statement->returnParameters.last, parameter);
-                statement->returnParameters.count += 1;
-            } while(acceptToken(parser, TokenType_Comma));
+            parseFunctionParameters(parser, &statement->returnParameters);
             expectToken(parser, TokenType_RParen);
         }
 
@@ -2170,25 +2147,7 @@ parseStatement(Parser *parser, ASTNode *node) {
                 }
 
                 catchStatement->parameters.count = 0;
-                do {
-                    FunctionParameter *parameter = structPush(parser->arena, FunctionParameter);
-                    parameter->type = structPush(parser->arena, ASTNode);
-                    parseType(parser, parameter->type);
-                    if(acceptToken(parser, TokenType_Memory)) {
-                        parameter->dataLocation = 1;
-                    } else if(acceptToken(parser, TokenType_Storage)) {
-                        parameter->dataLocation = 2;
-                    } else if(acceptToken(parser, TokenType_Calldata)) {
-                        parameter->dataLocation = 3;
-                    } else {
-                        parameter->dataLocation = 0;
-                    }
-
-                    parameter->identifier = parseIdentifier(parser);
-
-                    SLL_QUEUE_PUSH(catchStatement->parameters.head, catchStatement->parameters.last, parameter);
-                    catchStatement->parameters.count += 1;
-                } while(acceptToken(parser, TokenType_Comma));
+                parseFunctionParameters(parser, &catchStatement->parameters);
                 expectToken(parser, TokenType_RParen);
             } else {
                 parser->current -= 1;
@@ -2381,26 +2340,7 @@ parseFunction(Parser *parser, ASTNode *node) {
 
     expectToken(parser, TokenType_LParen);
     if(!acceptToken(parser, TokenType_RParen)) {
-        do {
-            FunctionParameter *parameter = structPush(parser->arena, FunctionParameter);
-            parameter->type = structPush(parser->arena, ASTNode);
-            parseType(parser, parameter->type);
-            if(acceptToken(parser, TokenType_Memory)) {
-                parameter->dataLocation = 1;
-            } else if(acceptToken(parser, TokenType_Storage)) {
-                parameter->dataLocation = 2;
-            } else if(acceptToken(parser, TokenType_Calldata)) {
-                parameter->dataLocation = 3;
-            } else {
-                parameter->dataLocation = 0;
-            }
-
-            parameter->identifier = parseIdentifier(parser);
-
-            SLL_QUEUE_PUSH(function->parameters.head, function->parameters.last, parameter);
-            function->parameters.count += 1;
-        } while(acceptToken(parser, TokenType_Comma));
-
+        parseFunctionParameters(parser, &function->parameters);
         expectToken(parser, TokenType_RParen);
     }
 
@@ -2457,25 +2397,7 @@ parseFunction(Parser *parser, ASTNode *node) {
     if(acceptToken(parser, TokenType_Returns)) {
         function->returnParameters.count = 0;
         expectToken(parser, TokenType_LParen);
-        do {
-            FunctionParameter *parameter = structPush(parser->arena, FunctionParameter);
-            parameter->type = structPush(parser->arena, ASTNode);
-            parseType(parser, parameter->type);
-            if(acceptToken(parser, TokenType_Memory)) {
-                parameter->dataLocation = 1;
-            } else if(acceptToken(parser, TokenType_Storage)) {
-                parameter->dataLocation = 2;
-            } else if(acceptToken(parser, TokenType_Calldata)) {
-                parameter->dataLocation = 3;
-            } else {
-                parameter->dataLocation = 0;
-            }
-
-            parameter->identifier = parseIdentifier(parser);
-
-            SLL_QUEUE_PUSH(function->returnParameters.head, function->returnParameters.last, parameter);
-            function->returnParameters.count += 1;
-        } while(acceptToken(parser, TokenType_Comma));
+        parseFunctionParameters(parser, &function->returnParameters);
         expectToken(parser, TokenType_RParen);
     }
 
@@ -2500,26 +2422,7 @@ parseModifier(Parser *parser, ASTNode *node) {
     if(acceptToken(parser, TokenType_LParen)) {
         modifier->parameters.count = 0;
         if(!acceptToken(parser, TokenType_RParen)) {
-            do {
-                FunctionParameter *parameter = structPush(parser->arena, FunctionParameter);
-                parameter->type = structPush(parser->arena, ASTNode);
-                parseType(parser, parameter->type);
-                if(acceptToken(parser, TokenType_Memory)) {
-                    parameter->dataLocation = 1;
-                } else if(acceptToken(parser, TokenType_Storage)) {
-                    parameter->dataLocation = 2;
-                } else if(acceptToken(parser, TokenType_Calldata)) {
-                    parameter->dataLocation = 3;
-                } else {
-                    parameter->dataLocation = 0;
-                }
-
-                parameter->identifier = parseIdentifier(parser);
-
-                SLL_QUEUE_PUSH(modifier->parameters.head, modifier->parameters.last, parameter);
-                modifier->parameters.count += 1;
-            } while(acceptToken(parser, TokenType_Comma));
-
+            parseFunctionParameters(parser, &modifier->parameters);
             expectToken(parser, TokenType_RParen);
         }
     }
@@ -2556,26 +2459,7 @@ parseConstructor(Parser *parser, ASTNode *node) {
     expectToken(parser, TokenType_LParen);
     constructor->parameters.count = 0;
     if(!acceptToken(parser, TokenType_RParen)) {
-        do {
-            FunctionParameter *parameter = structPush(parser->arena, FunctionParameter);
-            parameter->type = structPush(parser->arena, ASTNode);
-            parseType(parser, parameter->type);
-            if(acceptToken(parser, TokenType_Memory)) {
-                parameter->dataLocation = 1;
-            } else if(acceptToken(parser, TokenType_Storage)) {
-                parameter->dataLocation = 2;
-            } else if(acceptToken(parser, TokenType_Calldata)) {
-                parameter->dataLocation = 3;
-            } else {
-                parameter->dataLocation = 0;
-            }
-
-            parameter->identifier = parseIdentifier(parser);
-
-            SLL_QUEUE_PUSH(constructor->parameters.head, constructor->parameters.last, parameter);
-            constructor->parameters.count += 1;
-        } while(acceptToken(parser, TokenType_Comma));
-
+        parseFunctionParameters(parser, &constructor->parameters);
         expectToken(parser, TokenType_RParen);
     }
 
@@ -2851,7 +2735,7 @@ parseSourceUnit(Parser *parser) {
     }
 
     parsingMemory -= arenaFreeBytes(parser->arena);
-    log(parser->arena, "parsing memory needed     = %d", parsingMemory);
+    // log(parser->arena, "parsing memory needed     = %d", parsingMemory);
 
     return node;
 }

@@ -218,6 +218,8 @@ class Deserializer {
 
     popType() {
         const kind = this.popU32();
+        const startOffset = this.popU32();
+        const endOffset = this.popU32();
 
         if(kind === ASTNodeType_BaseType) {
             const name = this.popString();
@@ -225,7 +227,8 @@ class Deserializer {
             return {
                 type: "ElementaryTypeName",
                 name,
-                stateMutability: payable === 0 ? null : "payable"
+                stateMutability: payable === 0 ? null : "payable",
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
         } else if(kind === ASTNodeType_IdentifierPath) {
             const identifiersCount = this.popU32();
@@ -239,6 +242,7 @@ class Deserializer {
             return {
                 type: "UserDefinedTypeName",
                 namePath: path,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
         } else if(kind === ASTNodeType_MappingType) {
             const keyType = this.popType();
@@ -251,6 +255,7 @@ class Deserializer {
                 keyName: stringToIdentifier(keyIdentifier),
                 valueType,
                 valueName: stringToIdentifier(valueIdentifier),
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
         } else if(kind === ASTNodeType_FunctionType) {
             const parameterTypes = this.popFunctionParameters();
@@ -263,7 +268,8 @@ class Deserializer {
                 parameterTypes,
                 returnTypes,
                 visibility: this.visibilityString[visibility],
-                stateMutability: this.stateMutabilityString[stateMutability]
+                stateMutability: this.stateMutabilityString[stateMutability],
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
         } else if(kind === ASTNodeType_ArrayType) {
             const baseType = this.popType();
@@ -277,6 +283,7 @@ class Deserializer {
                 type: "ArrayTypeName",
                 baseTypeName: baseType,
                 length,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
         } else {
             throw new Error(`Unknown/Unsupported type kind: ${kind}`);
@@ -284,6 +291,10 @@ class Deserializer {
     }
 
     popVariableDeclaration() {
+        const kind = this.popU32();
+        const startOffset = this.popU32();
+        const endOffset = this.popU32();
+
         const typeName = this.popType();
         const name = this.popString();
         const dataLocation = this.popU32();
@@ -296,11 +307,16 @@ class Deserializer {
             storageLocation: this.storageLocationString[dataLocation],
             isStateVar: false,
             isIndexed: false,
-            expression: null
+            expression: null,
+            range: this.includeByteRange ? [startOffset, endOffset] : undefined
         }
     }
 
     popVariableDeclarationTupleStatementOrder() {
+        const kind = this.popU32();
+        const startOffset = this.popU32();
+        const endOffset = this.popU32();
+
         const typeName = this.popType();
         const name = this.popString();
         const dataLocation = this.popU32();
@@ -313,7 +329,8 @@ class Deserializer {
             storageLocation: this.storageLocationString[dataLocation],
             isStateVar: false,
             isIndexed: false,
-            expression: null
+            expression: null,
+            range: this.includeByteRange ? [startOffset, endOffset] : undefined
         }
     }
 
@@ -339,18 +356,21 @@ class Deserializer {
     }
 
     popExpression() {
-        const type = this.popU32();
+        const kind = this.popU32();
+        const startOffset = this.popU32();
+        const endOffset = this.popU32();
 
-        if(type === ASTNodeType_NumberLitExpression) {
+        if(kind === ASTNodeType_NumberLitExpression) {
             const value = this.popString();
             const subdenomination = this.popString();
 
             return {
                 type: "NumberLiteral",
                 number: value,
-                subdenomination
+                subdenomination,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_StringLitExpression) {
+        } else if(kind === ASTNodeType_StringLitExpression) {
             const count = this.popU32();
             const parts = []
             const isUnicode = []
@@ -363,9 +383,10 @@ class Deserializer {
                 type: "StringLiteral",
                 value: parts.join(""),
                 parts,
-                isUnicode
+                isUnicode,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_HexStringLitExpression) {
+        } else if(kind === ASTNodeType_HexStringLitExpression) {
             const count = this.popU32();
             const parts = []
             for(let i = 0; i < count; i++) {
@@ -376,8 +397,9 @@ class Deserializer {
                 type: "HexLiteral",
                 value: parts.join(""),
                 parts,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_UnicodeStringLitExpression) {
+        } else if(kind === ASTNodeType_UnicodeStringLitExpression) {
             const count = this.popU32();
             const parts = []
             const isUnicode = []
@@ -390,23 +412,26 @@ class Deserializer {
                 type: "StringLiteral",
                 value: parts.join(""),
                 parts,
-                isUnicode
+                isUnicode,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_BoolLitExpression) {
+        } else if(kind === ASTNodeType_BoolLitExpression) {
             const value = this.popString();
 
             return {
                 type: "BooleanLiteral",
-                value: value === "true"
+                value: value === "true",
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_LiteralExpression) {
+        } else if(kind === ASTNodeType_LiteralExpression) {
             const name = this.popString();
 
             return {
                 type: "Identifier",
-                name
+                name,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_BinaryExpression) {
+        } else if(kind === ASTNodeType_BinaryExpression) {
             const operatorId = this.popU32();
             const lhs = this.popExpression();
             const rhs = this.popExpression();
@@ -417,9 +442,10 @@ class Deserializer {
                 type: "BinaryOperation",
                 operator,
                 left: lhs,
-                right: rhs
+                right: rhs,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_TupleExpression) {
+        } else if(kind === ASTNodeType_TupleExpression) {
             const elementCount = this.popU32();
             const elements = []
             for(let i = 0; i < elementCount; i++) {
@@ -434,9 +460,10 @@ class Deserializer {
             return {
                 type: "TupleExpression",
                 components: elements,
-                isArray: false
+                isArray: false,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_UnaryExpression || type === ASTNodeType_UnaryExpressionPostfix) {
+        } else if(kind === ASTNodeType_UnaryExpression || kind === ASTNodeType_UnaryExpressionPostfix) {
             const operator = this.popU32();
             const subExpression = this.popExpression();
 
@@ -444,16 +471,18 @@ class Deserializer {
                 type: "UnaryOperation",
                 operator: this.operatorStrings[operator],
                 subExpression,
-                isPrefix: type !== ASTNodeType_UnaryExpressionPostfix
+                isPrefix: kind !== ASTNodeType_UnaryExpressionPostfix,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_NewExpression) {
+        } else if(kind === ASTNodeType_NewExpression) {
             const typeName = this.popType();
 
             return {
                 type: "NewExpression",
                 typeName,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_FunctionCallExpression) {
+        } else if(kind === ASTNodeType_FunctionCallExpression) {
             const expression = this.popExpression();
             const [args, names] = this.popCallArgumentList();
             const identifiers = []
@@ -467,12 +496,13 @@ class Deserializer {
                 arguments: args,
                 names,
                 identifiers,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_IdentifierPath) {
+        } else if(kind === ASTNodeType_IdentifierPath) {
             return this.popType()
-        } else if(type === ASTNodeType_BaseType) {
+        } else if(kind === ASTNodeType_BaseType) {
             return this.popType()
-        } else if(type === ASTNodeType_MemberAccessExpression) {
+        } else if(kind === ASTNodeType_MemberAccessExpression) {
             const expression = this.popExpression();
             const memberName = this.popString();
 
@@ -480,8 +510,9 @@ class Deserializer {
                 type: "MemberAccess",
                 expression,
                 memberName,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_ArrayAccessExpression) {
+        } else if(kind === ASTNodeType_ArrayAccessExpression) {
             const base = this.popExpression();
             const hasIndexExpression = this.popU32();
             let index = null
@@ -494,13 +525,15 @@ class Deserializer {
                 type: "IndexAccess",
                 base,
                 index,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_ArraySliceExpression) {
+        } else if(kind === ASTNodeType_ArraySliceExpression) {
             const base = this.popExpression();
 
             const result =  {
                 type: "IndexRangeAccess",
                 base,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
 
             const hasIndexStart = this.popU32();
@@ -514,7 +547,7 @@ class Deserializer {
             }
 
             return result;
-        } else if(type === ASTNodeType_InlineArrayExpression) {
+        } else if(kind === ASTNodeType_InlineArrayExpression) {
             const expressionCount = this.popU32();
             const expressions = []
             for(let i = 0; i < expressionCount; i++) {
@@ -524,9 +557,10 @@ class Deserializer {
             return {
                 type: "TupleExpression",
                 components: expressions,
-                isArray: true
+                isArray: true,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_TerneryExpression) {
+        } else if(kind === ASTNodeType_TerneryExpression) {
             const condition = this.popExpression();
             const trueExpression = this.popExpression();
             const falseExpression = this.popExpression();
@@ -536,8 +570,9 @@ class Deserializer {
                 condition,
                 trueExpression,
                 falseExpression,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_NamedParametersExpression) {
+        } else if(kind === ASTNodeType_NamedParametersExpression) {
             const expression = this.popExpression();
             const count = this.popU32();
 
@@ -559,63 +594,73 @@ class Deserializer {
                     names,
                     identifiers,
                     arguments: parameters,
-                }
+                },
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_ArrayType) {
+        } else if(kind === ASTNodeType_ArrayType) {
             return this.popType()
-        } else if(type === ASTNodeType_NameValue) {
+        } else if(kind === ASTNodeType_NameValue) {
             const name = this.popString()
             const value = this.popExpression()
             return {
                 type: "NameValueExpression",
                 name,
                 value,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
         } else {
-            throw new Error(`Unknown/Unsupported expression type: ${type}`);
+            throw new Error(`Unknown/Unsupported expression type: ${kind}`);
         }
     }
 
     popYulExpression() {
-        const type = this.popU32();
+        const kind = this.popU32();
+        const startOffset = this.popU32();
+        const endOffset = this.popU32();
 
-        if(type === ASTNodeType_YulNumberLitExpression) {
+        if(kind === ASTNodeType_YulNumberLitExpression) {
             return {
                 type: "DecimalNumber",
-                value: this.popString()
+                value: this.popString(),
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_YulStringLitExpression) {
+        } else if(kind === ASTNodeType_YulStringLitExpression) {
             const value = this.popString();
             return {
                 type: "StringLiteral",
                 value,
                 parts: [value],
-                isUnicode: [false]
+                isUnicode: [false],
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_YulHexNumberLitExpression) {
+        } else if(kind === ASTNodeType_YulHexNumberLitExpression) {
             return {
                 type: "HexNumber",
-                value: this.popString()
+                value: this.popString(),
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_YulBoolLitExpression) {
+        } else if(kind === ASTNodeType_YulBoolLitExpression) {
             return {
                 type: "BooleanLiteral",
-                value: this.popString() === "true"
+                value: this.popString() === "true",
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_YulHexStringLitExpression) {
+        } else if(kind === ASTNodeType_YulHexStringLitExpression) {
             const value = this.popString();
             return {
                 type: "HexLiteral",
                 value,
                 parts: [value],
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_YulMemberAccessExpression) {
+        } else if(kind === ASTNodeType_YulMemberAccessExpression) {
             const count = this.popU32();
             if(count === 1) {
                 const name = this.popString();
                 return {
                     type: "Identifier",
-                    name
+                    name,
+                    range: this.includeByteRange ? [startOffset, endOffset] : undefined
                 }
             } else {
                 const parts = []
@@ -625,10 +670,11 @@ class Deserializer {
                 return {
                     type: "AssemblyMemberAccess",
                     expression: stringToIdentifier(parts[0]),
-                    memberName: stringToIdentifier(parts[1])
+                    memberName: stringToIdentifier(parts[1]),
+                    range: this.includeByteRange ? [startOffset, endOffset] : undefined
                 }
             }
-        } else if(type === ASTNodeType_YulFunctionCallExpression) {
+        } else if(kind === ASTNodeType_YulFunctionCallExpression) {
             const functionName = this.popString();
             const argCount = this.popU32();
             const args = []
@@ -639,16 +685,19 @@ class Deserializer {
                 type: "AssemblyCall",
                 functionName,
                 arguments: args,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
         } else {
-            throw new Error(`Unknown/Unsupported Yul expression type: ${type}`);
+            throw new Error(`Unknown/Unsupported Yul expression type: ${kind}`);
         }
     }
 
     popStatement() {
-        const type = this.popU32();
+        const kind = this.popU32();
+        const startOffset = this.popU32();
+        const endOffset = this.popU32();
 
-        if(type === ASTNodeType_BlockStatement) {
+        if(kind === ASTNodeType_BlockStatement) {
             const count = this.popU32();
             const statements = []
             for(let i = 0; i < count; i++) {
@@ -657,14 +706,16 @@ class Deserializer {
             return {
                 type: "Block",
                 statements,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_UncheckedBlockStatement) {
+        } else if(kind === ASTNodeType_UncheckedBlockStatement) {
             const block = this.popStatement();
             return {
                 type: "UncheckedStatement",
                 block,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_ReturnStatement) {
+        } else if(kind === ASTNodeType_ReturnStatement) {
             let expression = null
             const hasExpression = this.popU16();
             if(hasExpression === 1) {
@@ -673,16 +724,18 @@ class Deserializer {
 
             return {
                 type: "ReturnStatement",
-                expression
+                expression,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_ExpressionStatement) {
+        } else if(kind === ASTNodeType_ExpressionStatement) {
             const hasExpression = this.popU16() == 1;
             const expression = hasExpression ? this.popExpression() : null;
             return {
                 type: "ExpressionStatement",
-                expression
+                expression,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_IfStatement) {
+        } else if(kind === ASTNodeType_IfStatement) {
             const condition = this.popExpression();
             const trueBody = this.popStatement();
             const hasFalse = this.popU32();
@@ -695,8 +748,9 @@ class Deserializer {
                 condition,
                 trueBody,
                 falseBody,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_VariableDeclarationStatement) {
+        } else if(kind === ASTNodeType_VariableDeclarationStatement) {
             const variable = this.popVariableDeclaration();
             const noInitialValue = this.popU32();
             let initialValue = null;
@@ -708,8 +762,9 @@ class Deserializer {
                 type: "VariableDeclarationStatement",
                 variables: [variable],
                 initialValue,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_VariableDeclarationTupleStatement) {
+        } else if(kind === ASTNodeType_VariableDeclarationTupleStatement) {
             const count = this.popU32();
 
             const array = []
@@ -728,27 +783,30 @@ class Deserializer {
             return {
                 type: "VariableDeclarationStatement",
                 variables: array,
-                initialValue
+                initialValue,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_WhileStatement) {
+        } else if(kind === ASTNodeType_WhileStatement) {
             const condition = this.popExpression();
             const body = this.popStatement();
 
             return {
                 type: "WhileStatement",
                 condition,
-                body
+                body,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_DoWhileStatement) {
+        } else if(kind === ASTNodeType_DoWhileStatement) {
             const condition = this.popExpression();
             const body = this.popStatement();
 
             return {
                 type: "DoWhileStatement",
                 condition,
-                body
+                body,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_ForStatement) {
+        } else if(kind === ASTNodeType_ForStatement) {
             const hasInit = this.popU16() == 1;
             const initExpression = hasInit ? this.popStatement() : null;
             const hasCondition = this.popU16() == 1;
@@ -761,27 +819,36 @@ class Deserializer {
                 initExpression,
                 conditionExpression,
                 loopExpression,
-                body
+                body,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_BreakStatement) {
-            return { type: "BreakStatement" }
-        } else if(type === ASTNodeType_ContinueStatement) {
-            return { type: "ContinueStatement" }
-        } else if(type === ASTNodeType_RevertStatement) {
+        } else if(kind === ASTNodeType_BreakStatement) {
+            return { 
+                type: "BreakStatement",
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
+        } else if(kind === ASTNodeType_ContinueStatement) {
+            return { 
+                type: "ContinueStatement",
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
+        } else if(kind === ASTNodeType_RevertStatement) {
             const revertCall = this.popExpression();
 
             return {
                 type: "RevertStatement",
                 revertCall,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_EmitStatement) {
+        } else if(kind === ASTNodeType_EmitStatement) {
             const eventCall = this.popExpression();
 
             return {
                 type: "EmitStatement",
                 eventCall,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_TryStatement) {
+        } else if(kind === ASTNodeType_TryStatement) {
             const expression = this.popExpression();
             const returnParameters = this.popFunctionParameters();
             const body = this.popStatement();
@@ -806,9 +873,10 @@ class Deserializer {
                 expression,
                 returnParameters,
                 body,
-                catchClauses
+                catchClauses,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_AssemblyStatement) {
+        } else if(kind === ASTNodeType_AssemblyStatement) {
             const isEVMAsm = this.popU16() === 1;
             const flagCount = this.popU16();
             const flags = []
@@ -821,9 +889,10 @@ class Deserializer {
                 type: "InlineAssemblyStatement",
                 language: isEVMAsm ? "evmasm" : null,
                 flags,
-                body
+                body,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_YulBlockStatement) {
+        } else if(kind === ASTNodeType_YulBlockStatement) {
             const count = this.popU32();
             const operations = []
             for(let i = 0; i < count; i++) {
@@ -832,8 +901,9 @@ class Deserializer {
             return {
                 type: "AssemblyBlock",
                 operations,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_YulVariableDeclaration) {
+        } else if(kind === ASTNodeType_YulVariableDeclaration) {
             const count = this.popU32();
             const names = []
             for(let i = 0; i < count; i++) {
@@ -845,9 +915,10 @@ class Deserializer {
             return {
                 type: "AssemblyLocalDefinition",
                 names,
-                expression: value
+                expression: value,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_YulVariableAssignment) {
+        } else if(kind === ASTNodeType_YulVariableAssignment) {
             const count = this.popU32();
             const names = []
             for(let i = 0; i < count; i++) {
@@ -859,9 +930,10 @@ class Deserializer {
             return {
                 type: "AssemblyAssignment",
                 names,
-                expression: value
+                expression: value,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_YulFunctionCallExpression) {
+        } else if(kind === ASTNodeType_YulFunctionCallExpression) {
             const functionName = this.popString();
             const argCount = this.popU32();
             const args = []
@@ -872,17 +944,19 @@ class Deserializer {
                 type: "AssemblyCall",
                 functionName,
                 arguments: args,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_YulIfStatement) {
+        } else if(kind === ASTNodeType_YulIfStatement) {
             const expression = this.popYulExpression();
             const body = this.popStatement();
 
             return {
                 type: "AssemblyIf",
                 condition: expression,
-                body
+                body,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_YulForStatement) {
+        } else if(kind === ASTNodeType_YulForStatement) {
             const pre = this.popStatement();
             const condition = this.popYulExpression();
             const post = this.popStatement();
@@ -893,9 +967,10 @@ class Deserializer {
                 pre,
                 condition,
                 post,
-                body
+                body,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_YulFunctionDefinition) {
+        } else if(kind === ASTNodeType_YulFunctionDefinition) {
             const identifier = this.popString();
             const parameterCount = this.popU32();
             const parameters = []
@@ -914,9 +989,10 @@ class Deserializer {
                 name: identifier,
                 arguments: parameters,
                 returnArguments: returns,
-                body
+                body,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_YulSwitchStatement) {
+        } else if(kind === ASTNodeType_YulSwitchStatement) {
             const expression = this.popYulExpression();
             const count = this.popU32();
             const cases = []
@@ -942,18 +1018,26 @@ class Deserializer {
                 type: "AssemblySwitch",
                 expression,
                 cases,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_YulLeaveStatement) {
+        } else if(kind === ASTNodeType_YulLeaveStatement) {
             return {
                 type: "Identifier",
-                name: "leave"
+                name: "leave",
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
             }
-        } else if(type === ASTNodeType_YulContinueStatement) {
-            return { type: "Continue" }
-        } else if(type === ASTNodeType_YulBreakStatement) {
-            return { type: "Break" }
+        } else if(kind === ASTNodeType_YulContinueStatement) {
+            return { 
+                type: "Continue",
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
+        } else if(kind === ASTNodeType_YulBreakStatement) {
+            return { 
+                type: "Break",
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
         } else {
-            throw new Error("Unknown/Unsupported statement kind " + type)
+            throw new Error("Unknown/Unsupported statement kind " + kind)
         }
     }
 
@@ -994,7 +1078,7 @@ class Deserializer {
             unitAlias,
             unitAliasIdentifier: stringToIdentifier(unitAlias),
             symbolAliases: aliases,
-            symbolAliasesIdentifiers: aliasesIdentifiers
+            symbolAliasesIdentifiers: aliasesIdentifiers,
         }
     }
 
@@ -1381,72 +1465,139 @@ class Deserializer {
     }
 
     popASTNode() {
-        const type = this.popU32();
+        const kind = this.popU32();
+        const startOffset = this.popU32();
+        const endOffset = this.popU32();
 
-        if(type === ASTNodeType_SourceUnit) {
-            return this.popSourceUnit();
-        } else if(type === ASTNodeType_Pragma) {
-            return this.popPragma();
-        } else if(type === ASTNodeType_Import) {
-            return this.popImport();
-        } else if(type === ASTNodeType_Using) {
-            return this.popUsing();
-        } else if(type === ASTNodeType_EnumDefinition) {
-            return this.popEnumDefinition();
-        } else if(type === ASTNodeType_StructDefinition) {
-            return this.popStructDefinition();
-        } else if(type === ASTNodeType_Error) {
-            return this.popError();
-        } else if(type === ASTNodeType_Event) {
-            return this.popEvent();
-        } else if(type === ASTNodeType_Typedef) {
-            return this.popTypedef();
-        } else if(type === ASTNodeType_ConstVariable) {
-            return this.popConstVariable();
-        } else if(type === ASTNodeType_StateVariableDeclaration) {
-            return this.popStateVariableDeclaration();
-        } else if(type === ASTNodeType_FunctionDefinition) {
-            return this.popFunctionDefinition();
-        } else if(type === ASTNodeType_FallbackFunction) {
+        if(kind === ASTNodeType_SourceUnit) {
+            return {
+                ...this.popSourceUnit(),
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
+        } else if(kind === ASTNodeType_Pragma) {
+            return {
+                ...this.popPragma(),
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
+        } else if(kind === ASTNodeType_Import) {
+            return {
+                ...this.popImport(),
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
+        } else if(kind === ASTNodeType_Using) {
+            return {
+                ...this.popUsing(),
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
+        } else if(kind === ASTNodeType_EnumDefinition) {
+            return {
+                ...this.popEnumDefinition(),
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
+        } else if(kind === ASTNodeType_StructDefinition) {
+            return {
+                ...this.popStructDefinition(),
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
+        } else if(kind === ASTNodeType_Error) {
+            return {
+                ...this.popError(),
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
+        } else if(kind === ASTNodeType_Event) {
+            return {
+                ...this.popEvent(),
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
+        } else if(kind === ASTNodeType_Typedef) {
+            return {
+                ...this.popTypedef(),
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
+        } else if(kind === ASTNodeType_ConstVariable) {
+            return {
+                ...this.popConstVariable(),
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
+        } else if(kind === ASTNodeType_StateVariableDeclaration) {
+            return {
+                ...this.popStateVariableDeclaration(),
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
+        } else if(kind === ASTNodeType_FunctionDefinition) {
+            return {
+                ...this.popFunctionDefinition(),
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
+        } else if(kind === ASTNodeType_FallbackFunction) {
             const result = this.popFunctionDefinition();
             result.name = null
             result.isFallback = true;
 
-            return result
-        } else if(type === ASTNodeType_ReceiveFunction) {
+            return {
+                ...result,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
+        } else if(kind === ASTNodeType_ReceiveFunction) {
             const result = this.popFunctionDefinition();
             result.name = null
             result.isReceiveEther = true;
-            return result
-        } else if(type === ASTNodeType_ModifierDefinition) {
-            return this.popModifierDefinition();
-        } else if(type === ASTNodeType_ContractDefinition) {
-            return this.popContractDefinition();
-        } else if(type === ASTNodeType_LibraryDefinition) {
+            return {
+                ...result,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
+        } else if(kind === ASTNodeType_ModifierDefinition) {
+            return {
+                ...this.popModifierDefinition(),
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
+        } else if(kind === ASTNodeType_ContractDefinition) {
+            return {
+                ...this.popContractDefinition(),
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
+        } else if(kind === ASTNodeType_LibraryDefinition) {
             const result = this.popContractDefinition();
             result.kind = "library"
-            return result
-        } else if(type === ASTNodeType_InterfaceDefinition) {
+            return {
+                ...result,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
+        } else if(kind === ASTNodeType_InterfaceDefinition) {
             const result = this.popContractDefinition();
             result.kind = "interface"
-            return result
-        } else if(type === ASTNodeType_AbstractContractDefinition) {
+            return {
+                ...result,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
+        } else if(kind === ASTNodeType_AbstractContractDefinition) {
             const result = this.popContractDefinition();
             result.kind = "abstract"
-            return result
-        } else if(type === ASTNodeType_ConstructorDefinition) {
-            return this.popConstructorDefinition();
-        } else if(type === ASTNodeType_InheritanceSpecifier) {
-            return this.popInheritanceSpecifier();
+            return {
+                ...result,
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
+        } else if(kind === ASTNodeType_ConstructorDefinition) {
+            return {
+                ...this.popConstructorDefinition(),
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
+        } else if(kind === ASTNodeType_InheritanceSpecifier) {
+            return {
+                ...this.popInheritanceSpecifier(),
+                range: this.includeByteRange ? [startOffset, endOffset] : undefined
+            }
         } else {
-            throw new Error(`Unknown/Unsupported ASTNode kind: ${type}`);
+            throw new Error(`Unknown/Unsupported ASTNode kind: ${kind}`);
         }
         
     }
 
     popSourceUnit() {
-        const type = this.popU32();
-        if(type !== ASTNodeType_SourceUnit) {
+        const kind = this.popU32();
+        const startOffset = this.popU32();
+        const endOffset = this.popU32();
+        if(kind !== ASTNodeType_SourceUnit) {
             throw new Error("Invalid SourceUnit type");
         }
 
@@ -1459,7 +1610,8 @@ class Deserializer {
 
         return {
             type: "SourceUnit",
-            children
+            children,
+            range: this.includeByteRange ? [startOffset, endOffset] : undefined
         }
     }
 }

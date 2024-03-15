@@ -74,21 +74,42 @@ pushTokenStringById(Serializer *s, TokenId token) {
     return 2 * sizeof(u32);
 }
 
+static u32
+pushByteRanges(Serializer *s, TokenId start, TokenId end) {
+    if(s->head) {
+        Token startToken = getToken(s->tokens, start);
+        Token endToken = getToken(s->tokens, end);
+        u32 startOffset = (u32)(startToken.string.data - s->inputStringBase);
+        u32 endOffset = (u32)(endToken.string.data - s->inputStringBase);
+        pushU32(s, startOffset);
+        pushU32(s, endOffset);
+    }
+
+    return 2 * sizeof(u32);
+}
+
+static u32
+pushNodeHeader(Serializer *s, ASTNode *node) {
+    u32 l = pushU32(s, node->type);
+
+    l += pushByteRanges(s, node->startToken, node->endToken);
+
+    return l;
+}
+
 static u32 pushExpression(Serializer *s, ASTNode *node);
 static u32 pushFunctionParameters(Serializer *s, FunctionParameterList *parameters);
 
 static u32
 pushType(Serializer *s, ASTNode *node) {
-    u32 l = 0;
+    u32 l = pushNodeHeader(s, node);
 
     switch(node->type) {
         case ASTNodeType_BaseType: {
-            l += pushU32(s, node->type);
             l += pushTokenStringById(s, node->baseTypeNode.typeName);
             l += pushU32(s, node->baseTypeNode.payable);
         } break;
         case ASTNodeType_IdentifierPath: {
-            l += pushU32(s, node->type);
             l += pushU32(s, node->identifierPathNode.identifiers.count);
             for(u32 i = 0; i < node->identifierPathNode.identifiers.count; i++) {
                 TokenId part = listGetTokenId(&node->identifierPathNode.identifiers, i);
@@ -96,14 +117,12 @@ pushType(Serializer *s, ASTNode *node) {
             }
         } break;
         case ASTNodeType_MappingType: {
-            l += pushU32(s, node->type);
             l += pushType(s, node->mappingNode.keyType);
             l += pushTokenStringById(s, node->mappingNode.keyIdentifier);
             l += pushType(s, node->mappingNode.valueType);
             l += pushTokenStringById(s, node->mappingNode.valueIdentifier);
         } break;
         case ASTNodeType_ArrayType: {
-            l += pushU32(s, node->type);
             l += pushType(s, node->arrayTypeNode.elementType);
             l += pushU32(s, node->arrayTypeNode.lengthExpression != 0x0);
             if(node->arrayTypeNode.lengthExpression != 0x0) {
@@ -111,7 +130,6 @@ pushType(Serializer *s, ASTNode *node) {
             }
         } break;
         case ASTNodeType_FunctionType: {
-            l += pushU32(s, node->type);
             l += pushFunctionParameters(s, &node->functionTypeNode.parameters);
             l += pushFunctionParameters(s, &node->functionTypeNode.returnParameters);
             l += pushU16(s, node->functionTypeNode.visibility);
@@ -127,7 +145,7 @@ pushType(Serializer *s, ASTNode *node) {
 
 static u32
 pushVariableDeclaration(Serializer *s, ASTNode *node) {
-    u32 l = 0;
+    u32 l = pushNodeHeader(s, node);
 
     ASTNodeVariableDeclaration *decl = &node->variableDeclarationNode;
     l += pushType(s, decl->type);
@@ -162,9 +180,8 @@ pushCallArgumentList(Serializer *s, ASTNodeList *expressions, TokenIdList *names
 
 static u32
 pushExpression(Serializer *s, ASTNode *node) {
-    u32 l = 0;
+    u32 l = pushNodeHeader(s, node);
 
-    l += pushU32(s, node->type);
     switch(node->type){
         case ASTNodeType_NumberLitExpression: {
             l += pushTokenStringById(s, node->numberLitExpressionNode.value);
@@ -236,7 +253,13 @@ pushExpression(Serializer *s, ASTNode *node) {
             // as an identifier.
             if(stringMatch(token.string, LIT_TO_STR("address"))) {
                 l += popU32(s);
+                l += popU32(s);
+                l += popU32(s);
+
                 l += pushU32(s, ASTNodeType_IdentifierExpression);
+                l += pushU32(s, 0);
+                l += pushU32(s, 0);
+
                 l += pushTokenStringById(s, node->baseTypeNode.typeName);
             } else {
                 l += pushType(s, node);
@@ -329,7 +352,7 @@ pushYulFunctionCall(Serializer *s, ASTNode *node) {
 
 static u32
 pushYulExpression(Serializer *s, ASTNode *node) {
-    u32 l = pushU32(s, node->type);
+    u32 l = pushNodeHeader(s, node);
     
     switch(node->type) {
         case ASTNodeType_YulNumberLitExpression: {
@@ -367,7 +390,7 @@ pushYulExpression(Serializer *s, ASTNode *node) {
 
 static u32
 pushStatement(Serializer *s, ASTNode *node) {
-    u32 l = pushU32(s, node->type);
+    u32 l = pushNodeHeader(s, node);
 
     switch(node->type) {
         case ASTNodeType_BlockStatement: {
@@ -614,7 +637,7 @@ pushFunctionParameters(Serializer *s, FunctionParameterList *parameters) {
 
 static u32
 pushPragma(Serializer *s, ASTNode *node) {
-    u32 l = pushU32(s, node->type);
+    u32 l = pushNodeHeader(s, node);
     ASTNodePragma *pragma = &node->pragmaNode;
 
     l += pushTokenStringById(s, pragma->major);
@@ -636,9 +659,8 @@ pushPragma(Serializer *s, ASTNode *node) {
 
 static u32
 pushImportDirective(Serializer *s, ASTNode *node) {
-    u32 l = 0;
+    u32 l = pushNodeHeader(s, node);
 
-    l += pushU32(s, node->type);
     l += pushTokenStringById(s, node->pathTokenId);
     l += pushTokenStringById(s, node->unitAliasTokenId);
 
@@ -660,7 +682,7 @@ pushImportDirective(Serializer *s, ASTNode *node) {
 
 static u32
 pushUsing(Serializer *s, ASTNode *node) {
-    u32 l = pushU32(s, node->type);
+    u32 l = pushNodeHeader(s, node);
     ASTNodeUsing *using = &node->usingNode;
 
     ASTNodeLink *it = using->identifiers.head;
@@ -686,12 +708,11 @@ pushUsing(Serializer *s, ASTNode *node) {
 
 static u32
 pushEnumDefinition(Serializer *s, ASTNode *node) {
-    u32 l = 0;
+    u32 l = pushNodeHeader(s, node);
 
-    l += pushU32(s, node->type);
     l += pushTokenStringById(s, node->nameTokenId);
-
     l += pushU32(s, node->values.count);
+
     for(u32 i = 0; i < node->values.count; i++) {
         TokenId value = listGetTokenId(&node->values, i);
         l += pushTokenStringById(s, value);
@@ -702,9 +723,8 @@ pushEnumDefinition(Serializer *s, ASTNode *node) {
 
 static u32
 pushStruct(Serializer *s, ASTNode *node) {
-    u32 l = 0;
+    u32 l = pushNodeHeader(s, node);
 
-    l += pushU32(s, node->type);
     l += pushTokenStringById(s, node->structNode.nameTokenId);
 
     assert(node->structNode.memberTypes.count == node->structNode.memberNames.count);
@@ -722,9 +742,8 @@ pushStruct(Serializer *s, ASTNode *node) {
 
 static u32
 pushError(Serializer *s, ASTNode *node) {
-    u32 l = 0;
+    u32 l = pushNodeHeader(s, node);
 
-    l += pushU32(s, node->type);
     ASTNodeError *error = &node->errorNode;
     l += pushTokenStringById(s, error->identifier);
     l += pushFunctionParameters(s, &error->parameters);
@@ -734,9 +753,8 @@ pushError(Serializer *s, ASTNode *node) {
 
 static u32
 pushEvent(Serializer *s, ASTNode *node) {
-    u32 l = 0;
+    u32 l = pushNodeHeader(s, node);
 
-    l += pushU32(s, node->type);
     ASTNodeEvent *event = &node->eventNode;
     l += pushTokenStringById(s, event->identifier);
     l += pushU32(s, event->anonymous);
@@ -754,9 +772,8 @@ pushEvent(Serializer *s, ASTNode *node) {
 
 static u32
 pushTypedef(Serializer *s, ASTNode *node) {
-    u32 l = 0;
+    u32 l = pushNodeHeader(s, node);
 
-    l += pushU32(s, node->type);
     ASTNodeTypedef *typedefNode = &node->typedefNode;
     l += pushTokenStringById(s, typedefNode->identifier);
     l += pushType(s, typedefNode->type);
@@ -766,9 +783,8 @@ pushTypedef(Serializer *s, ASTNode *node) {
 
 static u32
 pushConstVariable(Serializer *s, ASTNode *node) {
-    u32 l = 0;
+    u32 l = pushNodeHeader(s, node);
 
-    l += pushU32(s, node->type);
     ASTNodeConstVariable *constNode = &node->constVariableNode;
     l += pushTokenStringById(s, constNode->identifier);
     l += pushType(s, constNode->type);
@@ -779,7 +795,7 @@ pushConstVariable(Serializer *s, ASTNode *node) {
 
 static u32
 pushStateVariableDeclaration(Serializer *s, ASTNode *node) {
-    u32 l = pushU32(s, node->type);
+    u32 l = pushNodeHeader(s, node);
 
     ASTNodeConstVariable *decl = &node->constVariableNode;
 
@@ -807,7 +823,7 @@ pushStateVariableDeclaration(Serializer *s, ASTNode *node) {
 
 static u32
 pushFunctionDefinition(Serializer *s, ASTNode *node) {
-    u32 l = pushU32(s, node->type);
+    u32 l = pushNodeHeader(s, node);
 
     ASTNodeFunctionDefinition *function = &node->functionDefinitionNode;
     l += pushTokenStringById(s, function->name);
@@ -846,7 +862,7 @@ pushFunctionDefinition(Serializer *s, ASTNode *node) {
 
 static u32
 pushModifierDefinition(Serializer *s, ASTNode *node) {
-    u32 l = pushU32(s, node->type);
+    u32 l = pushNodeHeader(s, node);
 
     ASTNodeFunctionDefinition *function = &node->functionDefinitionNode;
     l += pushTokenStringById(s, function->name);
@@ -873,7 +889,7 @@ pushModifierDefinition(Serializer *s, ASTNode *node) {
 
 static u32
 pushInheritanceSpecifier(Serializer *s, ASTNode *node) {
-    u32 l = pushU32(s, node->type);
+    u32 l = pushNodeHeader(s, node);
 
     ASTNodeInheritanceSpecifier *inheritance = &node->inheritanceSpecifierNode;
     l += pushType(s, inheritance->identifier);
@@ -884,7 +900,7 @@ pushInheritanceSpecifier(Serializer *s, ASTNode *node) {
 
 static u32
 pushContractDefinition(Serializer *s, ASTNode *node) {
-    u32 l = pushU32(s, node->type);
+    u32 l = pushNodeHeader(s, node);
 
     ASTNodeContractDefinition *contract = &node->contractDefinitionNode;
     l += pushTokenStringById(s, contract->name);
@@ -906,7 +922,7 @@ pushContractDefinition(Serializer *s, ASTNode *node) {
 
 static u32
 pushConstructorDefinition(Serializer *s, ASTNode *node) {
-    u32 l = pushU32(s, node->type);
+    u32 l = pushNodeHeader(s, node);
 
     ASTNodeConstructorDefinition *constructor = &node->constructorDefinitionNode;
 
@@ -989,9 +1005,8 @@ pushASTNode(Serializer *s, ASTNode *node) {
 
 static u32
 pushSourceUnit(Serializer *s, ASTNode *node) {
-    u32 l = 0;
+    u32 l = pushNodeHeader(s, node);
 
-    l += pushU32(s, node->type);
     l += pushU32(s, node->children.count);
 
     ASTNodeLink *child = node->children.head;

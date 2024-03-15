@@ -45,7 +45,7 @@ async function main() {
 
 async function runSingleTest(args) {
     const input = await fs.readFile(args[0], "utf-8")
-    const antlrASTObj = parser.parse(input, { range: true });
+    const antlrASTObj = parser.parse(input, { range: false });
     const antlrAST = JSON.stringify(antlrASTObj, null, 2);
 
     const myASTObj = wasmParse(input);
