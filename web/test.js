@@ -44,11 +44,12 @@ async function main() {
 }
 
 async function runSingleTest(args) {
+    const enableRange = true
     const input = await fs.readFile(args[0], "utf-8")
-    const antlrASTObj = parser.parse(input, { range: false });
+    const antlrASTObj = parser.parse(input, { range: enableRange });
     const antlrAST = JSON.stringify(antlrASTObj, null, 2);
 
-    const myASTObj = wasmParse(input);
+    const myASTObj = wasmParse(input, { range: enableRange });
     const myAST = JSON.stringify(myASTObj, null, 2);
 
     if (antlrAST === myAST) {

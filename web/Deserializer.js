@@ -92,17 +92,6 @@ function stringToStringLiteral(str) {
 	};
 }
 
-function stringToIdentifier(str) {
-	if (str === null) {
-		return null;
-	}
-
-	return {
-		type: "Identifier",
-		name: str,
-	};
-}
-
 function stringToEnumValue(str) {
 	if (str === null) {
 		return null;
@@ -119,7 +108,7 @@ class Deserializer {
 		this.inputString = inputString;
 		this.dataView = dataView;
 		this.offset = 0;
-		this.includeByteRange = options && options.includeByteRange === true;
+		this.includeByteRange = options && options.range === true;
 
 		this.operatorStrings = {
 			39: "delete",
@@ -213,6 +202,21 @@ class Deserializer {
 		}
 	}
 
+    popStringIdentifier() {
+		const offset = this.popU32();
+		const length = this.popU32();
+
+		if (offset === 0xffffffff) {
+			return null;
+		} else {
+			return {
+                type: "Identifier",
+                name: this.inputString.substring(offset, offset + length),
+                range: this.includeByteRange ? [offset, offset + length - 1] : undefined,
+            }
+		}
+    }
+
 	popType() {
 		const kind = this.popU32();
 		const startOffset = this.popU32();
@@ -243,15 +247,15 @@ class Deserializer {
 			};
 		} else if (kind === ASTNodeType_MappingType) {
 			const keyType = this.popType();
-			const keyIdentifier = this.popString();
+			const keyName = this.popStringIdentifier();
 			const valueType = this.popType();
-			const valueIdentifier = this.popString();
+			const valueName = this.popStringIdentifier();
 			return {
 				type: "Mapping",
 				keyType,
-				keyName: stringToIdentifier(keyIdentifier),
+				keyName,
 				valueType,
-				valueName: stringToIdentifier(valueIdentifier),
+				valueName,
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
 		} else if (kind === ASTNodeType_FunctionType) {
@@ -293,14 +297,14 @@ class Deserializer {
 		const endOffset = this.popU32();
 
 		const typeName = this.popType();
-		const name = this.popString();
+        const identifier = this.popStringIdentifier();
 		const dataLocation = this.popU32();
 
 		return {
 			type: "VariableDeclaration",
 			typeName,
-			name,
-			identifier: stringToIdentifier(name),
+			name: identifier.name,
+			identifier,
 			storageLocation: this.storageLocationString[dataLocation],
 			isStateVar: false,
 			isIndexed: dataLocation === 4,
@@ -315,14 +319,14 @@ class Deserializer {
 		const endOffset = this.popU32();
 
 		const typeName = this.popType();
-		const name = this.popString();
+        const identifier = this.popStringIdentifier();
 		const dataLocation = this.popU32();
 
 		return {
 			type: "VariableDeclaration",
 			typeName,
-			name,
-			identifier: stringToIdentifier(name),
+			name: identifier.name,
+			identifier,
 			isStateVar: false,
 			isIndexed: dataLocation === 4,
 			storageLocation: this.storageLocationString[dataLocation],
@@ -337,13 +341,13 @@ class Deserializer {
 		const endOffset = this.popU32();
 
 		const typeName = this.popType();
-		const name = this.popString();
+        const identifier = this.popStringIdentifier();
 		const dataLocation = this.popU32();
 
 		return {
 			type: "VariableDeclaration",
-			name,
-			identifier: stringToIdentifier(name),
+			name: identifier.name,
+			identifier,
 			typeName,
 			storageLocation: this.storageLocationString[dataLocation],
 			isStateVar: false,
@@ -365,13 +369,13 @@ class Deserializer {
 			args.push(this.popExpression());
 		}
 
-		const namesCount = this.popU32();
-		const names = [];
-		for (let i = 0; i < namesCount; i++) {
-			names.push(this.popString());
+		const identifierCount = this.popU32();
+		const identifier = [];
+		for (let i = 0; i < identifierCount; i++) {
+			identifier.push(this.popStringIdentifier());
 		}
 
-		return [args, names];
+		return [args, identifier];
 	}
 
 	popExpression() {
@@ -506,10 +510,10 @@ class Deserializer {
 			};
 		} else if (kind === ASTNodeType_FunctionCallExpression) {
 			const expression = this.popExpression();
-			const [args, names] = this.popCallArgumentList();
-			const identifiers = [];
-			for (let i = 0; i < names.length; i++) {
-				identifiers.push(stringToIdentifier(names[i]));
+			const [args, identifiers] = this.popCallArgumentList();
+			const names = [];
+			for (let i = 0; i < identifiers.length; i++) {
+				names.push(identifiers[i].name);
 			}
 
 			return {
@@ -602,9 +606,9 @@ class Deserializer {
 			const identifiers = [];
 			const parameters = [];
 			for (let i = 0; i < count; i++) {
-				const name = this.popString();
-				names.push(name);
-				identifiers.push(stringToIdentifier(name));
+				const identifier = this.popStringIdentifier();
+				names.push(identifier.name);
+				identifiers.push(identifier);
 				parameters.push(this.popExpression());
 			}
 
@@ -687,12 +691,12 @@ class Deserializer {
 			} else {
 				const parts = [];
 				for (let i = 0; i < count; i++) {
-					parts.push(this.popString());
+					parts.push(this.popStringIdentifier());
 				}
 				return {
 					type: "AssemblyMemberAccess",
-					expression: stringToIdentifier(parts[0]),
-					memberName: stringToIdentifier(parts[1]),
+					expression: parts[0],
+					memberName: parts[1],
 					range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 				};
 			}
@@ -929,7 +933,7 @@ class Deserializer {
 			const count = this.popU32();
 			const names = [];
 			for (let i = 0; i < count; i++) {
-				names.push(stringToIdentifier(this.popString()));
+				names.push(this.popStringIdentifier());
 			}
 			const hasValue = this.popU16() === 1;
 			const value = hasValue ? this.popYulExpression() : null;
@@ -997,12 +1001,12 @@ class Deserializer {
 			const parameterCount = this.popU32();
 			const parameters = [];
 			for (let i = 0; i < parameterCount; i++) {
-				parameters.push(stringToIdentifier(this.popString()));
+				parameters.push(this.popStringIdentifier());
 			}
 			const returnCount = this.popU32();
 			const returns = [];
 			for (let i = 0; i < returnCount; i++) {
-				returns.push(stringToIdentifier(this.popString()));
+				returns.push(this.popStringIdentifier());
 			}
 			const body = this.popStatement();
 
@@ -1099,7 +1103,7 @@ class Deserializer {
 			};
 		} else if (kind === ASTNodeType_Import) {
 			const path = this.popString();
-			const unitAlias = this.popString();
+			const unitAliasIdentifier = this.popStringIdentifier();
 			const symbolsCount = this.popU32();
 
 			let aliases = [];
@@ -1111,12 +1115,12 @@ class Deserializer {
 			}
 
 			for (let i = 0; i < symbolsCount; i++) {
-				const symbol = this.popString();
-				const alias = this.popString();
-				aliases.push([symbol, alias]);
+				const symbolIdentifier = this.popStringIdentifier();
+				const aliasIdentifier = this.popStringIdentifier();
+				aliases.push([symbolIdentifier.name, aliasIdentifier.name]);
 				aliasesIdentifiers.push([
-					stringToIdentifier(symbol),
-					stringToIdentifier(alias),
+					symbolIdentifier,
+					aliasIdentifier,
 				]);
 			}
 
@@ -1124,8 +1128,8 @@ class Deserializer {
 				type: "ImportDirective",
 				path,
 				pathLiteral: stringToStringLiteral(path),
-				unitAlias,
-				unitAliasIdentifier: stringToIdentifier(unitAlias),
+				unitAlias: unitAliasIdentifier.name,
+				unitAliasIdentifier,
 				symbolAliases: aliases,
 				symbolAliasesIdentifiers: aliasesIdentifiers,
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
@@ -1244,7 +1248,7 @@ class Deserializer {
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
 		} else if (kind === ASTNodeType_StateVariableDeclaration) {
-			const name = this.popString();
+			const identifier = this.popStringIdentifier();
 			const typeName = this.popType();
 			const visibility = this.popU16();
 			const mutability = this.popU16();
@@ -1270,8 +1274,8 @@ class Deserializer {
 					{
 						type: "VariableDeclaration",
 						typeName,
-						name,
-						identifier: stringToIdentifier(name),
+						name: identifier.name,
+						identifier,
 						expression,
 						visibility: this.variableVisibilityString[visibility],
 						isStateVar: true,
