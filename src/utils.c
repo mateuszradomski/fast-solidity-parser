@@ -194,6 +194,21 @@ cursorTakenBytes(MemoryCursor *cursor) {
     return result;
 }
 
+static u32
+arenaFreeBytes(Arena *arena) {
+    u32 result = 0;
+
+    if(arena) {
+        for(MemoryCursorNode *cursorNode = arena->cursorNode;
+            cursorNode != 0x0;
+            cursorNode = cursorNode->next) {
+            result += cursorFreeBytes(&cursorNode->cursor);
+        }
+    }
+
+    return result;
+}
+
 static void
 arenaDestroy(Arena *arena) {
     if(arena) {
@@ -321,6 +336,17 @@ typedef struct String
 void _javascriptPrintString(char *s, u32 size) {
     String str = { .data = (u8 *)s, .size = size };
     javascriptPrintStringPtr(&str);
+}
+
+static String stringPushfv(Arena *arena, const char *format, va_list args);
+
+static void log(Arena *arena, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    String output = stringPushfv(arena, fmt, args);
+    va_end(args);
+
+    javascriptPrintStringPtr(&output);
 }
 
 static bool

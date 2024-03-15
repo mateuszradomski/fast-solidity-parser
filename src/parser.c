@@ -228,16 +228,16 @@ typedef struct ASTNodeTerneryExpression {
 } ASTNodeTerneryExpression;
 
 typedef struct ASTNodeFunctionDefinition {
-    TokenId name;
-    FunctionParameterList parameters;
-    u8 visibility;
-    u8 stateMutability;
-    u8 virtual;
-    u8 override;
-    ASTNodeList overrides;
-    ASTNodeList modifiers;
-    FunctionParameterList returnParameters;
-    ASTNode *body;
+    TokenId name;                      // 4 bytes
+    FunctionParameterList parameters;  // 12 bytes
+    u8 visibility;                     // 1 byte
+    u8 stateMutability;                // 1 byte
+    u8 virtual;                        // 1 byte
+    u8 override;                       // 1 byte
+    ASTNodeList overrides;             // 12 bytes
+    ASTNodeList modifiers;             // 12 bytes
+    FunctionParameterList returnParameters; // 12 bytes
+    ASTNode *body;                     // 4 bytes
 } ASTNodeFunctionDefinition;
 
 typedef struct ASTNodeBlockStatement {
@@ -2735,6 +2735,76 @@ static ASTNode
 parseSourceUnit(Parser *parser) {
     ASTNode node = { .type = ASTNodeType_SourceUnit };
 
+#if 0
+    log(parser->arena, "ASTNode                                   %d", sizeof(ASTNode));
+    log(parser->arena, "ASTNodeStruct                             %d", sizeof(ASTNodeStruct));
+    log(parser->arena, "ASTNodeBaseType                           %d", sizeof(ASTNodeBaseType));
+    log(parser->arena, "ASTNodeIdentifierPath                     %d", sizeof(ASTNodeIdentifierPath));
+    log(parser->arena, "ASTNodeMapping                            %d", sizeof(ASTNodeMapping));
+    log(parser->arena, "ASTNodeFunctionType                       %d", sizeof(ASTNodeFunctionType));
+    log(parser->arena, "ASTNodeArrayType                          %d", sizeof(ASTNodeArrayType));
+    log(parser->arena, "ASTNodeError                              %d", sizeof(ASTNodeError));
+    log(parser->arena, "ASTNodeEvent                              %d", sizeof(ASTNodeEvent));
+    log(parser->arena, "ASTNodeTypedef                            %d", sizeof(ASTNodeTypedef));
+    log(parser->arena, "ASTNodeConstVariable                      %d", sizeof(ASTNodeConstVariable));
+    log(parser->arena, "ASTNodeConstVariable                      %d", sizeof(ASTNodeConstVariable));
+    log(parser->arena, "ASTNodeNumberLitExpression                %d", sizeof(ASTNodeNumberLitExpression));
+    log(parser->arena, "ASTNodeStringLitExpression                %d", sizeof(ASTNodeStringLitExpression));
+    log(parser->arena, "ASTNodeTokenLitExpression                 %d", sizeof(ASTNodeTokenLitExpression));
+    log(parser->arena, "ASTNodeTokenLitExpression                 %d", sizeof(ASTNodeTokenLitExpression));
+    log(parser->arena, "ASTNodeBinaryExpression                   %d", sizeof(ASTNodeBinaryExpression));
+    log(parser->arena, "ASTNodeTupleExpression                    %d", sizeof(ASTNodeTupleExpression));
+    log(parser->arena, "ASTNodeUnaryExpression                    %d", sizeof(ASTNodeUnaryExpression));
+    log(parser->arena, "ASTNodeNewExpression                      %d", sizeof(ASTNodeNewExpression));
+    log(parser->arena, "ASTNodeFunctionCallExpression             %d", sizeof(ASTNodeFunctionCallExpression));
+    log(parser->arena, "ASTNodeMemberAccessExpression             %d", sizeof(ASTNodeMemberAccessExpression));
+    log(parser->arena, "ASTNodeArrayAccessExpression              %d", sizeof(ASTNodeArrayAccessExpression));
+    log(parser->arena, "ASTNodeArraySliceExpression               %d", sizeof(ASTNodeArraySliceExpression));
+    log(parser->arena, "ASTNodeTerneryExpression                  %d", sizeof(ASTNodeTerneryExpression));
+    log(parser->arena, "ASTNodeNamedParametersExpression          %d", sizeof(ASTNodeNamedParametersExpression));
+    log(parser->arena, "ASTNodeInlineArrayExpression              %d", sizeof(ASTNodeInlineArrayExpression));
+    log(parser->arena, "ASTNodeFunctionDefinition                 %d", sizeof(ASTNodeFunctionDefinition));
+    log(parser->arena, "ASTNodeBlockStatement                     %d", sizeof(ASTNodeBlockStatement));
+    log(parser->arena, "ASTNodeUncheckedBlockStatement            %d", sizeof(ASTNodeUncheckedBlockStatement));
+    log(parser->arena, "ASTNodeReturnStatement                    %d", sizeof(ASTNodeReturnStatement));
+    log(parser->arena, "ASTNodeReturnStatement                    %d", sizeof(ASTNodeReturnStatement));
+    log(parser->arena, "ASTNodeIfStatement                        %d", sizeof(ASTNodeIfStatement));
+    log(parser->arena, "ASTNodeVariableDeclarationStatement       %d", sizeof(ASTNodeVariableDeclarationStatement));
+    log(parser->arena, "ASTNodeVariableDeclaration                %d", sizeof(ASTNodeVariableDeclaration));
+    log(parser->arena, "ASTNodeVariableDeclarationTupleStatement  %d", sizeof(ASTNodeVariableDeclarationTupleStatement));
+    log(parser->arena, "ASTNodeWhileStatement                     %d", sizeof(ASTNodeWhileStatement));
+    log(parser->arena, "ASTNodeWhileStatement                     %d", sizeof(ASTNodeWhileStatement));
+    log(parser->arena, "ASTNodeInheritanceSpecifier               %d", sizeof(ASTNodeInheritanceSpecifier));
+    log(parser->arena, "ASTNodeModifierInvocation                 %d", sizeof(ASTNodeModifierInvocation));
+    log(parser->arena, "ASTNodeContractDefinition                 %d", sizeof(ASTNodeContractDefinition));
+    log(parser->arena, "ASTNodeLibraryDefinition                  %d", sizeof(ASTNodeLibraryDefinition));
+    log(parser->arena, "ASTNodeRevertStatement                    %d", sizeof(ASTNodeRevertStatement));
+    log(parser->arena, "ASTNodeForStatement                       %d", sizeof(ASTNodeForStatement));
+    log(parser->arena, "ASTNodeEmitStatement                      %d", sizeof(ASTNodeEmitStatement));
+    log(parser->arena, "ASTNodeTryStatement                       %d", sizeof(ASTNodeTryStatement));
+    log(parser->arena, "ASTNodeCatchStatement                     %d", sizeof(ASTNodeCatchStatement));
+    log(parser->arena, "ASTNodeAssemblyStatement                  %d", sizeof(ASTNodeAssemblyStatement));
+    log(parser->arena, "ASTNodeConstructorDefinition              %d", sizeof(ASTNodeConstructorDefinition));
+    log(parser->arena, "ASTNodeNameValue                          %d", sizeof(ASTNodeNameValue));
+    log(parser->arena, "ASTNodeUsing                              %d", sizeof(ASTNodeUsing));
+
+    log(parser->arena, "ASTNodeBlockStatement                     %d", sizeof(ASTNodeBlockStatement));
+    log(parser->arena, "ASTNodeYulVariableDeclaration             %d", sizeof(ASTNodeYulVariableDeclaration));
+    log(parser->arena, "ASTNodeYulNumberLitExpression             %d", sizeof(ASTNodeYulNumberLitExpression));
+    log(parser->arena, "ASTNodeYulNumberLitExpression             %d", sizeof(ASTNodeYulNumberLitExpression));
+    log(parser->arena, "ASTNodeYulNumberLitExpression             %d", sizeof(ASTNodeYulNumberLitExpression));
+    log(parser->arena, "ASTNodeYulNumberLitExpression             %d", sizeof(ASTNodeYulNumberLitExpression));
+    log(parser->arena, "ASTNodeYulNumberLitExpression             %d", sizeof(ASTNodeYulNumberLitExpression));
+    log(parser->arena, "ASTNodeYulIdentifierPathExpression        %d", sizeof(ASTNodeYulIdentifierPathExpression));
+    log(parser->arena, "ASTNodeYulFunctionCallExpression          %d", sizeof(ASTNodeYulFunctionCallExpression));
+    log(parser->arena, "ASTNodeYulVariableAssignment              %d", sizeof(ASTNodeYulVariableAssignment));
+    log(parser->arena, "ASTNodeYulIfStatement                     %d", sizeof(ASTNodeYulIfStatement));
+    log(parser->arena, "ASTNodeYulForStatement                    %d", sizeof(ASTNodeYulForStatement));
+    log(parser->arena, "ASTNodeYulFunctionDefinition              %d", sizeof(ASTNodeYulFunctionDefinition));
+    log(parser->arena, "ASTNodeYulSwitchStatement                 %d", sizeof(ASTNodeYulSwitchStatement));
+#endif
+    u32 parsingMemory = arenaFreeBytes(parser->arena);
+
     while(true) {
         ASTNodeLink *child = arrayPush(parser->arena, ASTNodeLink, 1);
 
@@ -2779,6 +2849,9 @@ parseSourceUnit(Parser *parser) {
         SLL_QUEUE_PUSH(node.children.head, node.children.last, child);
         node.children.count += 1;
     }
+
+    parsingMemory -= arenaFreeBytes(parser->arena);
+    log(parser->arena, "parsing memory needed     = %d", parsingMemory);
 
     return node;
 }

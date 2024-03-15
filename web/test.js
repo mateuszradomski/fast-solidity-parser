@@ -20,7 +20,7 @@ async function main() {
         for(const filePath of list) {
             try {
                 const input = await fs.readFile(filePath, "utf-8")
-                const antlrASTObj = parser.parse(input);
+                const antlrASTObj = parser.parse(input, { range: true });
                 const antlrAST = JSON.stringify(antlrASTObj, null, 2);
 
                 const myASTObj = wasmParse(input);
@@ -45,7 +45,7 @@ async function main() {
 
 async function runSingleTest(args) {
     const input = await fs.readFile(args[0], "utf-8")
-    const antlrASTObj = parser.parse(input);
+    const antlrASTObj = parser.parse(input, { range: true });
     const antlrAST = JSON.stringify(antlrASTObj, null, 2);
 
     const myASTObj = wasmParse(input);

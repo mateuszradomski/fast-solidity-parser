@@ -115,10 +115,11 @@ function stringToEnumValue(str) {
 }
 
 class Deserializer {
-    constructor(inputString, dataView) {
+    constructor(inputString, dataView, options) {
         this.inputString = inputString;
         this.dataView = dataView;
         this.offset = 0;
+        this.includeByteRange = options && options.includeByteRange === true;
 
         this.operatorStrings = {
             39: "delete",

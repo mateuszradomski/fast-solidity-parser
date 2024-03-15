@@ -57,7 +57,7 @@ function saveProfileToDisk() {
     fs.writeFileSync("data.spall", spallBytes);
 }
 
-function wasmParse(input) {
+function wasmParse(input, options) {
     if(loaded === false) {
         loadParserInline()
     }
@@ -82,19 +82,19 @@ function wasmParse(input) {
     memoryBuffer = instance.exports.memory.buffer;
 
     profiler.trace_begin("parseBinary");
-    const object = parseBinary(input, memoryBuffer, resultPointer);
+    const object = parseBinary(input, memoryBuffer, resultPointer, options);
     profiler.trace_end();
 
     return object;
 }
 
-function parseBinary(inputString, memoryBuffer, pointer) {
+function parseBinary(inputString, memoryBuffer, pointer, options) {
     const memory = new Uint32Array(memoryBuffer);
     const dataPointer = memory[pointer / 4];
     const dataLength = memory[(pointer / 4) + 1];
     const data = new Uint8Array(memoryBuffer, dataPointer, dataLength);
     const dataView = new DataView(data.buffer, data.byteOffset, data.byteLength);
-    const deserializer = new Deserializer(inputString, dataView);
+    const deserializer = new Deserializer(inputString, dataView, options);
 
     return deserializer.popSourceUnit();
 }
