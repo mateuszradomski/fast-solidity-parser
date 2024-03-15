@@ -99,6 +99,7 @@ pushNodeHeader(Serializer *s, ASTNode *node) {
 
 static u32 pushExpression(Serializer *s, ASTNode *node);
 static u32 pushFunctionParameters(Serializer *s, FunctionParameterList *parameters);
+static u32 pushParametersNew(Serializer *s, ASTNodeList *list);
 
 static u32
 pushType(Serializer *s, ASTNode *node) {
@@ -636,6 +637,27 @@ pushFunctionParameters(Serializer *s, FunctionParameterList *parameters) {
 }
 
 static u32
+pushParametersNew(Serializer *s, ASTNodeList *list) {
+    u32 l = 0;
+
+    l += pushU32(s, list->count);
+    if(list->count == -1) {
+        return l;
+    }
+
+    ASTNodeLink *it = list->head;
+    for(u32 i = 0; i < list->count; i++, it = it->next) {
+        ASTNodeVariableDeclaration *decl = &it->node.variableDeclarationNode;
+        l += pushNodeHeader(s, &it->node);
+        l += pushType(s, decl->type);
+        l += pushTokenStringById(s, decl->name);
+        l += pushU32(s, decl->dataLocation);
+    }
+
+    return l;
+}
+
+static u32
 pushPragma(Serializer *s, ASTNode *node) {
     u32 l = pushNodeHeader(s, node);
     ASTNodePragma *pragma = &node->pragmaNode;
@@ -726,16 +748,7 @@ pushStruct(Serializer *s, ASTNode *node) {
     u32 l = pushNodeHeader(s, node);
 
     l += pushTokenStringById(s, node->structNode.nameTokenId);
-
-    assert(node->structNode.memberTypes.count == node->structNode.memberNames.count);
-    l += pushU32(s, node->structNode.memberTypes.count);
-
-    ASTNodeLink *typeLink = node->structNode.memberTypes.head;
-    for(u32 i = 0; i < node->structNode.memberTypes.count; i++, typeLink = typeLink->next) {
-        TokenId name = listGetTokenId(&node->structNode.memberNames, i);
-        l += pushType(s, &typeLink->node);
-        l += pushTokenStringById(s, name);
-    }
+    l += pushParametersNew(s, &node->structNode.members);
 
     return l;
 }
@@ -746,7 +759,7 @@ pushError(Serializer *s, ASTNode *node) {
 
     ASTNodeError *error = &node->errorNode;
     l += pushTokenStringById(s, error->identifier);
-    l += pushFunctionParameters(s, &error->parameters);
+    l += pushParametersNew(s, &error->parameters);
 
     return l;
 }
@@ -758,14 +771,7 @@ pushEvent(Serializer *s, ASTNode *node) {
     ASTNodeEvent *event = &node->eventNode;
     l += pushTokenStringById(s, event->identifier);
     l += pushU32(s, event->anonymous);
-
-    FunctionParameter *param = event->parameters.head;
-    l += pushU32(s, node->eventNode.parameters.count);
-    for(u32 i = 0; i < event->parameters.count; i++, param = param->next) {
-        l += pushType(s, param->type);
-        l += pushTokenStringById(s, param->identifier);
-        l += pushU32(s, param->dataLocation);
-    }
+    l += pushParametersNew(s, &event->parameters);
 
     return l;
 }

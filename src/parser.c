@@ -109,8 +109,7 @@ typedef struct ASTNodeList {
 
 typedef struct ASTNodeStruct {
     TokenId nameTokenId;
-    ASTNodeList memberTypes;
-    TokenIdList memberNames;
+    ASTNodeList members;
 } ASTNodeStruct;
 
 typedef struct ASTNodeBaseType {
@@ -143,12 +142,12 @@ typedef struct ASTNodeArrayType {
 
 typedef struct ASTNodeError {
     TokenId identifier;
-    FunctionParameterList parameters;
+    ASTNodeList parameters;
 } ASTNodeError;
 
 typedef struct ASTNodeEvent {
     TokenId identifier;
-    FunctionParameterList parameters;
+    ASTNodeList parameters;
     u32 anonymous;
 } ASTNodeEvent;
 
@@ -869,6 +868,39 @@ parseFunctionParameters(Parser *parser, FunctionParameterList *parameters) {
     } while(acceptToken(parser, TokenType_Comma));
 }
 
+static void parseVariableDeclarationIntoList(Parser *parser, ASTNodeList *list) {
+    ASTNodeLink *parameter = structPush(parser->arena, ASTNodeLink);
+    ASTNode *node = &parameter->node;
+    node->type = ASTNodeType_VariableDeclaration;
+    ASTNodeVariableDeclaration *variableDeclaration = &node->variableDeclarationNode;
+
+    variableDeclaration->type = structPush(parser->arena, ASTNode);
+    parseType(parser, variableDeclaration->type);
+
+    variableDeclaration->dataLocation = 0;
+    if(acceptToken(parser, TokenType_Memory)) {
+        variableDeclaration->dataLocation = 1;
+    } else if(acceptToken(parser, TokenType_Storage)) {
+        variableDeclaration->dataLocation = 2;
+    } else if(acceptToken(parser, TokenType_Calldata)) {
+        variableDeclaration->dataLocation = 3;
+    } else if(acceptToken(parser, TokenType_Indexed)) {
+        variableDeclaration->dataLocation = 4;
+    }
+
+    variableDeclaration->name = parseIdentifier(parser);
+
+    SLL_QUEUE_PUSH(list->head, list->last, parameter);
+    list->count += 1;
+}
+
+static void
+parseFunctionParametersNew(Parser *parser, ASTNodeList *list) {
+    do {
+        parseVariableDeclarationIntoList(parser, list);
+    } while(acceptToken(parser, TokenType_Comma));
+}
+
 static bool
 parseType(Parser *parser, ASTNode *node) {
     TokenId identifier = INVALID_TOKEN_ID;
@@ -898,10 +930,10 @@ parseType(Parser *parser, ASTNode *node) {
             return false;
         }
 
-    if(!acceptToken(parser, TokenType_RParen)) {
-        parseFunctionParameters(parser, &function->parameters);
-        expectToken(parser, TokenType_RParen);
-    }
+        if(!acceptToken(parser, TokenType_RParen)) {
+            parseFunctionParameters(parser, &function->parameters);
+            expectToken(parser, TokenType_RParen);
+        }
 
         function->stateMutability = 0;
         function->visibility = 0;
@@ -1171,15 +1203,7 @@ parseStruct(Parser *parser, ASTNode *baseNode) {
     expectToken(parser, TokenType_LBrace);
 
     while(!acceptToken(parser, TokenType_RBrace)) {
-        ASTNodeLink *typeLink = structPush(parser->arena, ASTNodeLink);
-        parseType(parser, &typeLink->node);
-        SLL_QUEUE_PUSH(node->memberTypes.head, node->memberTypes.last, typeLink);
-        node->memberTypes.count += 1;
-
-        TokenId name = parseIdentifier(parser);
-        assert(name > 0);
-        listPushTokenId(&node->memberNames, name, parser->arena);
-
+        parseVariableDeclarationIntoList(parser, &node->members);
         expectToken(parser, TokenType_Semicolon);
     }
 
@@ -1194,20 +1218,10 @@ parseError(Parser *parser, ASTNode *node) {
     assert(error->identifier > 0);
 
     expectToken(parser, TokenType_LParen);
-
     if(!acceptToken(parser, TokenType_RParen)) {
-        do {
-            FunctionParameter *parameter = structPush(parser->arena, FunctionParameter);
-            parameter->type = structPush(parser->arena, ASTNode);
-            parseType(parser, parameter->type);
-            parameter->identifier = parseIdentifier(parser);
-
-            SLL_QUEUE_PUSH(error->parameters.head, error->parameters.last, parameter);
-            error->parameters.count += 1;
-        } while(acceptToken(parser, TokenType_Comma));
+        parseFunctionParametersNew(parser, &error->parameters);
         expectToken(parser, TokenType_RParen);
     }
-
     expectToken(parser, TokenType_Semicolon);
     return true;
 }
@@ -1222,20 +1236,7 @@ parseEvent(Parser *parser, ASTNode *node) {
     expectToken(parser, TokenType_LParen);
 
     if(!acceptToken(parser, TokenType_RParen)) {
-        do {
-            FunctionParameter *parameter = structPush(parser->arena, FunctionParameter);
-            parameter->type = structPush(parser->arena, ASTNode);
-            parseType(parser, parameter->type);
-
-            if(acceptToken(parser, TokenType_Indexed)) {
-                parameter->dataLocation = 1;
-            }
-
-            parameter->identifier = parseIdentifier(parser);
-
-            SLL_QUEUE_PUSH(event->parameters.head, event->parameters.last, parameter);
-            event->parameters.count += 1;
-        } while(acceptToken(parser, TokenType_Comma));
+        parseFunctionParametersNew(parser, &event->parameters);
         expectToken(parser, TokenType_RParen);
     }
 

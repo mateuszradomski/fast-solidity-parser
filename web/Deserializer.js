@@ -178,9 +178,16 @@ class Deserializer {
 			"immutable",
 		];
 
+		this.contractKindMap = {
+			[ASTNodeType_ContractDefinition]: "contract",
+			[ASTNodeType_LibraryDefinition]: "library",
+			[ASTNodeType_InterfaceDefinition]: "interface",
+			[ASTNodeType_AbstractContractDefinition]: "abstract",
+		};
+
 		this.stateMutabilityString = [null, "pure", "view", "payable"];
 
-		this.storageLocationString = [null, "memory", "storage", "calldata"];
+		this.storageLocationString = [null, "memory", "storage", "calldata", null];
 	}
 
 	popU16() {
@@ -281,7 +288,7 @@ class Deserializer {
 	}
 
 	popVariableDeclaration() {
-		const kind = this.popU32();
+		this.popU32(); // Discard kind
 		const startOffset = this.popU32();
 		const endOffset = this.popU32();
 
@@ -296,14 +303,36 @@ class Deserializer {
 			identifier: stringToIdentifier(name),
 			storageLocation: this.storageLocationString[dataLocation],
 			isStateVar: false,
-			isIndexed: false,
+			isIndexed: dataLocation === 4,
+			expression: null,
+			range: this.includeByteRange ? [startOffset, endOffset] : undefined,
+		};
+	}
+
+	popVariableDeclarationEventOrder() {
+		this.popU32(); // Discard kind
+		const startOffset = this.popU32();
+		const endOffset = this.popU32();
+
+		const typeName = this.popType();
+		const name = this.popString();
+		const dataLocation = this.popU32();
+
+		return {
+			type: "VariableDeclaration",
+			typeName,
+			name,
+			identifier: stringToIdentifier(name),
+			isStateVar: false,
+			isIndexed: dataLocation === 4,
+			storageLocation: this.storageLocationString[dataLocation],
 			expression: null,
 			range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 		};
 	}
 
 	popVariableDeclarationTupleStatementOrder() {
-		const kind = this.popU32();
+		this.popU32(); // Discard kind
 		const startOffset = this.popU32();
 		const endOffset = this.popU32();
 
@@ -1034,123 +1063,6 @@ class Deserializer {
 		}
 	}
 
-	popPragma() {
-		const name = this.popString();
-		const value = this.popString();
-		return {
-			type: "PragmaDirective",
-			name,
-			value,
-		};
-	}
-
-	popImport() {
-		const path = this.popString();
-		const unitAlias = this.popString();
-		const symbolsCount = this.popU32();
-
-		let aliases = [];
-		let aliasesIdentifiers = [];
-
-		if (symbolsCount === 0) {
-			aliases = null;
-			aliasesIdentifiers = null;
-		}
-
-		for (let i = 0; i < symbolsCount; i++) {
-			const symbol = this.popString();
-			const alias = this.popString();
-			aliases.push([symbol, alias]);
-			aliasesIdentifiers.push([
-				stringToIdentifier(symbol),
-				stringToIdentifier(alias),
-			]);
-		}
-
-		return {
-			type: "ImportDirective",
-			path,
-			pathLiteral: stringToStringLiteral(path),
-			unitAlias,
-			unitAliasIdentifier: stringToIdentifier(unitAlias),
-			symbolAliases: aliases,
-			symbolAliasesIdentifiers: aliasesIdentifiers,
-		};
-	}
-
-	popUsing() {
-		const count = this.popU32();
-		const idents = [];
-		for (let i = 0; i < count; i++) {
-			idents.push(this.popType().namePath);
-		}
-
-		const operatorCount = this.popU32();
-		const operators = [];
-		for (let i = 0; i < operatorCount; i++) {
-			operators.push(this.operatorStrings[this.popU16()]);
-		}
-
-		const hasForType = this.popU16();
-		let typeName = null;
-		if (hasForType === 1) {
-			typeName = this.popType();
-		}
-		const isGlobal = this.popU16() === 1;
-		const isLibrary = this.popU16() === 1;
-
-		return {
-			type: "UsingForDeclaration",
-			isGlobal,
-			typeName,
-			libraryName: isLibrary ? idents[0] : null,
-			functions: !isLibrary ? idents : [],
-			operators: !isLibrary ? operators : [],
-		};
-	}
-
-	popEnumDefinition() {
-		const name = this.popString();
-
-		const membersCount = this.popU32();
-		const members = [];
-		for (let i = 0; i < membersCount; i++) {
-			members.push(stringToEnumValue(this.popString()));
-		}
-
-		return {
-			type: "EnumDefinition",
-			name,
-			members,
-		};
-	}
-
-	popStructDefinition() {
-		const name = this.popString();
-		const membersCount = this.popU32();
-		const members = [];
-		for (let i = 0; i < membersCount; i++) {
-			const typeName = this.popType();
-			const memberName = this.popString();
-			members.push({
-				type: "VariableDeclaration",
-				typeName,
-				name: memberName,
-				identifier: stringToIdentifier(memberName),
-				storageLocation: null,
-				isStateVar: false,
-				isIndexed: false,
-				expression: null,
-			});
-		}
-
-		return {
-			type: "StructDefinition",
-			name,
-			members,
-		};
-	}
-
 	popFunctionParameters() {
 		const paramCount = this.popU32();
 		if (paramCount === 0xffffffff) {
@@ -1178,286 +1090,6 @@ class Deserializer {
 		return params;
 	}
 
-	popError() {
-		const name = this.popString();
-		const paramCount = this.popU32();
-		const params = [];
-		for (let i = 0; i < paramCount; i++) {
-			const typeName = this.popType();
-			const paramName = this.popString();
-			const dataLocation = this.popU32();
-			params.push({
-				type: "VariableDeclaration",
-				typeName,
-				name: paramName,
-				identifier: stringToIdentifier(paramName),
-				storageLocation: this.storageLocationString[dataLocation],
-				isStateVar: false,
-				isIndexed: false,
-				expression: null,
-			});
-		}
-
-		return {
-			type: "CustomErrorDefinition",
-			name,
-			parameters: params,
-		};
-	}
-
-	popEvent() {
-		const name = this.popString();
-		const isAnonymous = this.popU32() === 1;
-		const paramCount = this.popU32();
-		const params = [];
-		for (let i = 0; i < paramCount; i++) {
-			const typeName = this.popType();
-			const paramName = this.popString();
-			const indexed = this.popU32();
-			params.push({
-				type: "VariableDeclaration",
-				typeName,
-				name: paramName,
-				identifier: stringToIdentifier(paramName),
-				isStateVar: false,
-				isIndexed: indexed === 1,
-				storageLocation: null,
-				expression: null,
-			});
-		}
-
-		return {
-			type: "EventDefinition",
-			name,
-			parameters: params,
-			isAnonymous,
-		};
-	}
-
-	popTypedef() {
-		const name = this.popString();
-		const type = this.popType();
-
-		return {
-			type: "TypeDefinition",
-			name,
-			definition: type,
-		};
-	}
-
-	popConstVariable() {
-		const name = this.popString();
-		const typeName = this.popType();
-		const initialValue = this.popExpression();
-
-		return {
-			type: "FileLevelConstant",
-			typeName,
-			name,
-			initialValue,
-			isDeclaredConst: true,
-			isImmutable: false,
-		};
-	}
-
-	popStateVariableDeclaration() {
-		const name = this.popString();
-		const typeName = this.popType();
-		const visibility = this.popU16();
-		const mutability = this.popU16();
-		const isOverride = this.popU16();
-		let override = null;
-		if (isOverride === 1) {
-			override = [];
-			const count = this.popU32();
-			for (let i = 0; i < count; i++) {
-				override.push(this.popType());
-			}
-		}
-		const hasExpression = this.popU32();
-
-		let expression = null;
-		if (hasExpression === 1) {
-			expression = this.popExpression();
-		}
-
-		return {
-			type: "StateVariableDeclaration",
-			variables: [
-				{
-					type: "VariableDeclaration",
-					typeName,
-					name,
-					identifier: stringToIdentifier(name),
-					expression,
-					visibility: this.variableVisibilityString[visibility],
-					isStateVar: true,
-					isDeclaredConst: mutability === 1,
-					isIndexed: false,
-					isImmutable: mutability === 2,
-					override,
-					storageLocation: null,
-				},
-			],
-			initialValue: expression,
-		};
-	}
-
-	popFunctionDefinition() {
-		const name = this.popString() ?? "";
-		const parameters = this.popFunctionParameters();
-		const visibility = this.popU16();
-		const stateMutability = this.popU16();
-		const isVirtual = this.popU16();
-		const isOverride = this.popU16();
-		let override = null;
-		if (isOverride === 1) {
-			override = [];
-			const count = this.popU32();
-			for (let i = 0; i < count; i++) {
-				override.push(this.popType());
-			}
-		}
-
-		const returnParameters = this.popFunctionParameters();
-		const modifierCount = this.popU32();
-		const modifiers = [];
-		for (let i = 0; i < modifierCount; i++) {
-			const name = this.popType().namePath;
-			const [args, names] = this.popCallArgumentList();
-
-			modifiers.push({
-				type: "ModifierInvocation",
-				name,
-				arguments: args,
-			});
-		}
-
-		const hasBody = this.popU32();
-		let body = null;
-		if (hasBody) {
-			body = this.popStatement();
-		}
-
-		return {
-			type: "FunctionDefinition",
-			name,
-			parameters,
-			returnParameters,
-			body,
-			visibility: this.visibilityString[visibility],
-			modifiers,
-			override,
-			isConstructor: false,
-			isReceiveEther: false,
-			isFallback: name === "",
-			isVirtual: isVirtual == 1,
-			stateMutability: this.stateMutabilityString[stateMutability],
-		};
-	}
-
-	popModifierDefinition() {
-		const name = this.popString();
-		const parameters = this.popFunctionParameters();
-		const isVirtual = this.popU16();
-		const isOverride = this.popU16();
-		let override = null;
-		if (isOverride === 1) {
-			override = [];
-			const count = this.popU32();
-			for (let i = 0; i < count; i++) {
-				override.push(this.popType());
-			}
-		}
-
-		const hasBody = this.popU32();
-		let body = null;
-		if (hasBody) {
-			body = this.popStatement();
-		}
-
-		return {
-			type: "ModifierDefinition",
-			name,
-			parameters,
-			body,
-			isVirtual: isVirtual == 1,
-			override,
-		};
-	}
-
-	popInheritanceSpecifier() {
-		const identifier = this.popType();
-		const [args, names] = this.popCallArgumentList();
-
-		return {
-			type: "InheritanceSpecifier",
-			baseName: identifier,
-			arguments: args,
-		};
-	}
-
-	popContractDefinition() {
-		const name = this.popString();
-		const baseContractCount = this.popU32();
-		const baseContracts = [];
-
-		for (let i = 0; i < baseContractCount; i++) {
-			baseContracts.push(this.popASTNode());
-		}
-
-		const subNodeCount = this.popU32();
-		const subNodes = [];
-
-		for (let i = 0; i < subNodeCount; i++) {
-			subNodes.push(this.popASTNode());
-		}
-
-		return {
-			type: "ContractDefinition",
-			name,
-			baseContracts,
-			subNodes,
-			kind: "contract",
-		};
-	}
-
-	popConstructorDefinition() {
-		const parameters = this.popFunctionParameters();
-		const visibility = this.popU16();
-		const stateMutability = this.popU16();
-
-		const modifierCount = this.popU32();
-		const modifiers = [];
-		for (let i = 0; i < modifierCount; i++) {
-			const name = this.popType().namePath;
-			const [args, names] = this.popCallArgumentList();
-
-			modifiers.push({
-				type: "ModifierInvocation",
-				name,
-				arguments: args,
-			});
-		}
-		const body = this.popStatement();
-
-		return {
-			type: "FunctionDefinition",
-			name: null,
-			parameters,
-			returnParameters: null,
-			body,
-			visibility: this.visibilityString[visibility],
-			modifiers,
-			override: null,
-			isConstructor: true,
-			isReceiveEther: false,
-			isFallback: false,
-			isVirtual: false,
-			stateMutability: this.stateMutabilityString[stateMutability],
-		};
-	}
-
 	popASTNode() {
 		const kind = this.popU32();
 		const startOffset = this.popU32();
@@ -1469,116 +1101,363 @@ class Deserializer {
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
 		} else if (kind === ASTNodeType_Pragma) {
+			const name = this.popString();
+			const value = this.popString();
 			return {
-				...this.popPragma(),
+				type: "PragmaDirective",
+				name,
+				value,
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
 		} else if (kind === ASTNodeType_Import) {
+			const path = this.popString();
+			const unitAlias = this.popString();
+			const symbolsCount = this.popU32();
+
+			let aliases = [];
+			let aliasesIdentifiers = [];
+
+			if (symbolsCount === 0) {
+				aliases = null;
+				aliasesIdentifiers = null;
+			}
+
+			for (let i = 0; i < symbolsCount; i++) {
+				const symbol = this.popString();
+				const alias = this.popString();
+				aliases.push([symbol, alias]);
+				aliasesIdentifiers.push([
+					stringToIdentifier(symbol),
+					stringToIdentifier(alias),
+				]);
+			}
+
 			return {
-				...this.popImport(),
+				type: "ImportDirective",
+				path,
+				pathLiteral: stringToStringLiteral(path),
+				unitAlias,
+				unitAliasIdentifier: stringToIdentifier(unitAlias),
+				symbolAliases: aliases,
+				symbolAliasesIdentifiers: aliasesIdentifiers,
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
 		} else if (kind === ASTNodeType_Using) {
+			const count = this.popU32();
+			const idents = [];
+			for (let i = 0; i < count; i++) {
+				idents.push(this.popType().namePath);
+			}
+
+			const operatorCount = this.popU32();
+			const operators = [];
+			for (let i = 0; i < operatorCount; i++) {
+				operators.push(this.operatorStrings[this.popU16()]);
+			}
+
+			const hasForType = this.popU16();
+			let typeName = null;
+			if (hasForType === 1) {
+				typeName = this.popType();
+			}
+			const isGlobal = this.popU16() === 1;
+			const isLibrary = this.popU16() === 1;
+
 			return {
-				...this.popUsing(),
+				type: "UsingForDeclaration",
+				isGlobal,
+				typeName,
+				libraryName: isLibrary ? idents[0] : null,
+				functions: !isLibrary ? idents : [],
+				operators: !isLibrary ? operators : [],
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
 		} else if (kind === ASTNodeType_EnumDefinition) {
+			const name = this.popString();
+
+			const membersCount = this.popU32();
+			const members = [];
+			for (let i = 0; i < membersCount; i++) {
+				members.push(stringToEnumValue(this.popString()));
+			}
+
 			return {
-				...this.popEnumDefinition(),
+				type: "EnumDefinition",
+				name,
+				members,
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
 		} else if (kind === ASTNodeType_StructDefinition) {
+			const name = this.popString();
+			const membersCount = this.popU32();
+			const members = [];
+			for (let i = 0; i < membersCount; i++) {
+				members.push(this.popVariableDeclaration());
+			}
+
 			return {
-				...this.popStructDefinition(),
+				type: "StructDefinition",
+				name,
+				members,
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
 		} else if (kind === ASTNodeType_Error) {
+			const name = this.popString();
+			const paramCount = this.popU32();
+			const params = [];
+			for (let i = 0; i < paramCount; i++) {
+                params.push(this.popVariableDeclaration());
+			}
+
 			return {
-				...this.popError(),
+				type: "CustomErrorDefinition",
+				name,
+				parameters: params,
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
 		} else if (kind === ASTNodeType_Event) {
+			const name = this.popString();
+			const isAnonymous = this.popU32() === 1;
+			const paramCount = this.popU32();
+			const params = [];
+			for (let i = 0; i < paramCount; i++) {
+                params.push(this.popVariableDeclarationEventOrder());
+			}
+
 			return {
-				...this.popEvent(),
+				type: "EventDefinition",
+				name,
+				parameters: params,
+				isAnonymous,
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
 		} else if (kind === ASTNodeType_Typedef) {
+			const name = this.popString();
+			const type = this.popType();
+
 			return {
-				...this.popTypedef(),
+				type: "TypeDefinition",
+				name,
+				definition: type,
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
 		} else if (kind === ASTNodeType_ConstVariable) {
+			const name = this.popString();
+			const typeName = this.popType();
+			const initialValue = this.popExpression();
+
 			return {
-				...this.popConstVariable(),
+				type: "FileLevelConstant",
+				typeName,
+				name,
+				initialValue,
+				isDeclaredConst: true,
+				isImmutable: false,
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
 		} else if (kind === ASTNodeType_StateVariableDeclaration) {
-			return {
-				...this.popStateVariableDeclaration(),
-				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
-			};
-		} else if (kind === ASTNodeType_FunctionDefinition) {
-			return {
-				...this.popFunctionDefinition(),
-				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
-			};
-		} else if (kind === ASTNodeType_FallbackFunction) {
-			const result = this.popFunctionDefinition();
-			result.name = null;
-			result.isFallback = true;
+			const name = this.popString();
+			const typeName = this.popType();
+			const visibility = this.popU16();
+			const mutability = this.popU16();
+			const isOverride = this.popU16();
+			let override = null;
+			if (isOverride === 1) {
+				override = [];
+				const count = this.popU32();
+				for (let i = 0; i < count; i++) {
+					override.push(this.popType());
+				}
+			}
+			const hasExpression = this.popU32();
+
+			let expression = null;
+			if (hasExpression === 1) {
+				expression = this.popExpression();
+			}
 
 			return {
-				...result,
+				type: "StateVariableDeclaration",
+				variables: [
+					{
+						type: "VariableDeclaration",
+						typeName,
+						name,
+						identifier: stringToIdentifier(name),
+						expression,
+						visibility: this.variableVisibilityString[visibility],
+						isStateVar: true,
+						isDeclaredConst: mutability === 1,
+						isIndexed: false,
+						isImmutable: mutability === 2,
+						override,
+						storageLocation: null,
+					},
+				],
+				initialValue: expression,
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
-		} else if (kind === ASTNodeType_ReceiveFunction) {
-			const result = this.popFunctionDefinition();
-			result.name = null;
-			result.isReceiveEther = true;
+		} else if (
+			kind === ASTNodeType_FunctionDefinition ||
+			kind === ASTNodeType_FallbackFunction ||
+			kind === ASTNodeType_ReceiveFunction
+		) {
+			let name = this.popString() ?? "";
+			name = kind === ASTNodeType_FunctionDefinition ? name : null;
+			const isFallback = kind === ASTNodeType_FallbackFunction;
+			const isReceiveEther = kind === ASTNodeType_ReceiveFunction;
+
+			const parameters = this.popFunctionParameters();
+			const visibility = this.popU16();
+			const stateMutability = this.popU16();
+			const isVirtual = this.popU16();
+			const isOverride = this.popU16();
+			let override = null;
+			if (isOverride === 1) {
+				override = [];
+				const count = this.popU32();
+				for (let i = 0; i < count; i++) {
+					override.push(this.popType());
+				}
+			}
+
+			const returnParameters = this.popFunctionParameters();
+			const modifierCount = this.popU32();
+			const modifiers = [];
+			for (let i = 0; i < modifierCount; i++) {
+				const name = this.popType().namePath;
+				const [args, names] = this.popCallArgumentList();
+
+				modifiers.push({
+					type: "ModifierInvocation",
+					name,
+					arguments: args,
+				});
+			}
+
+			const hasBody = this.popU32();
+			let body = null;
+			if (hasBody) {
+				body = this.popStatement();
+			}
+
 			return {
-				...result,
+				type: "FunctionDefinition",
+				name,
+				parameters,
+				returnParameters,
+				body,
+				visibility: this.visibilityString[visibility],
+				modifiers,
+				override,
+				isConstructor: false,
+				isReceiveEther,
+				isFallback,
+				isVirtual: isVirtual == 1,
+				stateMutability: this.stateMutabilityString[stateMutability],
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
 		} else if (kind === ASTNodeType_ModifierDefinition) {
+			const name = this.popString();
+			const parameters = this.popFunctionParameters();
+			const isVirtual = this.popU16();
+			const isOverride = this.popU16();
+			let override = null;
+			if (isOverride === 1) {
+				override = [];
+				const count = this.popU32();
+				for (let i = 0; i < count; i++) {
+					override.push(this.popType());
+				}
+			}
+
+			const hasBody = this.popU32();
+			let body = null;
+			if (hasBody) {
+				body = this.popStatement();
+			}
+
 			return {
-				...this.popModifierDefinition(),
+				type: "ModifierDefinition",
+				name,
+				parameters,
+				body,
+				isVirtual: isVirtual == 1,
+				override,
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
-		} else if (kind === ASTNodeType_ContractDefinition) {
+		} else if (
+			kind === ASTNodeType_ContractDefinition ||
+			kind === ASTNodeType_LibraryDefinition ||
+			kind === ASTNodeType_InterfaceDefinition ||
+			kind === ASTNodeType_AbstractContractDefinition
+		) {
+			const name = this.popString();
+			const baseContractCount = this.popU32();
+			const baseContracts = [];
+
+			for (let i = 0; i < baseContractCount; i++) {
+				baseContracts.push(this.popASTNode());
+			}
+
+			const subNodeCount = this.popU32();
+			const subNodes = [];
+
+			for (let i = 0; i < subNodeCount; i++) {
+				subNodes.push(this.popASTNode());
+			}
+
 			return {
-				...this.popContractDefinition(),
-				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
-			};
-		} else if (kind === ASTNodeType_LibraryDefinition) {
-			const result = this.popContractDefinition();
-			result.kind = "library";
-			return {
-				...result,
-				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
-			};
-		} else if (kind === ASTNodeType_InterfaceDefinition) {
-			const result = this.popContractDefinition();
-			result.kind = "interface";
-			return {
-				...result,
-				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
-			};
-		} else if (kind === ASTNodeType_AbstractContractDefinition) {
-			const result = this.popContractDefinition();
-			result.kind = "abstract";
-			return {
-				...result,
+				type: "ContractDefinition",
+				name,
+				baseContracts,
+				subNodes,
+				kind: this.contractKindMap[kind],
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
 		} else if (kind === ASTNodeType_ConstructorDefinition) {
+			const parameters = this.popFunctionParameters();
+			const visibility = this.popU16();
+			const stateMutability = this.popU16();
+
+			const modifierCount = this.popU32();
+			const modifiers = [];
+			for (let i = 0; i < modifierCount; i++) {
+				const name = this.popType().namePath;
+				const [args, names] = this.popCallArgumentList();
+
+				modifiers.push({
+					type: "ModifierInvocation",
+					name,
+					arguments: args,
+				});
+			}
+			const body = this.popStatement();
+
 			return {
-				...this.popConstructorDefinition(),
+				type: "FunctionDefinition",
+				name: null,
+				parameters,
+				returnParameters: null,
+				body,
+				visibility: this.visibilityString[visibility],
+				modifiers,
+				override: null,
+				isConstructor: true,
+				isReceiveEther: false,
+				isFallback: false,
+				isVirtual: false,
+				stateMutability: this.stateMutabilityString[stateMutability],
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
 		} else if (kind === ASTNodeType_InheritanceSpecifier) {
+			const identifier = this.popType();
+			const [args, names] = this.popCallArgumentList();
+
 			return {
-				...this.popInheritanceSpecifier(),
+				type: "InheritanceSpecifier",
+				baseName: identifier,
+				arguments: args,
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
 		} else {
