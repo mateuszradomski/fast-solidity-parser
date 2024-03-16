@@ -80,16 +80,6 @@ const ASTNodeType_YulFunctionDefinition = 80;
 const ASTNodeType_YulSwitchStatement = 81;
 
 function stringToStringLiteral(str) {
-	if (str === null) {
-		return null;
-	}
-
-	return {
-		type: "StringLiteral",
-		value: str,
-		parts: [str],
-		isUnicode: [false],
-	};
 }
 
 function stringToEnumValue(str) {
@@ -215,6 +205,20 @@ class Deserializer {
                 range: this.includeByteRange ? [offset, offset + length - 1] : undefined,
             }
 		}
+    }
+
+    popStringLiteral() {
+        const offset = this.popU32();
+        const length = this.popU32();
+        const str = this.inputString.substring(offset, offset + length);
+
+        return {
+            type: "StringLiteral",
+            value: str,
+            parts: [str],
+            isUnicode: [false],
+            range: this.includeByteRange ? [offset - 1, offset + length] : undefined,
+        };
     }
 
 	popType() {
@@ -1105,7 +1109,7 @@ class Deserializer {
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
 		} else if (kind === ASTNodeType_Import) {
-			const path = this.popString();
+            const pathLiteral = this.popStringLiteral();
 			const unitAliasIdentifier = this.popStringIdentifier();
 			const symbolsCount = this.popU32();
 
@@ -1129,8 +1133,8 @@ class Deserializer {
 
 			return {
 				type: "ImportDirective",
-				path,
-				pathLiteral: stringToStringLiteral(path),
+				path: pathLiteral.value,
+				pathLiteral,
 				unitAlias: unitAliasIdentifier?.name ?? null,
 				unitAliasIdentifier,
 				symbolAliases: aliases,
