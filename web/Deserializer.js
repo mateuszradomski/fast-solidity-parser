@@ -303,7 +303,7 @@ class Deserializer {
 		return {
 			type: "VariableDeclaration",
 			typeName,
-			name: identifier.name,
+			name: identifier?.name ?? null,
 			identifier,
 			storageLocation: this.storageLocationString[dataLocation],
 			isStateVar: false,
@@ -325,7 +325,7 @@ class Deserializer {
 		return {
 			type: "VariableDeclaration",
 			typeName,
-			name: identifier.name,
+			name: identifier?.name ?? null,
 			identifier,
 			isStateVar: false,
 			isIndexed: dataLocation === 4,
@@ -600,8 +600,10 @@ class Deserializer {
 			};
 		} else if (kind === ASTNodeType_NamedParametersExpression) {
 			const expression = this.popExpression();
-			const count = this.popU32();
 
+            const nameValueListStartOffset = this.popU32();
+            const nameValueListEndOffset = this.popU32();
+			const count = this.popU32();
 			const names = [];
 			const identifiers = [];
 			const parameters = [];
@@ -620,6 +622,7 @@ class Deserializer {
 					names,
 					identifiers,
 					arguments: parameters,
+                    range: this.includeByteRange ? [nameValueListStartOffset, nameValueListEndOffset] : undefined,
 				},
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
@@ -1117,7 +1120,7 @@ class Deserializer {
 			for (let i = 0; i < symbolsCount; i++) {
 				const symbolIdentifier = this.popStringIdentifier();
 				const aliasIdentifier = this.popStringIdentifier();
-				aliases.push([symbolIdentifier.name, aliasIdentifier.name]);
+				aliases.push([symbolIdentifier?.name ?? null, aliasIdentifier?.name ?? null]);
 				aliasesIdentifiers.push([
 					symbolIdentifier,
 					aliasIdentifier,
@@ -1128,7 +1131,7 @@ class Deserializer {
 				type: "ImportDirective",
 				path,
 				pathLiteral: stringToStringLiteral(path),
-				unitAlias: unitAliasIdentifier.name,
+				unitAlias: unitAliasIdentifier?.name ?? null,
 				unitAliasIdentifier,
 				symbolAliases: aliases,
 				symbolAliasesIdentifiers: aliasesIdentifiers,
@@ -1284,6 +1287,7 @@ class Deserializer {
 						isImmutable: mutability === 2,
 						override,
 						storageLocation: null,
+                        range: this.includeByteRange ? [-1, -1] : undefined,
 					},
 				],
 				initialValue: expression,
@@ -1317,6 +1321,9 @@ class Deserializer {
 			const modifierCount = this.popU32();
 			const modifiers = [];
 			for (let i = 0; i < modifierCount; i++) {
+                const kind = this.popU32();
+                const startOffset = this.popU32();
+                const endOffset = this.popU32();
 				const name = this.popType().namePath;
 				const [args, names] = this.popCallArgumentList();
 
@@ -1324,6 +1331,7 @@ class Deserializer {
 					type: "ModifierInvocation",
 					name,
 					arguments: args,
+                   range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 				});
 			}
 

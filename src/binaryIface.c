@@ -80,7 +80,13 @@ pushByteRanges(Serializer *s, TokenId start, TokenId end) {
         Token startToken = getToken(s->tokens, start);
         Token endToken = getToken(s->tokens, end);
         u32 startOffset = (u32)(startToken.string.data - s->inputStringBase);
-        u32 endOffset = (u32)(endToken.string.data - s->inputStringBase);
+        u32 endOffset = (u32)(endToken.string.data - s->inputStringBase + endToken.string.size) - 1;
+        if(startToken.type == TokenType_StringLit) {
+            startOffset--;
+        }
+        if(endToken.type == TokenType_StringLit) {
+            endOffset++;
+        }
         pushU32(s, startOffset);
         pushU32(s, endOffset);
     }
@@ -257,8 +263,7 @@ pushExpression(Serializer *s, ASTNode *node) {
                 l += popU32(s);
 
                 l += pushU32(s, ASTNodeType_IdentifierExpression);
-                l += pushU32(s, 0);
-                l += pushU32(s, 0);
+                l += pushByteRanges(s, node->startToken, node->endToken);
 
                 l += pushTokenStringById(s, node->baseTypeNode.typeName);
             } else {
@@ -310,6 +315,7 @@ pushExpression(Serializer *s, ASTNode *node) {
             ASTNodeNamedParametersExpression *named = &node->namedParametersExpressionNode;
             l += pushExpression(s, named->expression);
 
+            l += pushByteRanges(s, named->listStartToken, named->listEndToken);
             l += pushU32(s, named->names.count);
             ASTNodeLink *expression = named->expressions.head;
             for(u32 i = 0; i < named->expressions.count; i++, expression = expression->next) {
@@ -833,6 +839,7 @@ pushFunctionDefinition(Serializer *s, ASTNode *node) {
     ASTNodeLink *it = function->modifiers.head;
     for(u32 i = 0; i < function->modifiers.count; i++, it = it->next) {
         ASTNodeModifierInvocation *invocation = &it->node.modifierInvocationNode;
+        l += pushNodeHeader(s, &it->node);
         l += pushType(s, invocation->identifier);
         l += pushCallArgumentList(s, &invocation->argumentsExpression, &invocation->argumentsName);
     }
