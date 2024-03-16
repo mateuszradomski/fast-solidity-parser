@@ -2312,7 +2312,7 @@ parseOverrideSpecifierArgs(Parser *parser, ASTNodeList *list) {
 static bool
 tryParseStateVariableDeclaration(Parser *parser, ASTNode *node) {
     u32 startPosition = getCurrentParserPosition(parser);
-    node->startToken = parser->current - 1;
+    node->startToken = parser->current;
     node->type = ASTNodeType_StateVariableDeclaration;
     ASTNodeConstVariable *decl = &node->constVariableNode;
 

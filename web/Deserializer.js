@@ -845,6 +845,7 @@ class Deserializer {
 			const hasCondition = this.popU16() == 1;
 			const conditionExpression = hasCondition ? this.popExpression() : null;
 			const loopExpression = this.popStatement();
+            loopExpression.range = undefined
 			const body = this.popStatement();
 
 			return {
@@ -1291,7 +1292,7 @@ class Deserializer {
 						isImmutable: mutability === 2,
 						override,
 						storageLocation: null,
-                        range: this.includeByteRange ? [-1, -1] : undefined,
+                        range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 					},
 				],
 				initialValue: expression,
