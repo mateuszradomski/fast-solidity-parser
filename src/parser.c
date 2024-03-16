@@ -2812,10 +2812,12 @@ parseSourceUnit(Parser *parser) {
         } else if(acceptToken(parser, TokenType_Comment)) {
             continue;
         } else {
+            u32 startToken = parser->current;
             ASTNode *type = structPush(parser->arena, ASTNode);
             parseType(parser, type);
             if(acceptToken(parser, TokenType_Constant)) {
                 parseConstVariable(parser, &child->node, type);
+                child->node.startToken = startToken;
             }
         }
 

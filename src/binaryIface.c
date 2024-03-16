@@ -81,12 +81,10 @@ pushByteRanges(Serializer *s, TokenId start, TokenId end) {
         Token endToken = getToken(s->tokens, end);
         u32 startOffset = (u32)(startToken.string.data - s->inputStringBase);
         u32 endOffset = (u32)(endToken.string.data - s->inputStringBase + endToken.string.size) - 1;
-        if(startToken.type == TokenType_StringLit) {
-            startOffset--;
-        }
-        if(endToken.type == TokenType_StringLit) {
-            endOffset++;
-        }
+        if(startToken.type == TokenType_StringLit) { startOffset--; }
+        if(startToken.type == TokenType_HexStringLit) { startOffset -= 4; }
+        if(endToken.type == TokenType_StringLit) { endOffset++; }
+        if(endToken.type == TokenType_HexStringLit) { endOffset++; }
         pushU32(s, startOffset);
         pushU32(s, endOffset);
     }
