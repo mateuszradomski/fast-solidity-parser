@@ -563,7 +563,6 @@ class Deserializer {
 			const result = {
 				type: "IndexRangeAccess",
 				base,
-				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
 
 			const hasIndexStart = this.popU32();
@@ -575,6 +574,8 @@ class Deserializer {
 			if (hasIndexEnd == 1) {
 				result.indexEnd = this.popExpression();
 			}
+
+            result.range = this.includeByteRange ? [startOffset, endOffset] : undefined;
 
 			return result;
 		} else if (kind === ASTNodeType_InlineArrayExpression) {
@@ -890,6 +891,9 @@ class Deserializer {
 			const catchCount = this.popU32();
 			const catchClauses = [];
 			for (let i = 0; i < catchCount; i++) {
+                const kind = this.popU32();
+                const startOffset = this.popU32();
+                const endOffset = this.popU32();
 				const identifier = this.popString();
 				const catchParams = this.popFunctionParameters();
 				const catchBody = this.popStatement();
@@ -899,6 +903,7 @@ class Deserializer {
 					kind: identifier,
 					parameters: catchParams,
 					body: catchBody,
+                                  range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 				});
 			}
 
@@ -1031,20 +1036,29 @@ class Deserializer {
 			const count = this.popU32();
 			const cases = [];
 			for (let i = 0; i < count; i++) {
+                const kind = this.popU32();
+                const startOffset = this.popU32();
+                const endOffset = this.popU32();
 				cases.push({
 					type: "AssemblyCase",
 					block: this.popStatement(),
 					value: this.popYulExpression(),
 					default: false,
+                           range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 				});
 			}
 			const hasDefault = this.popU16() === 1;
 			if (hasDefault) {
+                const kind = this.popU32();
+                const startOffset = this.popU32();
+                const endOffset = this.popU32();
+
 				cases.push({
 					type: "AssemblyCase",
 					block: this.popStatement(),
 					value: null,
 					default: true,
+                           range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 				});
 			}
 
@@ -1428,6 +1442,9 @@ class Deserializer {
 			const modifierCount = this.popU32();
 			const modifiers = [];
 			for (let i = 0; i < modifierCount; i++) {
+                const kind = this.popU32();
+                const startOffset = this.popU32();
+                const endOffset = this.popU32();
 				const name = this.popType().namePath;
 				const [args, names] = this.popCallArgumentList();
 
@@ -1435,6 +1452,7 @@ class Deserializer {
 					type: "ModifierInvocation",
 					name,
 					arguments: args,
+                               range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 				});
 			}
 			const body = this.popStatement();

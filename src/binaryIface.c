@@ -83,8 +83,10 @@ pushByteRanges(Serializer *s, TokenId start, TokenId end) {
         u32 endOffset = (u32)(endToken.string.data - s->inputStringBase + endToken.string.size) - 1;
         if(startToken.type == TokenType_StringLit) { startOffset--; }
         if(startToken.type == TokenType_HexStringLit) { startOffset -= 4; }
+        if(startToken.type == TokenType_UnicodeStringLit) { startOffset -= 8; }
         if(endToken.type == TokenType_StringLit) { endOffset++; }
         if(endToken.type == TokenType_HexStringLit) { endOffset++; }
+        if(endToken.type == TokenType_UnicodeStringLit) { endOffset++; }
         pushU32(s, startOffset);
         pushU32(s, endOffset);
     }
@@ -501,6 +503,7 @@ pushStatement(Serializer *s, ASTNode *node) {
             ASTNodeLink *catchLink = statement->catches.head;
             for(u32 i = 0; i < statement->catches.count; i++, catchLink = catchLink->next) {
                 ASTNodeCatchStatement *catch = &catchLink->node.catchStatementNode;
+                l += pushNodeHeader(s, &catchLink->node);
                 l += pushTokenStringById(s, catch->identifier);
                 l += pushParameters(s, &catch->parameters);
                 l += pushStatement(s, catch->body);
@@ -591,18 +594,19 @@ pushStatement(Serializer *s, ASTNode *node) {
             ASTNodeYulSwitchStatement *statement = &node->yulSwitchStatementNode;
 
             l += pushYulExpression(s, statement->expression);
-            assert(statement->caseLiterals.count == statement->caseBlocks.count);
-            l += pushU32(s, statement->caseLiterals.count);
 
-            ASTNodeLink *blkIt = statement->caseBlocks.head;
-            ASTNodeLink *litIt = statement->caseLiterals.head;
-            for(u32 i = 0; i < statement->caseLiterals.count; i++, litIt = litIt->next, blkIt = blkIt->next) {
-                l += pushStatement(s, &blkIt->node);
-                l += pushYulExpression(s, &litIt->node);
+            l += pushU32(s, statement->cases.count);
+
+            ASTNodeLink *it = statement->cases.head;
+            for(u32 i = 0; i < statement->cases.count; i++, it = it->next) {
+                l += pushNodeHeader(s, &it->node);
+                l += pushStatement(s, it->node.yulCaseNode.block);
+                l += pushYulExpression(s, it->node.yulCaseNode.literal);
             }
 
             l += pushU16(s, statement->defaultBlock != 0x0);
             if(statement->defaultBlock != 0x0) {
+                l += pushNodeHeader(s, statement->defaultBlock);
                 l += pushStatement(s, statement->defaultBlock);
             }
         } break;
@@ -925,6 +929,7 @@ pushConstructorDefinition(Serializer *s, ASTNode *node) {
     ASTNodeLink *it = constructor->modifiers.head;
     for(u32 i = 0; i < constructor->modifiers.count; i++, it = it->next) {
         ASTNodeModifierInvocation *invocation = &it->node.modifierInvocationNode;
+        l += pushNodeHeader(s, &it->node);
         l += pushType(s, invocation->identifier);
         l += pushCallArgumentList(s, &invocation->argumentsExpression, &invocation->argumentsName);
     }
