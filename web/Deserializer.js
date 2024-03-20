@@ -79,20 +79,6 @@ const ASTNodeType_YulContinueStatement = 79;
 const ASTNodeType_YulFunctionDefinition = 80;
 const ASTNodeType_YulSwitchStatement = 81;
 
-function stringToStringLiteral(str) {
-}
-
-function stringToEnumValue(str) {
-	if (str === null) {
-		return null;
-	}
-
-	return {
-		type: "EnumValue",
-		name: str,
-	};
-}
-
 class Deserializer {
 	constructor(inputString, dataView, options) {
 		this.inputString = inputString;
@@ -206,6 +192,22 @@ class Deserializer {
             }
 		}
     }
+
+    popStringEnumValue() {
+		const offset = this.popU32();
+		const length = this.popU32();
+
+		if (offset === 0xffffffff) {
+			return null;
+		} else {
+			return {
+                type: "EnumValue",
+                name: this.inputString.substring(offset, offset + length),
+                range: this.includeByteRange ? [offset, offset + length - 1] : undefined,
+            }
+		}
+    }
+
 
     popStringLiteral() {
         const offset = this.popU32();
@@ -1192,7 +1194,7 @@ class Deserializer {
 			const membersCount = this.popU32();
 			const members = [];
 			for (let i = 0; i < membersCount; i++) {
-				members.push(stringToEnumValue(this.popString()));
+				members.push(this.popStringEnumValue());
 			}
 
 			return {
