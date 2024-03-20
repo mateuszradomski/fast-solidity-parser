@@ -3,3 +3,4 @@ zig-out
 *.spall
 build
 web/inlineBinary.js
+web/parser.wasm
