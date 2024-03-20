@@ -11,9 +11,11 @@ RELEASE_FLAGS = -O2 -DNDEBUG -msimd128 -mbulk-memory -mmultivalue
 
 debug: $(SRC)
 	$(CC) $(WASM_FLAGS) $(DEBUG_FLAGS) -o web/$(TARGET) src/wasmMain.c $(INCLUDES)
+	node web/inliner.js parser.wasm
 
 release: $(SRC)
 	$(CC) $(WASM_FLAGS) $(RELEASE_FLAGS) -o web/$(TARGET) src/wasmMain.c $(INCLUDES)
+	node web/inliner.js parser.wasm
 
 linux: $(SRC)
 	$(CC) $(LINUX_FLAGS) $(DEBUG_FLAGS) -o build/parser src/linuxMain.c $(INCLUDES)
