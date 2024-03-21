@@ -759,6 +759,7 @@ isBaseTypeName(String string) {
         LIT_TO_STR("int240"),
         LIT_TO_STR("int248"),
         LIT_TO_STR("int256"),
+        LIT_TO_STR("var"),
         LIT_TO_STR("uint"),
         LIT_TO_STR("uint8"),
         LIT_TO_STR("uint16"),
@@ -1893,13 +1894,13 @@ parseYulStatement(Parser *parser, ASTNode *node, YulLexer *lexer) {
             ASTNodeLink *path = structPush(parser->arena, ASTNodeLink);
             path->node.type = ASTNodeType_YulMemberAccessExpression;
             path->node.startToken = lexer->currentPosition - 1;
-            path->node.endToken = lexer->currentPosition - 1;
             path->node.yulIdentifierPathExpressionNode.count = 1;
             path->node.yulIdentifierPathExpressionNode.identifiers[0] = identifier;
             if(acceptYulToken(lexer, YulTokenType_Dot)) {
                 path->node.yulIdentifierPathExpressionNode.count++;
                 path->node.yulIdentifierPathExpressionNode.identifiers[1] = parseYulIdentifier(lexer);
             }
+            path->node.endToken = lexer->currentPosition - 1;
             SLL_QUEUE_PUSH(assignment->paths.head, assignment->paths.last, path);
             assignment->paths.count += 1;
 
@@ -1996,9 +1997,16 @@ parseYulStatement(Parser *parser, ASTNode *node, YulLexer *lexer) {
         bool hasDefault = acceptYulToken(lexer, YulTokenType_Default);
 
         if(hasDefault) {
-            ASTNode *node = structPush(parser->arena, ASTNode);
-            parseYulStatement(parser, node, lexer);
-            switchStatement->defaultBlock = node;
+            ASTNode *defaultBlock = structPush(parser->arena, ASTNode);
+            switchStatement->defaultBlock = defaultBlock;
+            defaultBlock->type = ASTNodeType_YulCaseStatement;
+            defaultBlock->startToken = lexer->currentPosition - 1;
+            defaultBlock->yulCaseNode.literal = 0x0;
+            defaultBlock->yulCaseNode.block = structPush(parser->arena, ASTNode);
+
+            parseYulStatement(parser, defaultBlock->yulCaseNode.block, lexer);
+
+            defaultBlock->endToken = lexer->currentPosition - 1;
         }
 
         if(defaultRequired && !hasDefault) {
@@ -2448,6 +2456,9 @@ parseFunction(Parser *parser, ASTNode *node) {
         } else if (acceptToken(parser, TokenType_Payable)) {
             assert(function->stateMutability == 0);
             function->stateMutability = 3;
+        } else if (acceptToken(parser, TokenType_Constant)) {
+            assert(function->stateMutability == 0);
+            function->stateMutability = 4;
         } else if (acceptToken(parser, TokenType_Virtual)) {
             assert(function->virtual == 0);
             function->virtual = 1;

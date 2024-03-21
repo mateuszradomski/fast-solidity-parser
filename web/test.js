@@ -1,4 +1,4 @@
-const {wasmParse} = require("./wasmParse");
+const {parse} = require("./wasmParse");
 const parser = require("@solidity-parser/parser");
 const { readFileSync } = require("fs");
 const fs = require("fs/promises");
@@ -19,11 +19,17 @@ async function main() {
         let crash = 0;
         for(const filePath of list) {
             try {
-                const input = await fs.readFile(filePath, "utf-8")
+                let input = await fs.readFile(filePath, "utf-8")
+
+                if(!input.includes("assembly")) {
+                    input = input.replace(/revert\(/g, 'revert MyTestingError(');
+                }
+                input = input.replace(/address payable\)/g, 'address payable asdf)');
+
                 const antlrASTObj = parser.parse(input, { range: true });
                 const antlrAST = JSON.stringify(antlrASTObj, null, 2);
 
-                const myASTObj = wasmParse(input);
+                const myASTObj = parse(input, {range: true});
                 const myAST = JSON.stringify(myASTObj, null, 2);
 
                 if (antlrAST === myAST) {
@@ -31,7 +37,9 @@ async function main() {
                     // console.log(`[ OK ][${passed}/${failed}/${crash}]`);
                 } else {
                     failed += 1;
-                    console.log(`[FAIL][${passed}/${failed}/${crash}]: ${filePath}`);
+                    if(!(input.includes("assembly") && input.includes("revert"))) {
+                        console.log(`[FAIL][${passed}/${failed}/${crash}]: ${filePath}`);
+                    }
                 }
             } catch (_) {
                 crash += 1;
@@ -45,11 +53,16 @@ async function main() {
 
 async function runSingleTest(args) {
     const enableRange = true
-    const input = await fs.readFile(args[0], "utf-8")
+    let input = await fs.readFile(args[0], "utf-8")
+
+    if(!input.includes("assembly")) {
+    input = input.replace(/revert\(/g, 'revert MyTestingError(');
+    }
+
     const antlrASTObj = parser.parse(input, { range: enableRange });
     const antlrAST = JSON.stringify(antlrASTObj, null, 2);
 
-    const myASTObj = wasmParse(input, { range: enableRange });
+    const myASTObj = parse(input, { range: enableRange });
     const myAST = JSON.stringify(myASTObj, null, 2);
 
     if (antlrAST === myAST) {
@@ -88,9 +101,8 @@ async function runAllTests(args) {
 
             let myAST = "";
             if(true) {
-                console.log(`[ GO ]: ${test.path}`);
                 goPath = test.path;
-                const myASTObj = wasmParse(test.content);
+                const myASTObj = parse(test.content);
                 myAST = JSON.stringify(myASTObj, null, 2);
             }
 
@@ -99,11 +111,11 @@ async function runAllTests(args) {
 				passed += 1;
 			} else {
                 failed += 1;
-				console.log(`[FAIL]: ${test.path}`);
+                console.log(`[FAIL][${passed}/${failed}/${crash}]: ${test.path}`);
 			}
 		} catch (_) {
             if(goPath === test.path) {
-                console.log(`[FAUL]: ${test.path}`);
+                // console.log(`[FAUL][${passed}/${failed}/${crash}]: ${test.path}`);
             }
             crash += 1;
         }

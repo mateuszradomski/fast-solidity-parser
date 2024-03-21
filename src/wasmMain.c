@@ -8,7 +8,7 @@ static String result = { 0 };
 String *
 entryPointBinaryInterface(const char *string, int len) {
     traceBegin(1);
-    Arena arena = arenaCreate(64 * Megabyte, 32 * Kilobyte, 64);
+    Arena arena = arenaCreate(16 * Megabyte, 32 * Kilobyte, 64);
     traceEnd();
 
     traceBegin(2);

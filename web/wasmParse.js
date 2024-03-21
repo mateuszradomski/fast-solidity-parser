@@ -57,7 +57,7 @@ function saveProfileToDisk() {
     fs.writeFileSync("data.spall", spallBytes);
 }
 
-function wasmParse(input, options) {
+function parse(input, options) {
     if(loaded === false) {
         loadParserInline()
     }
@@ -145,6 +145,6 @@ function makeEnv(env) {
 }
 
 module.exports = { 
-    wasmParse,
+    parse,
     saveProfileToDisk
 }

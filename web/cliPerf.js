@@ -1,10 +1,10 @@
 const fs = require('fs');
-const { wasmParse, saveProfileToDisk } = require('./wasmParse');
+const { parse, saveProfileToDisk } = require('./wasmParse');
 const parser = require('@solidity-parser/parser')
 
 async function runBinaryInterface(input) {
     let elapsed = -performance.now()
-    wasmParse(input)
+    parse(input)
     elapsed += performance.now();
     const lines = input.split('\n').length;
     const linesPerSeconds = lines / (elapsed / 1000);

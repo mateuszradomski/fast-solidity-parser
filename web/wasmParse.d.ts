@@ -459,4 +459,14 @@ export declare class ParserError extends Error {
     });
 }
 
-export declare function wasmParse(input: string): ParseResult;
+export interface TokenizeOptions {
+    range?: boolean;
+    loc?: boolean;
+}
+export interface ParseOptions extends TokenizeOptions {
+    comments?: boolean;
+    tokens?: boolean;
+    tolerant?: boolean;
+}
+
+export declare function parse(input: string, options?: ParseOptions): ParseResult;

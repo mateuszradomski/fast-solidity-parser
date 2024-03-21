@@ -607,7 +607,7 @@ pushStatement(Serializer *s, ASTNode *node) {
             l += pushU16(s, statement->defaultBlock != 0x0);
             if(statement->defaultBlock != 0x0) {
                 l += pushNodeHeader(s, statement->defaultBlock);
-                l += pushStatement(s, statement->defaultBlock);
+                l += pushStatement(s, statement->defaultBlock->yulCaseNode.block);
             }
         } break;
         case ASTNodeType_YulLeaveStatement:

@@ -150,7 +150,7 @@ class Deserializer {
 			[ASTNodeType_AbstractContractDefinition]: "abstract",
 		};
 
-		this.stateMutabilityString = [null, "pure", "view", "payable"];
+		this.stateMutabilityString = [null, "pure", "view", "payable", "constant"];
 
 		this.storageLocationString = [null, "memory", "storage", "calldata", null];
 	}
@@ -1328,7 +1328,7 @@ class Deserializer {
 		) {
 			let name = this.popString() ?? "";
 			name = kind === ASTNodeType_FunctionDefinition ? name : null;
-			const isFallback = kind === ASTNodeType_FallbackFunction;
+			const isFallback = kind === ASTNodeType_FallbackFunction || name === ""
 			const isReceiveEther = kind === ASTNodeType_ReceiveFunction;
 
 			const parameters = this.popFunctionParameters();
@@ -1432,7 +1432,13 @@ class Deserializer {
 			const subNodes = [];
 
 			for (let i = 0; i < subNodeCount; i++) {
-				subNodes.push(this.popASTNode());
+                const node = this.popASTNode()
+                if(node.type === "FunctionDefinition") {
+                    if(node.name === name) {
+                        node.isConstructor = true;
+                    }
+                }
+				subNodes.push(node);
 			}
 
 			return {
