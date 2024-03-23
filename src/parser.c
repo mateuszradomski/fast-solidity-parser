@@ -534,19 +534,39 @@ createParser(TokenizeResult tokens, Arena *arena) {
 }
 
 #define reportError(parser, userErrorFormat, ...) _reportError(parser, __FILE__, __LINE__, userErrorFormat, ##__VA_ARGS__)
+#define assertError(condition, parser, userErrorFormat, ...) _assertError((bool)(condition), parser, __FILE__, __LINE__, userErrorFormat, ##__VA_ARGS__)
+
+static void
+reportErrorVarArgs(Parser *parser, const char *file, u32 line, const char *userErrorFormat, va_list args) {
+    va_list copiedArgs;
+    va_copy(copiedArgs, args);
+    String userError = stringPushfv(parser->arena, userErrorFormat, copiedArgs);
+    va_end(copiedArgs);
+
+    u32 byteOffset = parser->tokens[parser->current].string.data - parser->tokens[0].string.data;
+    String error = stringPushf(parser->arena, "ERROR [%s:%d] - [%d]: %S", file, line, byteOffset, userError);
+
+    memoryUsed = arenaTakenBytes(parser->arena);
+    javascriptPrintStringPtr(&error);
+    unreachable();
+}
 
 static void
 _reportError(Parser *parser, const char *file, u32 line, const char *userErrorFormat, ...) {
     va_list args;
     va_start(args, userErrorFormat);
-    String userError = stringPushfv(parser->arena, userErrorFormat, args);
+    reportErrorVarArgs(parser, file, line, userErrorFormat, args);
     va_end(args);
+}
 
-    u32 byteOffset = parser->tokens[parser->current].string.data - parser->tokens[0].string.data;
-    String error = stringPushf(parser->arena, "ERROR [%s:%d] - [%d]: %S", file, line, byteOffset, userError);
-
-    javascriptPrintStringPtr(&error);
-    unreachable();
+static void
+_assertError(bool condition, Parser *parser, const char *file, u32 line, const char *userErrorFormat, ...) {
+    if(!condition) {
+        va_list args;
+        va_start(args, userErrorFormat);
+        reportErrorVarArgs(parser, file, line, userErrorFormat, args);
+        va_end(args);
+    }
 }
 
 static Token
@@ -596,7 +616,6 @@ _expectToken(Parser *parser, TokenType type, const char *file, u32 line) {
     if(!success) {
         _reportError(parser, file, line, "Unexpected token => encountered (%S) but wanted (%S)", tokenTypeToString(peekToken(parser).type), tokenTypeToString(type));
     }
-    assert(success);
 }
 
 #define expectToken(parser, type) _expectToken(parser, type, __FILE__, __LINE__)
@@ -631,7 +650,6 @@ _expectYulToken(Parser *parser, YulLexer *lexer, YulTokenType type, const char *
     if(!success) {
         _reportError(parser, file, line, "Unexpected token => encountered (%d) but wanted (%d)", peekYulToken(lexer).type, type);
     }
-    assert(success);
 }
 
 static TokenId
@@ -891,8 +909,9 @@ parseType(Parser *parser, ASTNode *node) {
         expectToken(parser, TokenType_LParen);
         mapping->keyType = structPush(parser->arena, ASTNode);
         parseType(parser, mapping->keyType);
-        assert(mapping->keyType->type == ASTNodeType_BaseType ||
-               mapping->keyType->type == ASTNodeType_IdentifierPath);
+        assertError(mapping->keyType->type == ASTNodeType_BaseType ||
+                    mapping->keyType->type == ASTNodeType_IdentifierPath,
+                    parser, "Mapping key type must be a base type or an identifier path");
         mapping->keyIdentifier = parseIdentifier(parser);
 
         expectToken(parser, TokenType_Equal);
@@ -967,7 +986,10 @@ parseType(Parser *parser, ASTNode *node) {
 
             node->baseTypeNode.payable = 0;
             if(acceptToken(parser, TokenType_Payable)) {
-                assert(stringMatch(parser->tokens[identifier].string, LIT_TO_STR("address")));
+                bool isAddress = stringMatch(parser->tokens[identifier].string, LIT_TO_STR("address"));
+                if(!isAddress) {
+                    reportError(parser, "Only address types can be payable");
+                }
                 node->baseTypeNode.payable = 1;
             }
         } else {
@@ -975,7 +997,8 @@ parseType(Parser *parser, ASTNode *node) {
             listPushTokenId(&node->identifierPathNode.identifiers, identifier, parser->arena);
             while(acceptToken(parser, TokenType_Dot)) {
                 TokenId nextIdentifier = parseIdentifier(parser);
-                assert(nextIdentifier > 0);
+                assertError(nextIdentifier != INVALID_TOKEN_ID, parser,
+                            "Expected identifier after dot, received (%S)", tokenTypeToString(peekToken(parser).type));
                 listPushTokenId(&node->identifierPathNode.identifiers, nextIdentifier, parser->arena);
             }
         }
@@ -1016,9 +1039,14 @@ parsePragma(Parser *parser, ASTNode *node) {
     ASTNodePragma *pragma = &node->pragmaNode;
 
     pragma->major = parseIdentifier(parser);
-    assert(pragma->major != INVALID_TOKEN_ID);
+    assertError(pragma->major != INVALID_TOKEN_ID, parser,
+                "Expected identifier after pragma, received (%S)", tokenTypeToString(peekToken(parser).type));
 
     while(!acceptToken(parser, TokenType_Semicolon)) {
+        if(acceptToken(parser, TokenType_EOF)) {
+            reportError(parser, "Unexpected EOF while parsing pragma");
+        }
+
         TokenId part = parser->current++;
         listPushTokenId(&pragma->following, part, parser->arena);
     }
@@ -1037,13 +1065,15 @@ parseImport(Parser *parser, ASTNode *node) {
         node->unitAliasTokenId = INVALID_TOKEN_ID;
         if(acceptToken(parser, TokenType_As)) {
             TokenId unitAliasTokenId = parseIdentifier(parser);
-            assert(unitAliasTokenId > 0);
+            assertError(unitAliasTokenId != INVALID_TOKEN_ID, parser,
+                        "Expected identifier in import alias, received (%S)", tokenTypeToString(peekToken(parser).type));
             node->unitAliasTokenId = unitAliasTokenId;
         }
     } else if(acceptToken(parser, TokenType_Star)) {
         expectToken(parser, TokenType_As);
         TokenId unitAliasTokenId = parseIdentifier(parser);
-        assert(unitAliasTokenId > 0);
+        assertError(unitAliasTokenId != INVALID_TOKEN_ID, parser,
+                    "Expected identifier in import alias, received (%S)", tokenTypeToString(peekToken(parser).type));
         node->unitAliasTokenId = unitAliasTokenId;
         expectToken(parser, TokenType_From);
         expectToken(parser, TokenType_StringLit);
@@ -1051,12 +1081,14 @@ parseImport(Parser *parser, ASTNode *node) {
     } else if(acceptToken(parser, TokenType_LBrace)) {
        do {
             TokenId symbolName = parseIdentifier(parser);
-            assert(symbolName > 0);
+            assertError(symbolName != INVALID_TOKEN_ID, parser,
+                        "Expected identifier in import symbol list, received (%S)", tokenTypeToString(peekToken(parser).type));
             listPushTokenId(&node->symbols, symbolName, parser->arena);
 
             if(acceptToken(parser, TokenType_As)) {
                 TokenId symbolAliasName = parseIdentifier(parser);
-                assert(symbolAliasName > 0);
+                assertError(symbolAliasName != INVALID_TOKEN_ID, parser,
+                            "Expected identifier in import symbol alias, received (%S)", tokenTypeToString(peekToken(parser).type));
                 listPushTokenId(&node->symbolAliases, symbolAliasName, parser->arena);
             } else {
                 listPushTokenId(&node->symbolAliases, INVALID_TOKEN_ID, parser->arena);
@@ -1069,7 +1101,8 @@ parseImport(Parser *parser, ASTNode *node) {
         node->pathTokenId = peekLastTokenId(parser);
         node->unitAliasTokenId = INVALID_TOKEN_ID;
     } else {
-        return false;
+        reportError(parser, "Unexpected token while parsing import - %S",
+                    tokenTypeToString(peekToken(parser).type));
     }
 
     node->type = ASTNodeType_Import;
@@ -1166,14 +1199,16 @@ parseEnum(Parser *parser, ASTNode *node) {
     node->type = ASTNodeType_EnumDefinition;
 
     TokenId nameTokenId = parseIdentifier(parser);
-    assert(nameTokenId > 0);
+    assertError(nameTokenId != INVALID_TOKEN_ID, parser,
+                "Name of enum must be an identifier, received (%S)", tokenTypeToString(peekToken(parser).type));
     node->nameTokenId = nameTokenId;
     expectToken(parser, TokenType_LBrace);
 
     if(!acceptToken(parser, TokenType_RBrace)) {
         do {
             TokenId valueName = parseIdentifier(parser);
-            assert(valueName > 0);
+            assertError(valueName != INVALID_TOKEN_ID, parser,
+                        "Enum value must be an identifier, received (%S)", tokenTypeToString(peekToken(parser).type));
             listPushTokenId(&node->values, valueName, parser->arena);
         } while(acceptToken(parser, TokenType_Comma));
 
@@ -1192,7 +1227,8 @@ parseStruct(Parser *parser, ASTNode *baseNode) {
     ASTNodeStruct *node = &baseNode->structNode;
 
     TokenId nameTokenId = parseIdentifier(parser);
-    assert(nameTokenId > 0);
+    assertError(nameTokenId != INVALID_TOKEN_ID, parser,
+                "Name of struct must be an identifier, received (%S)", tokenTypeToString(peekToken(parser).type));
     node->nameTokenId = nameTokenId;
     expectToken(parser, TokenType_LBrace);
 
@@ -1211,7 +1247,8 @@ parseError(Parser *parser, ASTNode *node) {
     node->type = ASTNodeType_Error;
     ASTNodeError *error = &node->errorNode;
     error->identifier = parseIdentifier(parser);
-    assert(error->identifier > 0);
+    assertError(error->identifier != INVALID_TOKEN_ID, parser,
+                "Name of error must be an identifier, received (%S)", tokenTypeToString(peekToken(parser).type));
 
     expectToken(parser, TokenType_LParen);
     if(!acceptToken(parser, TokenType_RParen)) {
@@ -1229,7 +1266,8 @@ parseEvent(Parser *parser, ASTNode *node) {
     node->type = ASTNodeType_Event;
     ASTNodeEvent *event = &node->eventNode;
     event->identifier = parseIdentifier(parser);
-    assert(event->identifier > 0);
+    assertError(event->identifier != INVALID_TOKEN_ID, parser,
+                "Name of event must be an identifier, received (%S)", tokenTypeToString(peekToken(parser).type));
 
     expectToken(parser, TokenType_LParen);
 
@@ -1254,14 +1292,15 @@ parseTypedef(Parser *parser, ASTNode *node) {
     ASTNodeTypedef *typedefNode = &node->typedefNode;
 
     typedefNode->identifier = parseIdentifier(parser);
-    assert(typedefNode->identifier > 0);
+    assertError(typedefNode->identifier != INVALID_TOKEN_ID, parser,
+                "Name of typedef must be an identifier, received (%S)", tokenTypeToString(peekToken(parser).type));
 
     expectToken(parser, TokenType_Is);
 
     typedefNode->type = structPush(parser->arena, ASTNode);
     parseType(parser, typedefNode->type);
-    assert(typedefNode->type->type == ASTNodeType_BaseType);
-
+    assertError(typedefNode->type->type == ASTNodeType_BaseType, parser,
+                "Typedef type must be a base type");
     expectToken(parser, TokenType_Semicolon);
     node->endToken = parser->current - 1;
     return true;
@@ -1399,7 +1438,8 @@ parseCallArgumentList(Parser *parser, ASTNodeList *expressions, TokenIdList *nam
         if(acceptToken(parser, TokenType_LBrace)) {
             do {
                 TokenId identifier = parseIdentifier(parser);
-                assert(identifier != INVALID_TOKEN_ID);
+                assertError(identifier != INVALID_TOKEN_ID, parser,
+                            "Expected identifier in call argument list, received (%S)", tokenTypeToString(peekToken(parser).type));
                 listPushTokenId(names, identifier, parser->arena);
 
                 expectToken(parser, TokenType_Colon);
@@ -1523,27 +1563,28 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
             parseExpressionImpl(parser, node->unaryExpressionNode.subExpression, precedence);
         }
     } else if(parseIdentifier(parser) != INVALID_TOKEN_ID) {
-            const Token ident = peekLastToken(parser);
+        const Token ident = peekLastToken(parser);
 
-            if(isBaseTypeName(ident.string)) {
-                u32 startPosition = getCurrentParserPosition(parser);
-                parser->current -= 1;
-                if(!parseType(parser, node)) {
-                    setCurrentParserPosition(parser, startPosition);
+        if(isBaseTypeName(ident.string)) {
+            u32 startPosition = getCurrentParserPosition(parser);
+            parser->current -= 1;
+            if(!parseType(parser, node)) {
+                setCurrentParserPosition(parser, startPosition);
                 u32 startPosition = getCurrentParserPosition(parser);
                 node->type = ASTNodeType_BaseType;
                 node->baseTypeNode.typeName = peekLastTokenId(parser);
 
                 node->baseTypeNode.payable = 0;
                 if(acceptToken(parser, TokenType_Payable)) {
-                    assert(stringMatch(parser->tokens[node->baseTypeNode.typeName].string, LIT_TO_STR("address")));
+                    assertError(stringMatch(parser->tokens[node->baseTypeNode.typeName].string, LIT_TO_STR("address")),
+                                parser, "Only address types can be payable");
                     node->baseTypeNode.payable = 1;
                 }
-                }
-            } else {
-                node->type = ASTNodeType_IdentifierExpression;
-                node->identifierExpressionNode.value = peekLastTokenId(parser);
             }
+        } else {
+            node->type = ASTNodeType_IdentifierExpression;
+            node->identifierExpressionNode.value = peekLastTokenId(parser);
+        }
     } else if(acceptToken(parser, TokenType_Type)) {
         node->type = ASTNodeType_IdentifierExpression;
         node->identifierExpressionNode.value = peekLastTokenId(parser);
@@ -1628,7 +1669,8 @@ parseExpressionImpl(Parser *parser, ASTNode *node, u32 previousPrecedence) {
                     return false;
                 }
 
-                assert(identifier != INVALID_TOKEN_ID);
+                assertError(identifier != INVALID_TOKEN_ID, parser,
+                            "Expected identifier in named parameter list, received (%S)", tokenTypeToString(peekToken(parser).type));
                 listPushTokenId(&node->namedParametersExpressionNode.names, identifier, parser->arena);
 
                 if(!acceptToken(parser, TokenType_Colon)) {
@@ -1951,7 +1993,8 @@ parseYulStatement(Parser *parser, ASTNode *node, YulLexer *lexer) {
         if(!acceptYulToken(lexer, YulTokenType_RParen)) {
             do {
                 TokenId identifier = parseYulIdentifier(lexer);
-                assert(identifier != INVALID_TOKEN_ID);
+                assertError(identifier != INVALID_TOKEN_ID, parser,
+                            "Expected identifier in Yul function parameter list, received (%S)", peekYulToken(lexer).string);
                 listPushTokenId(&function->parameters, identifier, parser->arena);
             } while(acceptYulToken(lexer, YulTokenType_Comma));
             expectYulToken(parser, lexer, YulTokenType_RParen);
@@ -1960,7 +2003,8 @@ parseYulStatement(Parser *parser, ASTNode *node, YulLexer *lexer) {
         if(acceptYulToken(lexer, YulTokenType_RightArrow)) {
             do {
                 TokenId identifier = parseYulIdentifier(lexer);
-                assert(identifier != INVALID_TOKEN_ID);
+                assertError(identifier != INVALID_TOKEN_ID, parser,
+                            "Expected identifier in Yul function return parameter list, received (%S)", peekYulToken(lexer).string);
                 listPushTokenId(&function->returnParameters, identifier, parser->arena);
             } while(acceptYulToken(lexer, YulTokenType_Comma));
         }
@@ -2090,7 +2134,7 @@ parseStatement(Parser *parser, ASTNode *node) {
         ASTNodeUncheckedBlockStatement *statement = &node->uncheckedBlockStatementNode;
         statement->block = structPush(parser->arena, ASTNode);
         parseStatement(parser, statement->block);
-        assert(statement->block->type == ASTNodeType_BlockStatement);
+        assertError(statement->block->type == ASTNodeType_BlockStatement, parser, "A block statement must follow the unchecked keyword");
         node->endToken = parser->current - 1;
     } else if(acceptToken(parser, TokenType_While)) {
         node->type = ASTNodeType_WhileStatement;
@@ -2131,8 +2175,9 @@ parseStatement(Parser *parser, ASTNode *node) {
         if(!acceptToken(parser, TokenType_Semicolon)) {
             statement->variableStatement = structPush(parser->arena, ASTNode);
             parseStatement(parser, statement->variableStatement);
-            assert(statement->variableStatement->type == ASTNodeType_ExpressionStatement || 
-                   statement->variableStatement->type == ASTNodeType_VariableDeclarationStatement);
+            assertError(statement->variableStatement->type == ASTNodeType_ExpressionStatement || 
+                        statement->variableStatement->type == ASTNodeType_VariableDeclarationStatement,
+                        parser, "Expected variable declaration or expression statement in for loop initializer");
         }
 
         statement->conditionExpression = 0x0;
@@ -2176,7 +2221,8 @@ parseStatement(Parser *parser, ASTNode *node) {
         node->startToken = parser->current - 1;
         node->emitStatementNode.expression = structPush(parser->arena, ASTNode);
         parseExpression(parser, node->emitStatementNode.expression);
-        assert(node->emitStatementNode.expression->type == ASTNodeType_FunctionCallExpression);
+        assertError(node->emitStatementNode.expression->type == ASTNodeType_FunctionCallExpression,
+                    parser, "Expected function call expression after emit keyword");
         expectToken(parser, TokenType_Semicolon);
         node->endToken = parser->current - 1;
     } else if(acceptToken(parser, TokenType_Try)) {
@@ -2304,7 +2350,8 @@ parseConstVariable(Parser *parser, ASTNode *node, ASTNode *type) {
 
     constVariable->type = type;
     constVariable->identifier = parseIdentifier(parser);
-    assert(constVariable->identifier > 0);
+    assertError(constVariable->identifier != INVALID_TOKEN_ID,
+                parser, "Constant variable declaration name can only be an identifier");
 
     expectToken(parser, TokenType_Equal);
 
@@ -2322,7 +2369,8 @@ parseOverrideSpecifierArgs(Parser *parser, ASTNodeList *list) {
         do {
             ASTNodeLink *argument = structPush(parser->arena, ASTNodeLink);
             parseType(parser, &argument->node);
-            assert(argument->node.type == ASTNodeType_IdentifierPath);
+            assertError(argument->node.type == ASTNodeType_IdentifierPath,
+                        parser, "Expected identifier path in override specifier arguments");
 
             SLL_QUEUE_PUSH(list->head, list->last, argument);
             list->count += 1;
@@ -2348,22 +2396,22 @@ tryParseStateVariableDeclaration(Parser *parser, ASTNode *node) {
     decl->visibility = 0;
     for(;;) {
         if (acceptToken(parser, TokenType_Internal)) {
-            assert(decl->visibility == 0);
+            assertError(decl->visibility == 0, parser, "Visibility modifier already set");
             decl->visibility = 3;
         } else if (acceptToken(parser, TokenType_Private)) {
-            assert(decl->visibility == 0);
+            assertError(decl->visibility == 0, parser, "Visibility modifier already set");
             decl->visibility = 2;
         } else if (acceptToken(parser, TokenType_Public)) {
-            assert(decl->visibility == 0);
+            assertError(decl->visibility == 0, parser, "Visibility modifier already set");
             decl->visibility = 1;
         } else if(acceptToken(parser, TokenType_Constant)) {
-            assert(decl->mutability == 0);
+            assertError(decl->mutability == 0, parser, "Mutability modifier already set");
             decl->mutability = 1;
         } else if(acceptToken(parser, TokenType_Immutable)) {
-            assert(decl->mutability == 0);
+            assertError(decl->mutability == 0, parser, "Mutability modifier already set");
             decl->mutability = 2;
         } else if(acceptToken(parser, TokenType_Override)) {
-            assert(decl->override == 0);
+            assertError(decl->override == 0, parser, "Override modifier already set");
             decl->override = 1;
             parseOverrideSpecifierArgs(parser, &decl->overrides);
         } else {
@@ -2436,41 +2484,42 @@ parseFunction(Parser *parser, ASTNode *node) {
     function->virtual = 0;
     for(;;) {
         if (acceptToken(parser, TokenType_Internal)) {
-            assert(function->visibility == 0);
+            assertError(function->visibility == 0, parser, "Visibility modifier already set");
             function->visibility = 1;
         } else if (acceptToken(parser, TokenType_External)) {
-            assert(function->visibility == 0);
+            assertError(function->visibility == 0, parser, "Visibility modifier already set");
             function->visibility = 2;
         } else if (acceptToken(parser, TokenType_Private)) {
-            assert(function->visibility == 0);
+            assertError(function->visibility == 0, parser, "Visibility modifier already set");
             function->visibility = 3;
         } else if (acceptToken(parser, TokenType_Public)) {
-            assert(function->visibility == 0);
+            assertError(function->visibility == 0, parser, "Visibility modifier already set");
             function->visibility = 4;
         } else if (acceptToken(parser, TokenType_Pure)) {
-            assert(function->stateMutability == 0);
+            assertError(function->stateMutability == 0, parser, "State mutability modifier already set");
             function->stateMutability = 1;
         } else if (acceptToken(parser, TokenType_View)) {
-            assert(function->stateMutability == 0);
+            assertError(function->stateMutability == 0, parser, "State mutability modifier already set");
             function->stateMutability = 2;
         } else if (acceptToken(parser, TokenType_Payable)) {
-            assert(function->stateMutability == 0);
+            assertError(function->stateMutability == 0, parser, "State mutability modifier already set");
             function->stateMutability = 3;
         } else if (acceptToken(parser, TokenType_Constant)) {
-            assert(function->stateMutability == 0);
+            assertError(function->stateMutability == 0, parser, "State mutability modifier already set");
             function->stateMutability = 4;
         } else if (acceptToken(parser, TokenType_Virtual)) {
-            assert(function->virtual == 0);
+            assertError(function->virtual == 0, parser, "Virtual modifier already set");
             function->virtual = 1;
         } else if (acceptToken(parser, TokenType_Override)) {
-            assert(function->override == 0);
+            assertError(function->override == 0, parser, "Override modifier already set");
             function->override = 1;
             parseOverrideSpecifierArgs(parser, &function->overrides);
         } else {
             ASTNode testExpression = { 0 };
             bool isSuccess = parseType(parser, &testExpression);
             if(isSuccess) {
-                assert(testExpression.type == ASTNodeType_IdentifierPath);
+                assertError(testExpression.type == ASTNodeType_IdentifierPath,
+                            parser, "Expected identifier path in function modifier invocation");
                 ASTNodeLink *link = structPush(parser->arena, ASTNodeLink);
                 parseModifierInvocation(parser, &link->node, &testExpression);
 
@@ -2507,7 +2556,7 @@ parseModifier(Parser *parser, ASTNode *node) {
     node->type = ASTNodeType_ModifierDefinition;
     node->startToken = parser->current - 1;
     TokenId name = parseIdentifier(parser);
-    assert(name != INVALID_TOKEN_ID);
+    assertError(name != INVALID_TOKEN_ID, parser, "Modifier name must be an identifier");
     ASTNodeFunctionDefinition *modifier = &node->functionDefinitionNode;
     modifier->name = name;
 
@@ -2524,10 +2573,10 @@ parseModifier(Parser *parser, ASTNode *node) {
     modifier->virtual = 0;
     for(;;) {
         if (acceptToken(parser, TokenType_Virtual)) {
-            assert(modifier->virtual == 0);
+            assertError(modifier->virtual == 0, parser, "Virtual modifier already set");
             modifier->virtual = 1;
         } else if(acceptToken(parser, TokenType_Override)) {
-            assert(modifier->override == 0);
+            assertError(modifier->override == 0, parser, "Override modifier already set");
             modifier->override = 1;
             parseOverrideSpecifierArgs(parser, &modifier->overrides);
         } else {
@@ -2562,19 +2611,20 @@ parseConstructor(Parser *parser, ASTNode *node) {
     constructor->visibility = 0;
     for(;;) {
         if (acceptToken(parser, TokenType_Payable)) {
-            assert(constructor->stateMutability == 0);
+            assertError(constructor->stateMutability == 0, parser, "State mutability modifier already set");
             constructor->stateMutability = 3;
         } else if(acceptToken(parser, TokenType_Internal)) {
-            assert(constructor->visibility == 0);
+            assertError(constructor->visibility == 0, parser, "Visibility modifier already set");
             constructor->visibility = 1;
         } else if (acceptToken(parser, TokenType_Public)) {
-            assert(constructor->visibility == 0);
+            assertError(constructor->visibility == 0, parser, "Visibility modifier already set");
             constructor->visibility = 4;
         } else {
             ASTNode testExpression = { 0 };
             bool isSuccess = parseType(parser, &testExpression);
             if(isSuccess) {
-                assert(testExpression.type == ASTNodeType_IdentifierPath);
+                assertError(testExpression.type == ASTNodeType_IdentifierPath,
+                            parser, "Expected identifier path in constructor modifier invocation");
                 ASTNodeLink *link = structPush(parser->arena, ASTNodeLink);
                 parseModifierInvocation(parser, &link->node, &testExpression);
 
@@ -2601,47 +2651,48 @@ parseContractBody(Parser *parser, ASTNodeList *elements) {
         ASTNodeLink *element = structPush(parser->arena, ASTNodeLink);
 
         if(acceptToken(parser, TokenType_Constructor)) {
-            assert(parseConstructor(parser, &element->node));
+            parseConstructor(parser, &element->node);
         } else if(acceptToken(parser, TokenType_Function)) {
             parser->current -= 1;
             if(!tryParseStateVariableDeclaration(parser, &element->node)) {
                 parser->current += 1;
                 memset(&element->node, 0, sizeof(ASTNode));
 
-                assert(parseFunction(parser, &element->node));
+                parseFunction(parser, &element->node);
             }
         } else if(acceptToken(parser, TokenType_Modifier)) {
-            assert(parseModifier(parser, &element->node));
+            parseModifier(parser, &element->node);
         } else if(acceptToken(parser, TokenType_Fallback)) {
-            assert(parseFunction(parser, &element->node));
+            parseFunction(parser, &element->node);
             element->node.type = ASTNodeType_FallbackFunction;
         } else if(acceptToken(parser, TokenType_Receive)) {
-            assert(parseFunction(parser, &element->node));
+            parseFunction(parser, &element->node);
             element->node.type = ASTNodeType_ReceiveFunction;
         } else if(acceptToken(parser, TokenType_Struct)) {
-            assert(parseStruct(parser, &element->node));
+            parseStruct(parser, &element->node);
         } else if(acceptToken(parser, TokenType_Using)) {
-            assert(parseUsing(parser, &element->node));
+            parseUsing(parser, &element->node);
         } else if(acceptToken(parser, TokenType_Enum)) {
-            assert(parseEnum(parser, &element->node));
+            parseEnum(parser, &element->node);
         } else if(acceptToken(parser, TokenType_Type)) {
-            assert(parseTypedef(parser, &element->node));
+            parseTypedef(parser, &element->node);
         } else if(acceptToken(parser, TokenType_Event)) {
-            assert(parseEvent(parser, &element->node));
+            parseEvent(parser, &element->node);
         } else if(acceptToken(parser, TokenType_Error)) {
             parser->current -= 1;
             if(!tryParseStateVariableDeclaration(parser, &element->node)) {
                 parser->current += 1;
                 memset(&element->node, 0, sizeof(ASTNode));
 
-                assert(parseError(parser, &element->node));
+                parseError(parser, &element->node);
             }
         } else if(acceptToken(parser, TokenType_EOF)) {
             break;
         } else if(acceptToken(parser, TokenType_Comment)) {
             continue;
         } else {
-            assert(tryParseStateVariableDeclaration(parser, &element->node));
+            assertError(tryParseStateVariableDeclaration(parser, &element->node),
+                        parser, "Expected state variable declaration");
         }
 
         SLL_QUEUE_PUSH(elements->head, elements->last, element);
@@ -2669,7 +2720,8 @@ parseContract(Parser *parser, ASTNode *node) {
 
             inheritance->identifier = structPush(parser->arena, ASTNode);
             parseType(parser, inheritance->identifier);
-            assert(inheritance->identifier->type == ASTNodeType_IdentifierPath);
+            assertError(inheritance->identifier->type == ASTNodeType_IdentifierPath,
+                        parser, "Expected identifier path in inheritance specifier");
 
             if(acceptToken(parser, TokenType_LParen)) {
                 parseCallArgumentList(parser, &inheritance->argumentsExpression, &inheritance->argumentsName);
@@ -2807,31 +2859,31 @@ parseSourceUnit(Parser *parser) {
         ASTNodeLink *child = arrayPush(parser->arena, ASTNodeLink, 1);
 
         if(acceptToken(parser, TokenType_Pragma)) {
-            assert(parsePragma(parser, &child->node));
+            parsePragma(parser, &child->node);
         } else if(acceptToken(parser, TokenType_Import)) {
-            assert(parseImport(parser, &child->node));
+            parseImport(parser, &child->node);
         } else if(acceptToken(parser, TokenType_Using)) {
-            assert(parseUsing(parser, &child->node));
+            parseUsing(parser, &child->node);
         } else if(acceptToken(parser, TokenType_Enum)) {
-            assert(parseEnum(parser, &child->node));
+            parseEnum(parser, &child->node);
         } else if(acceptToken(parser, TokenType_Struct)) {
-            assert(parseStruct(parser, &child->node));
+            parseStruct(parser, &child->node);
         } else if(acceptToken(parser, TokenType_Error)) {
-            assert(parseError(parser, &child->node));
+            parseError(parser, &child->node);
         } else if(acceptToken(parser, TokenType_Event)) {
-            assert(parseEvent(parser, &child->node));
+            parseEvent(parser, &child->node);
         } else if(acceptToken(parser, TokenType_Type)) {
-            assert(parseTypedef(parser, &child->node));
+            parseTypedef(parser, &child->node);
         } else if(acceptToken(parser, TokenType_Function)) {
-            assert(parseFunction(parser, &child->node));
+            parseFunction(parser, &child->node);
         } else if(acceptToken(parser, TokenType_Contract)) {
-            assert(parseContract(parser, &child->node));
+            parseContract(parser, &child->node);
         } else if(acceptToken(parser, TokenType_Abstract)) {
-            assert(parseAbstractContract(parser, &child->node));
+            parseAbstractContract(parser, &child->node);
         } else if(acceptToken(parser, TokenType_Interface)) {
-            assert(parseInterface(parser, &child->node));
+            parseInterface(parser, &child->node);
         } else if(acceptToken(parser, TokenType_Library)) {
-            assert(parseLibrary(parser, &child->node));
+            parseLibrary(parser, &child->node);
         } else if(acceptToken(parser, TokenType_EOF)) {
             node.endToken = parser->current - 2;
             break;
@@ -2840,7 +2892,11 @@ parseSourceUnit(Parser *parser) {
         } else {
             u32 startToken = parser->current;
             ASTNode *type = structPush(parser->arena, ASTNode);
-            parseType(parser, type);
+            bool success = parseType(parser, type);
+            if(!success) {
+                memoryUsed = 16 * Megabyte;
+                reportError(parser, "Expected type, but got (\"%S\")", peekLastToken(parser).string);
+            }
             if(acceptToken(parser, TokenType_Constant)) {
                 parseConstVariable(parser, &child->node, type);
                 child->node.startToken = startToken;

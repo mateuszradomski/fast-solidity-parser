@@ -71,7 +71,7 @@ function parse(input, options) {
     profiler.trace_begin("Copying");
     const cArrayPointer = instance.exports.malloc(jsArray.length);
     let memoryBuffer = instance.exports.memory.buffer;
-    cArray = new Uint8Array(memoryBuffer, cArrayPointer, jsArray.length);
+    const cArray = new Uint8Array(memoryBuffer, cArrayPointer, jsArray.length);
     cArray.set(jsArray);
     profiler.trace_end();
 

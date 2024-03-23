@@ -28,5 +28,7 @@ entryPointBinaryInterface(const char *string, int len) {
     result = astNodeToBinary(&s, &node);
     traceEnd();
 
+    memoryUsed = arenaTakenBytes(&arena);
+
     return &result;
 }

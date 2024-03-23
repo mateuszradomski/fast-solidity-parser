@@ -68,6 +68,7 @@ void traceEnd() {}
 #ifdef WASM
 extern unsigned char __heap_base;
 unsigned int bumpPointerBase = 0;
+unsigned int memoryUsed = 0;
 unsigned int bumpPointer = (unsigned int)(&__heap_base);
 
 extern void javascriptPrintStringPtr(void *s);
@@ -125,7 +126,8 @@ void resetBumpPointer() {
         bumpPointerBase = bumpPointer;
     }
 
-    memset((void *)bumpPointerBase, 0, bumpPointer - bumpPointerBase);
+    u32 size = MIN(bumpPointer - bumpPointerBase, memoryUsed * 2);
+    memset((void *)bumpPointerBase, 0, size);
     bumpPointer = bumpPointerBase;
 }
 
@@ -190,6 +192,21 @@ cursorFreeBytes(MemoryCursor *cursor) {
 static size_t
 cursorTakenBytes(MemoryCursor *cursor) {
     size_t result = (size_t)(cursor->cursorPointer - cursor->basePointer);
+
+    return result;
+}
+
+static u32
+arenaTakenBytes(Arena *arena) {
+    u32 result = 0;
+
+    if(arena) {
+        for(MemoryCursorNode *cursorNode = arena->cursorNode;
+            cursorNode != 0x0;
+            cursorNode = cursorNode->next) {
+            result += cursorTakenBytes(&cursorNode->cursor);
+        }
+    }
 
     return result;
 }
