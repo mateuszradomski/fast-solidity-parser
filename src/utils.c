@@ -69,6 +69,7 @@ void traceEnd() {}
 extern unsigned char __heap_base;
 unsigned int bumpPointerBase = 0;
 unsigned int memoryUsed = 0;
+unsigned int bumpPointerArenaTop = 0;
 unsigned int bumpPointer = (unsigned int)(&__heap_base);
 
 extern void javascriptPrintStringPtr(void *s);
@@ -126,7 +127,7 @@ void resetBumpPointer() {
         bumpPointerBase = bumpPointer;
     }
 
-    u32 size = MIN(bumpPointer - bumpPointerBase, memoryUsed * 2);
+    u32 size = MIN(bumpPointer - bumpPointerBase, bumpPointerArenaTop - bumpPointerBase);
     memset((void *)bumpPointerBase, 0, size);
     bumpPointer = bumpPointerBase;
 }

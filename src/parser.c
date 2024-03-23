@@ -547,6 +547,7 @@ reportErrorVarArgs(Parser *parser, const char *file, u32 line, const char *userE
     String error = stringPushf(parser->arena, "ERROR [%s:%d] - [%d]: %S", file, line, byteOffset, userError);
 
     memoryUsed = arenaTakenBytes(parser->arena);
+    bumpPointerArenaTop = (unsigned int)structPush(parser->arena, int);
     javascriptPrintStringPtr(&error);
     unreachable();
 }
@@ -576,13 +577,13 @@ peekToken(Parser *parser) {
 
 static u32
 peekLastTokenId(Parser *parser) {
-    assert(parser->current > 0);
+    assertError(parser->current > 0, parser, "No tokens to peek");
     return parser->current - 1;
 }
 
 static Token
 peekLastToken(Parser *parser) {
-    assert(parser->current > 0);
+    assertError(parser->current > 0, parser, "No tokens to peek");
     return parser->tokens[parser->current - 1];
 }
 
@@ -861,7 +862,8 @@ isBaseTypeName(String string) {
 
 static bool parseType(Parser *parser, ASTNode *node);
 
-static void parseVariableDeclarationIntoList(Parser *parser, ASTNodeList *list) {
+static bool
+parseVariableDeclarationIntoList(Parser *parser, ASTNodeList *list) {
     ASTNodeLink *parameter = structPush(parser->arena, ASTNodeLink);
     ASTNode *node = &parameter->node;
     node->type = ASTNodeType_VariableDeclaration;
@@ -869,7 +871,10 @@ static void parseVariableDeclarationIntoList(Parser *parser, ASTNodeList *list) 
     ASTNodeVariableDeclaration *variableDeclaration = &node->variableDeclarationNode;
 
     variableDeclaration->type = structPush(parser->arena, ASTNode);
-    parseType(parser, variableDeclaration->type);
+    bool isSuccess = parseType(parser, variableDeclaration->type);
+    if(!isSuccess) {
+        return false;
+    }
 
     variableDeclaration->dataLocation = 0;
     if(acceptToken(parser, TokenType_Memory)) {
@@ -887,13 +892,17 @@ static void parseVariableDeclarationIntoList(Parser *parser, ASTNodeList *list) 
 
     SLL_QUEUE_PUSH(list->head, list->last, parameter);
     list->count += 1;
+
+    return true;
 }
 
 static void
 parseFunctionParameters(Parser *parser, ASTNodeList *list) {
-    do {
-        parseVariableDeclarationIntoList(parser, list);
-    } while(acceptToken(parser, TokenType_Comma));
+    parseVariableDeclarationIntoList(parser, list);
+    while(acceptToken(parser, TokenType_Comma)) {
+        assertError(parseVariableDeclarationIntoList(parser, list),
+                    parser, "Expected variable declaration after comma");
+    }
 }
 
 static bool
@@ -976,6 +985,7 @@ parseType(Parser *parser, ASTNode *node) {
 
             if(!acceptToken(parser, TokenType_RParen)) {
                 parseFunctionParameters(parser, &function->returnParameters);
+                assertError(function->returnParameters.count > 0, parser, "Expected return parameters");
                 expectToken(parser, TokenType_RParen);
             }
         }
@@ -1050,6 +1060,7 @@ parsePragma(Parser *parser, ASTNode *node) {
         TokenId part = parser->current++;
         listPushTokenId(&pragma->following, part, parser->arena);
     }
+    assertError(pragma->following.count > 0, parser, "Expected pragma body");
 
     node->endToken = parser->current - 1;
 
@@ -1153,7 +1164,8 @@ parseUsing(Parser *parser, ASTNode *node) {
         using->onLibrary = 0;
         do {
             ASTNodeLink *identifierLink = structPush(parser->arena, ASTNodeLink);
-            parseType(parser, &identifierLink->node);
+            bool isSuccess = parseType(parser, &identifierLink->node);
+            assertError(isSuccess, parser, "Expected type in using statement, received (%S)", tokenTypeToString(peekToken(parser).type));
             SLL_QUEUE_PUSH(using->identifiers.head, using->identifiers.last, identifierLink);
             using->identifiers.count += 1;
 
@@ -2239,6 +2251,7 @@ parseStatement(Parser *parser, ASTNode *node) {
             expectToken(parser, TokenType_LParen);
 
             parseFunctionParameters(parser, &statement->returnParameters);
+            assertError(statement->returnParameters.count > 0, parser, "Returns parameters must be specified");
             expectToken(parser, TokenType_RParen);
         }
 
@@ -2262,6 +2275,7 @@ parseStatement(Parser *parser, ASTNode *node) {
 
                 catchStatement->parameters.count = 0;
                 parseFunctionParameters(parser, &catchStatement->parameters);
+                assertError(catchStatement->parameters.count > 0, parser, "Catch parameters must be specified");
                 expectToken(parser, TokenType_RParen);
             } else {
                 parser->current -= 1;
@@ -2537,6 +2551,7 @@ parseFunction(Parser *parser, ASTNode *node) {
         function->returnParameters.count = 0;
         expectToken(parser, TokenType_LParen);
         parseFunctionParameters(parser, &function->returnParameters);
+        assertError(function->returnParameters.count > 0, parser, "Returns parameters must be specified");
         expectToken(parser, TokenType_RParen);
     }
 
@@ -2894,13 +2909,11 @@ parseSourceUnit(Parser *parser) {
             ASTNode *type = structPush(parser->arena, ASTNode);
             bool success = parseType(parser, type);
             if(!success) {
-                memoryUsed = 16 * Megabyte;
                 reportError(parser, "Expected type, but got (\"%S\")", peekLastToken(parser).string);
             }
-            if(acceptToken(parser, TokenType_Constant)) {
-                parseConstVariable(parser, &child->node, type);
-                child->node.startToken = startToken;
-            }
+            expectToken(parser, TokenType_Constant);
+            parseConstVariable(parser, &child->node, type);
+            child->node.startToken = startToken;
         }
 
         SLL_QUEUE_PUSH(node.children.head, node.children.last, child);

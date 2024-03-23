@@ -594,7 +594,6 @@ pushStatement(Serializer *s, ASTNode *node) {
             ASTNodeYulSwitchStatement *statement = &node->yulSwitchStatementNode;
 
             l += pushYulExpression(s, statement->expression);
-
             l += pushU32(s, statement->cases.count);
 
             ASTNodeLink *it = statement->cases.head;
@@ -651,7 +650,6 @@ pushPragma(Serializer *s, ASTNode *node) {
     ASTNodePragma *pragma = &node->pragmaNode;
 
     l += pushTokenStringById(s, pragma->major);
-    assert(pragma->following.count > 0);
     TokenId firstTokenId = listGetTokenId(&pragma->following, 0);
     TokenId lastTokenId = listGetTokenId(&pragma->following, pragma->following.count - 1);
     String first = getToken(s->tokens, firstTokenId).string;

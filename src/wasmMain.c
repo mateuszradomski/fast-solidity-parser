@@ -7,6 +7,8 @@ static String result = { 0 };
 
 String *
 entryPointBinaryInterface(const char *string, int len) {
+    bumpPointerArenaTop = 0xffffffff;
+
     traceBegin(1);
     Arena arena = arenaCreate(16 * Megabyte, 32 * Kilobyte, 64);
     traceEnd();
@@ -29,6 +31,7 @@ entryPointBinaryInterface(const char *string, int len) {
     traceEnd();
 
     memoryUsed = arenaTakenBytes(&arena);
+    bumpPointerArenaTop = (unsigned int)structPush(&arena, int);
 
     return &result;
 }
