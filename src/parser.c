@@ -2900,7 +2900,7 @@ parseSourceUnit(Parser *parser) {
         } else if(acceptToken(parser, TokenType_Library)) {
             parseLibrary(parser, &child->node);
         } else if(acceptToken(parser, TokenType_EOF)) {
-            node.endToken = parser->current - 2;
+            node.endToken = MIN(parser->current - 2, parser->tokenCount - 1);
             break;
         } else if(acceptToken(parser, TokenType_Comment)) {
             continue;

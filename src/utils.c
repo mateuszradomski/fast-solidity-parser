@@ -724,7 +724,7 @@ processUtf8Byte(const char *string, s32 len, String *result, s32 *indexPointer) 
         }
         result->data[result->size++] = 'u';
     } else {
-        result->data[result->size++] = string[i++];
+        result->data[result->size++] = string[i++] == '\r' ? '\n' : string[i - 1];
     }
 
     *indexPointer = i;
@@ -733,12 +733,6 @@ processUtf8Byte(const char *string, s32 len, String *result, s32 *indexPointer) 
 static String
 neutralizeUnicode(const char *string, s32 len, Arena *arena) {
 #ifdef WASM
-    static u8 followingByteCount[] = {
-        0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0,
-        0, 0, 0, 0, 0, 0, 0, 0,
-        1, 1, 1, 1, 2, 2, 3, 0xff,
-    };
     String result = {
         .data = arrayPush(arena, u8, len),
         .size = 0,
@@ -752,14 +746,18 @@ neutralizeUnicode(const char *string, s32 len, Arena *arena) {
     }
 
     v128_t utfMask = wasm_i8x16_splat(0x80);
+    v128_t crMask = wasm_i8x16_splat('\r');
+    v128_t nlMask = wasm_i8x16_splat('\n');
     for(; i < len - SIMD_LANE_SIZE;) {
         v128_t bytes = wasm_v128_load(&string[i]);
         v128_t utf8 = wasm_v128_and(bytes, utfMask);
         v128_t utf8cmp = wasm_i8x16_eq(utf8, utfMask);
+        v128_t crCmp = wasm_i8x16_eq(bytes, crMask);
         u32 hasUtf8HighBit = wasm_v128_any_true(utf8cmp);
+        v128_t picked = wasm_v128_bitselect(nlMask, bytes, crCmp);
 
         if(!hasUtf8HighBit) {
-            wasm_v128_store(&result.data[result.size], bytes);
+            wasm_v128_store(&result.data[result.size], picked);
             result.size += SIMD_LANE_SIZE;
             i += SIMD_LANE_SIZE;
         } else {
