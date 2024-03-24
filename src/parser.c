@@ -1961,12 +1961,14 @@ parseYulStatement(Parser *parser, ASTNode *node, YulLexer *lexer) {
             while(acceptYulToken(lexer, YulTokenType_Comma)) {
                 ASTNodeLink *path = structPush(parser->arena, ASTNodeLink);
                 path->node.type = ASTNodeType_YulMemberAccessExpression;
+                path->node.startToken = lexer->currentPosition;
                 path->node.yulIdentifierPathExpressionNode.count = 1;
-                path->node.yulIdentifierPathExpressionNode.identifiers[0] = identifier;
+                path->node.yulIdentifierPathExpressionNode.identifiers[0] = parseYulIdentifier(lexer);
                 if(acceptYulToken(lexer, YulTokenType_Dot)) {
                     path->node.yulIdentifierPathExpressionNode.count++;
                     path->node.yulIdentifierPathExpressionNode.identifiers[1] = parseYulIdentifier(lexer);
                 }
+                path->node.endToken = lexer->currentPosition - 1;
                 SLL_QUEUE_PUSH(assignment->paths.head, assignment->paths.last, path);
                 assignment->paths.count += 1;
             }
