@@ -695,6 +695,41 @@ isMultiplePO2(u32 a, u32 b) {
     return (a % b) == 0;
 }
 
+static void
+processUtf8Byte(const char *string, s32 len, String *result, s32 *indexPointer) {
+    static u8 followingByteCount[] = {
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0,
+        1, 1, 1, 1, 2, 2, 3, 0xff,
+    };
+
+    s32 i = *indexPointer;
+
+    if(string[i] & 0x80) {
+        u8 c = string[i++];
+        u8 first5Bits = (c >> 3) & 0x1f;
+        u8 bytesToFollow = followingByteCount[first5Bits];
+        u32 codePoint = c & (0x7f >> (bytesToFollow + 1));
+
+        assert(i + bytesToFollow < len);
+        for(int j = 0; j < bytesToFollow; j++) {
+            u8 b = string[i++];
+            assert((b & 0xc0) == 0x80);
+            codePoint = (codePoint << 6) | (b & 0x3f);
+        }
+
+        if(codePoint > 0xffff) {
+            result->data[result->size++] = 'u';
+        }
+        result->data[result->size++] = 'u';
+    } else {
+        result->data[result->size++] = string[i++];
+    }
+
+    *indexPointer = i;
+}
+
 static String
 neutralizeUnicode(const char *string, s32 len, Arena *arena) {
 #ifdef WASM
@@ -704,7 +739,6 @@ neutralizeUnicode(const char *string, s32 len, Arena *arena) {
         0, 0, 0, 0, 0, 0, 0, 0,
         1, 1, 1, 1, 2, 2, 3, 0xff,
     };
-
     String result = {
         .data = arrayPush(arena, u8, len),
         .size = 0,
@@ -714,26 +748,7 @@ neutralizeUnicode(const char *string, s32 len, Arena *arena) {
     s32 SIMD_LANE_SIZE = sizeof(v128_t);
 
     for(; i < len && !isMultiplePO2(len - i, 16);) {
-        if(string[i] & 0x80) {
-            u8 c = string[i++];
-            u8 first5Bits = (c >> 3) & 0x1f;
-            u8 bytesToFollow = followingByteCount[first5Bits];
-            u32 codePoint = c & (0x7f >> (bytesToFollow + 1));
-
-            assert(i + bytesToFollow < len);
-            for(int j = 0; j < bytesToFollow; j++) {
-                u8 b = string[i++];
-                assert((b & 0xc0) == 0x80);
-                codePoint = (codePoint << 6) | (b & 0x3f);
-            }
-
-            if(codePoint > 0xffff) {
-                result.data[result.size++] = 'u';
-            }
-            result.data[result.size++] = 'u';
-        } else {
-            result.data[result.size++] = string[i++];
-        }
+        processUtf8Byte(string, len, &result, &i);
     }
 
     v128_t utfMask = wasm_i8x16_splat(0x80);
@@ -748,50 +763,12 @@ neutralizeUnicode(const char *string, s32 len, Arena *arena) {
             result.size += SIMD_LANE_SIZE;
             i += SIMD_LANE_SIZE;
         } else {
-            if(string[i] & 0x80) {
-                u8 c = string[i++];
-                u8 first5Bits = (c >> 3) & 0x1f;
-                u8 bytesToFollow = followingByteCount[first5Bits];
-                u32 codePoint = c & (0x7f >> (bytesToFollow + 1));
-
-                assert(i + bytesToFollow < len);
-                for(int j = 0; j < bytesToFollow; j++) {
-                    u8 b = string[i++];
-                    assert((b & 0xc0) == 0x80);
-                    codePoint = (codePoint << 6) | (b & 0x3f);
-                }
-
-                if(codePoint > 0xffff) {
-                    result.data[result.size++] = 'u';
-                }
-                result.data[result.size++] = 'u';
-            } else {
-                result.data[result.size++] = string[i++];
-            }
+            processUtf8Byte(string, len, &result, &i);
         }
     }
 
     for(; i < len;) {
-        if(string[i] & 0x80) {
-            u8 c = string[i++];
-            u8 first5Bits = (c >> 3) & 0x1f;
-            u8 bytesToFollow = followingByteCount[first5Bits];
-            u32 codePoint = c & (0x7f >> (bytesToFollow + 1));
-
-            assert(i + bytesToFollow < len);
-            for(int j = 0; j < bytesToFollow; j++) {
-                u8 b = string[i++];
-                assert((b & 0xc0) == 0x80);
-                codePoint = (codePoint << 6) | (b & 0x3f);
-            }
-
-            if(codePoint > 0xffff) {
-                result.data[result.size++] = 'u';
-            }
-            result.data[result.size++] = 'u';
-        } else {
-            result.data[result.size++] = string[i++];
-        }
+        processUtf8Byte(string, len, &result, &i);
     }
 
     return result;
