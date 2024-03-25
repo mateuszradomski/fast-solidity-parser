@@ -365,8 +365,6 @@ pushToken(TokenizeResult *result, TokenType tokenType, String string) {
         .type = tokenType,
         .string = string
     };
-
-    // printToken(result->tokens[result->count - 1]);
 }
 
 static Token
@@ -854,6 +852,8 @@ tokenize(String source, Arena *arena) {
     }
 
     pushToken(&result, TokenType_EOF, (String){0});
+
+    arenaPop(arena, (result.capacity - result.count) * sizeof(Token));
 
     return result;
 }

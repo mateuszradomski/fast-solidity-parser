@@ -321,10 +321,14 @@ arenaPop(Arena *arena, size_t size) {
 
         while(size > 0) {
             MemoryCursor *cursor = &cursorNode->cursor;
-
-            size -= cursorTakenBytes(cursor);
-            cursor->cursorPointer = cursor->basePointer;
-            cursorNode = cursorNode->next;
+            if(size > cursorTakenBytes(cursor)) {
+                size -= cursorTakenBytes(cursor);
+                cursor->cursorPointer = cursor->basePointer;
+                cursorNode = cursorNode->next;
+            } else {
+                cursor->cursorPointer -= size;
+                break;
+            }
         }
     }
 }
@@ -369,7 +373,7 @@ static void log(Arena *arena, const char *fmt, ...) {
 
 static bool
 isWhitespace(char c) {
-    return c == 0x20 || (c >= 0x09 && c <= 0x0d);
+    return (c == 0x20) | (c >= 0x09 & c <= 0x0d);
 }
 
 static char
@@ -380,23 +384,18 @@ toUpper(char c) {
 static bool
 isAlphabet(char c) {
     c = toUpper(c);
-    return (c >= 'A' && c <= 'Z');
+    return (c >= 'A' & c <= 'Z');
 }
 
 static bool
 isDigit(char c) {
-    return (c >= '0' && c <= '9');
+    return (c >= '0' & c <= '9');
 }
 
 static bool
 isHexDigit(char c) {
     char upper = toUpper(c);
-    return (c >= '0' && c <= '9') | (upper >= 'A' && upper <= 'F');
-}
-
-static bool
-isBinDigit(char c) {
-    return (c >= '0' && c <= '1');
+    return (c >= '0' & c <= '9') | (upper >= 'A' & upper <= 'F');
 }
 
 typedef struct SplitIterator
@@ -663,6 +662,34 @@ static u8
 peekByte(ByteConsumer *c) {
     assert(consumerGood(c));
     return *(c->head);
+}
+
+static u16
+consumeWord(ByteConsumer *c) {
+    assert(consumerGoodN(c, 2));
+    u16 result = *(u16 *)c->head;
+    c->head += 2;
+    return result;
+}
+
+static u16
+peekWord(ByteConsumer *c) {
+    assert(consumerGoodN(c, 2));
+    return *(u16 *)c->head;
+}
+
+static u32
+consumeDWord(ByteConsumer *c) {
+    assert(consumerGoodN(c, 4));
+    u32 result = *(u32 *)c->head;
+    c->head += 4;
+    return result;
+}
+
+static u32
+peekDWord(ByteConsumer *c) {
+    assert(consumerGoodN(c, 4));
+    return *(u32 *)c->head;
 }
 
 static String

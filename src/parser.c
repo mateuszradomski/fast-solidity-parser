@@ -215,16 +215,16 @@ typedef struct ASTNodeTerneryExpression {
 } ASTNodeTerneryExpression;
 
 typedef struct ASTNodeFunctionDefinition {
-    TokenId name;                 // 4 bytes
-    ASTNodeList parameters;       // 12 bytes
-    u8 visibility;                // 1 byte
-    u8 stateMutability;           // 1 byte
-    u8 virtual;                   // 1 byte
-    u8 override;                  // 1 byte
-    ASTNodeList overrides;        // 12 bytes
-    ASTNodeList modifiers;        // 12 bytes
-    ASTNodeList returnParameters; // 12 bytes
-    ASTNode *body;                // 4 bytes
+    TokenId name;                  // 4 bytes
+    ASTNodeList parameters;        // 12 bytes
+    u8 visibility;                 // 1 byte
+    u8 stateMutability;            // 1 byte
+    u8 virtual;                    // 1 byte
+    u8 override;                   // 1 byte
+    ASTNodeList *overrides;        // 4 bytes
+    ASTNodeList *modifiers;        // 4 bytes
+    ASTNodeList *returnParameters; // 4 bytes
+    ASTNode *body;                 // 4 bytes
 } ASTNodeFunctionDefinition;
 
 typedef struct ASTNodeBlockStatement {
@@ -2529,7 +2529,8 @@ parseFunction(Parser *parser, ASTNode *node) {
         } else if (acceptToken(parser, TokenType_Override)) {
             assertError(function->override == 0, parser, "Override modifier already set");
             function->override = 1;
-            parseOverrideSpecifierArgs(parser, &function->overrides);
+            function->overrides = structPush(parser->arena, ASTNodeList);
+            parseOverrideSpecifierArgs(parser, function->overrides);
         } else {
             ASTNode testExpression = { 0 };
             bool isSuccess = parseType(parser, &testExpression);
@@ -2539,8 +2540,12 @@ parseFunction(Parser *parser, ASTNode *node) {
                 ASTNodeLink *link = structPush(parser->arena, ASTNodeLink);
                 parseModifierInvocation(parser, &link->node, &testExpression);
 
-                SLL_QUEUE_PUSH(function->modifiers.head, function->modifiers.last, link);
-                function->modifiers.count += 1;
+                if(function->modifiers == 0x0) {
+                    function->modifiers = structPush(parser->arena, ASTNodeList);
+                }
+
+                SLL_QUEUE_PUSH(function->modifiers->head, function->modifiers->last, link);
+                function->modifiers->count += 1;
                 continue;
             }
 
@@ -2548,12 +2553,12 @@ parseFunction(Parser *parser, ASTNode *node) {
         }
     }
 
-    function->returnParameters.count = -1;
     if(acceptToken(parser, TokenType_Returns)) {
-        function->returnParameters.count = 0;
+        function->returnParameters = structPush(parser->arena, ASTNodeList);
+        function->returnParameters->count = 0;
         expectToken(parser, TokenType_LParen);
-        parseFunctionParameters(parser, &function->returnParameters);
-        assertError(function->returnParameters.count > 0, parser, "Returns parameters must be specified");
+        parseFunctionParameters(parser, function->returnParameters);
+        assertError(function->returnParameters->count > 0, parser, "Returns parameters must be specified");
         expectToken(parser, TokenType_RParen);
     }
 
@@ -2595,7 +2600,8 @@ parseModifier(Parser *parser, ASTNode *node) {
         } else if(acceptToken(parser, TokenType_Override)) {
             assertError(modifier->override == 0, parser, "Override modifier already set");
             modifier->override = 1;
-            parseOverrideSpecifierArgs(parser, &modifier->overrides);
+            modifier->overrides = structPush(parser->arena, ASTNodeList);
+            parseOverrideSpecifierArgs(parser, modifier->overrides);
         } else {
             break;
         }
@@ -2798,79 +2804,106 @@ parseLibrary(Parser *parser, ASTNode *node) {
     return true;
 }
 
+typedef struct ASTNodeSizeEntry {
+    String name;
+    u32 size;
+} ASTNodeSizeEntry;
+
+static void
+printASTNodeSizes(Arena *arena) {
+    static ASTNodeSizeEntry entries[] = {
+        { LIT_TO_STR("ASTNode"), sizeof(ASTNode)},
+        { LIT_TO_STR("ASTNodeStruct"), sizeof(ASTNodeStruct)},
+        { LIT_TO_STR("ASTNodeBaseType"), sizeof(ASTNodeBaseType)},
+        { LIT_TO_STR("ASTNodeIdentifierPath"), sizeof(ASTNodeIdentifierPath)},
+        { LIT_TO_STR("ASTNodeMapping"), sizeof(ASTNodeMapping)},
+        { LIT_TO_STR("ASTNodeFunctionType"), sizeof(ASTNodeFunctionType)},
+        { LIT_TO_STR("ASTNodeArrayType"), sizeof(ASTNodeArrayType)},
+        { LIT_TO_STR("ASTNodeError"), sizeof(ASTNodeError)},
+        { LIT_TO_STR("ASTNodeEvent"), sizeof(ASTNodeEvent)},
+        { LIT_TO_STR("ASTNodeTypedef"), sizeof(ASTNodeTypedef)},
+        { LIT_TO_STR("ASTNodeConstVariable"), sizeof(ASTNodeConstVariable)},
+        { LIT_TO_STR("ASTNodeConstVariable"), sizeof(ASTNodeConstVariable)},
+        { LIT_TO_STR("ASTNodeNumberLitExpression"), sizeof(ASTNodeNumberLitExpression)},
+        { LIT_TO_STR("ASTNodeStringLitExpression"), sizeof(ASTNodeStringLitExpression)},
+        { LIT_TO_STR("ASTNodeTokenLitExpression"), sizeof(ASTNodeTokenLitExpression)},
+        { LIT_TO_STR("ASTNodeTokenLitExpression"), sizeof(ASTNodeTokenLitExpression)},
+        { LIT_TO_STR("ASTNodeBinaryExpression"), sizeof(ASTNodeBinaryExpression)},
+        { LIT_TO_STR("ASTNodeTupleExpression"), sizeof(ASTNodeTupleExpression)},
+        { LIT_TO_STR("ASTNodeUnaryExpression"), sizeof(ASTNodeUnaryExpression)},
+        { LIT_TO_STR("ASTNodeNewExpression"), sizeof(ASTNodeNewExpression)},
+        { LIT_TO_STR("ASTNodeFunctionCallExpression"), sizeof(ASTNodeFunctionCallExpression)},
+        { LIT_TO_STR("ASTNodeMemberAccessExpression"), sizeof(ASTNodeMemberAccessExpression)},
+        { LIT_TO_STR("ASTNodeArrayAccessExpression"), sizeof(ASTNodeArrayAccessExpression)},
+        { LIT_TO_STR("ASTNodeArraySliceExpression"), sizeof(ASTNodeArraySliceExpression)},
+        { LIT_TO_STR("ASTNodeTerneryExpression"), sizeof(ASTNodeTerneryExpression)},
+        { LIT_TO_STR("ASTNodeNamedParametersExpression"), sizeof(ASTNodeNamedParametersExpression)},
+        { LIT_TO_STR("ASTNodeInlineArrayExpression"), sizeof(ASTNodeInlineArrayExpression)},
+        { LIT_TO_STR("ASTNodeFunctionDefinition"), sizeof(ASTNodeFunctionDefinition)},
+        { LIT_TO_STR("ASTNodeBlockStatement"), sizeof(ASTNodeBlockStatement)},
+        { LIT_TO_STR("ASTNodeUncheckedBlockStatement"), sizeof(ASTNodeUncheckedBlockStatement)},
+        { LIT_TO_STR("ASTNodeReturnStatement"), sizeof(ASTNodeReturnStatement)},
+        { LIT_TO_STR("ASTNodeReturnStatement"), sizeof(ASTNodeReturnStatement)},
+        { LIT_TO_STR("ASTNodeIfStatement"), sizeof(ASTNodeIfStatement)},
+        { LIT_TO_STR("ASTNodeVariableDeclarationStatement"), sizeof(ASTNodeVariableDeclarationStatement)},
+        { LIT_TO_STR("ASTNodeVariableDeclaration"), sizeof(ASTNodeVariableDeclaration)},
+        { LIT_TO_STR("ASTNodeVariableDeclarationTupleStatement"), sizeof(ASTNodeVariableDeclarationTupleStatement)},
+        { LIT_TO_STR("ASTNodeWhileStatement"), sizeof(ASTNodeWhileStatement)},
+        { LIT_TO_STR("ASTNodeWhileStatement"), sizeof(ASTNodeWhileStatement)},
+        { LIT_TO_STR("ASTNodeInheritanceSpecifier"), sizeof(ASTNodeInheritanceSpecifier)},
+        { LIT_TO_STR("ASTNodeModifierInvocation"), sizeof(ASTNodeModifierInvocation)},
+        { LIT_TO_STR("ASTNodeContractDefinition"), sizeof(ASTNodeContractDefinition)},
+        { LIT_TO_STR("ASTNodeLibraryDefinition"), sizeof(ASTNodeLibraryDefinition)},
+        { LIT_TO_STR("ASTNodeRevertStatement"), sizeof(ASTNodeRevertStatement)},
+        { LIT_TO_STR("ASTNodeForStatement"), sizeof(ASTNodeForStatement)},
+        { LIT_TO_STR("ASTNodeEmitStatement"), sizeof(ASTNodeEmitStatement)},
+        { LIT_TO_STR("ASTNodeTryStatement"), sizeof(ASTNodeTryStatement)},
+        { LIT_TO_STR("ASTNodeCatchStatement"), sizeof(ASTNodeCatchStatement)},
+        { LIT_TO_STR("ASTNodeAssemblyStatement"), sizeof(ASTNodeAssemblyStatement)},
+        { LIT_TO_STR("ASTNodeConstructorDefinition"), sizeof(ASTNodeConstructorDefinition)},
+        { LIT_TO_STR("ASTNodeNameValue"), sizeof(ASTNodeNameValue)},
+        { LIT_TO_STR("ASTNodeUsing"), sizeof(ASTNodeUsing)},
+        { LIT_TO_STR("ASTNodeBlockStatement"), sizeof(ASTNodeBlockStatement)},
+        { LIT_TO_STR("ASTNodeYulVariableDeclaration"), sizeof(ASTNodeYulVariableDeclaration)},
+        { LIT_TO_STR("ASTNodeYulNumberLitExpression"), sizeof(ASTNodeYulNumberLitExpression)},
+        { LIT_TO_STR("ASTNodeYulNumberLitExpression"), sizeof(ASTNodeYulNumberLitExpression)},
+        { LIT_TO_STR("ASTNodeYulNumberLitExpression"), sizeof(ASTNodeYulNumberLitExpression)},
+        { LIT_TO_STR("ASTNodeYulNumberLitExpression"), sizeof(ASTNodeYulNumberLitExpression)},
+        { LIT_TO_STR("ASTNodeYulNumberLitExpression"), sizeof(ASTNodeYulNumberLitExpression)},
+        { LIT_TO_STR("ASTNodeYulIdentifierPathExpression"), sizeof(ASTNodeYulIdentifierPathExpression)},
+        { LIT_TO_STR("ASTNodeYulFunctionCallExpression"), sizeof(ASTNodeYulFunctionCallExpression)},
+        { LIT_TO_STR("ASTNodeYulVariableAssignment"), sizeof(ASTNodeYulVariableAssignment)},
+        { LIT_TO_STR("ASTNodeYulIfStatement"), sizeof(ASTNodeYulIfStatement)},
+        { LIT_TO_STR("ASTNodeYulForStatement"), sizeof(ASTNodeYulForStatement)},
+        { LIT_TO_STR("ASTNodeYulFunctionDefinition"), sizeof(ASTNodeYulFunctionDefinition)},
+        { LIT_TO_STR("ASTNodeYulSwitchStatement"), sizeof(ASTNodeYulSwitchStatement)},
+    };
+
+    // Bubble sort by size
+    for(u32 i = 0; i < ARRAY_LENGTH(entries); i++) {
+        for(u32 j = 0; j < ARRAY_LENGTH(entries) - 1; j++) {
+            if(entries[j].size < entries[j + 1].size) {
+                ASTNodeSizeEntry temp = entries[j];
+                entries[j] = entries[j + 1];
+                entries[j + 1] = temp;
+            }
+        }
+    }
+
+    for(u32 i = 0; i < ARRAY_LENGTH(entries); i++) {
+        if(entries[i].size > 20) {
+            log(arena, "%S %d", entries[i].name, entries[i].size);
+        }
+    }
+}
+
 static ASTNode
 parseSourceUnit(Parser *parser) {
     ASTNode node = { .type = ASTNodeType_SourceUnit };
 
-#if 0
-    log(parser->arena, "ASTNode                                   %d", sizeof(ASTNode));
-    log(parser->arena, "ASTNodeStruct                             %d", sizeof(ASTNodeStruct));
-    log(parser->arena, "ASTNodeBaseType                           %d", sizeof(ASTNodeBaseType));
-    log(parser->arena, "ASTNodeIdentifierPath                     %d", sizeof(ASTNodeIdentifierPath));
-    log(parser->arena, "ASTNodeMapping                            %d", sizeof(ASTNodeMapping));
-    log(parser->arena, "ASTNodeFunctionType                       %d", sizeof(ASTNodeFunctionType));
-    log(parser->arena, "ASTNodeArrayType                          %d", sizeof(ASTNodeArrayType));
-    log(parser->arena, "ASTNodeError                              %d", sizeof(ASTNodeError));
-    log(parser->arena, "ASTNodeEvent                              %d", sizeof(ASTNodeEvent));
-    log(parser->arena, "ASTNodeTypedef                            %d", sizeof(ASTNodeTypedef));
-    log(parser->arena, "ASTNodeConstVariable                      %d", sizeof(ASTNodeConstVariable));
-    log(parser->arena, "ASTNodeConstVariable                      %d", sizeof(ASTNodeConstVariable));
-    log(parser->arena, "ASTNodeNumberLitExpression                %d", sizeof(ASTNodeNumberLitExpression));
-    log(parser->arena, "ASTNodeStringLitExpression                %d", sizeof(ASTNodeStringLitExpression));
-    log(parser->arena, "ASTNodeTokenLitExpression                 %d", sizeof(ASTNodeTokenLitExpression));
-    log(parser->arena, "ASTNodeTokenLitExpression                 %d", sizeof(ASTNodeTokenLitExpression));
-    log(parser->arena, "ASTNodeBinaryExpression                   %d", sizeof(ASTNodeBinaryExpression));
-    log(parser->arena, "ASTNodeTupleExpression                    %d", sizeof(ASTNodeTupleExpression));
-    log(parser->arena, "ASTNodeUnaryExpression                    %d", sizeof(ASTNodeUnaryExpression));
-    log(parser->arena, "ASTNodeNewExpression                      %d", sizeof(ASTNodeNewExpression));
-    log(parser->arena, "ASTNodeFunctionCallExpression             %d", sizeof(ASTNodeFunctionCallExpression));
-    log(parser->arena, "ASTNodeMemberAccessExpression             %d", sizeof(ASTNodeMemberAccessExpression));
-    log(parser->arena, "ASTNodeArrayAccessExpression              %d", sizeof(ASTNodeArrayAccessExpression));
-    log(parser->arena, "ASTNodeArraySliceExpression               %d", sizeof(ASTNodeArraySliceExpression));
-    log(parser->arena, "ASTNodeTerneryExpression                  %d", sizeof(ASTNodeTerneryExpression));
-    log(parser->arena, "ASTNodeNamedParametersExpression          %d", sizeof(ASTNodeNamedParametersExpression));
-    log(parser->arena, "ASTNodeInlineArrayExpression              %d", sizeof(ASTNodeInlineArrayExpression));
-    log(parser->arena, "ASTNodeFunctionDefinition                 %d", sizeof(ASTNodeFunctionDefinition));
-    log(parser->arena, "ASTNodeBlockStatement                     %d", sizeof(ASTNodeBlockStatement));
-    log(parser->arena, "ASTNodeUncheckedBlockStatement            %d", sizeof(ASTNodeUncheckedBlockStatement));
-    log(parser->arena, "ASTNodeReturnStatement                    %d", sizeof(ASTNodeReturnStatement));
-    log(parser->arena, "ASTNodeReturnStatement                    %d", sizeof(ASTNodeReturnStatement));
-    log(parser->arena, "ASTNodeIfStatement                        %d", sizeof(ASTNodeIfStatement));
-    log(parser->arena, "ASTNodeVariableDeclarationStatement       %d", sizeof(ASTNodeVariableDeclarationStatement));
-    log(parser->arena, "ASTNodeVariableDeclaration                %d", sizeof(ASTNodeVariableDeclaration));
-    log(parser->arena, "ASTNodeVariableDeclarationTupleStatement  %d", sizeof(ASTNodeVariableDeclarationTupleStatement));
-    log(parser->arena, "ASTNodeWhileStatement                     %d", sizeof(ASTNodeWhileStatement));
-    log(parser->arena, "ASTNodeWhileStatement                     %d", sizeof(ASTNodeWhileStatement));
-    log(parser->arena, "ASTNodeInheritanceSpecifier               %d", sizeof(ASTNodeInheritanceSpecifier));
-    log(parser->arena, "ASTNodeModifierInvocation                 %d", sizeof(ASTNodeModifierInvocation));
-    log(parser->arena, "ASTNodeContractDefinition                 %d", sizeof(ASTNodeContractDefinition));
-    log(parser->arena, "ASTNodeLibraryDefinition                  %d", sizeof(ASTNodeLibraryDefinition));
-    log(parser->arena, "ASTNodeRevertStatement                    %d", sizeof(ASTNodeRevertStatement));
-    log(parser->arena, "ASTNodeForStatement                       %d", sizeof(ASTNodeForStatement));
-    log(parser->arena, "ASTNodeEmitStatement                      %d", sizeof(ASTNodeEmitStatement));
-    log(parser->arena, "ASTNodeTryStatement                       %d", sizeof(ASTNodeTryStatement));
-    log(parser->arena, "ASTNodeCatchStatement                     %d", sizeof(ASTNodeCatchStatement));
-    log(parser->arena, "ASTNodeAssemblyStatement                  %d", sizeof(ASTNodeAssemblyStatement));
-    log(parser->arena, "ASTNodeConstructorDefinition              %d", sizeof(ASTNodeConstructorDefinition));
-    log(parser->arena, "ASTNodeNameValue                          %d", sizeof(ASTNodeNameValue));
-    log(parser->arena, "ASTNodeUsing                              %d", sizeof(ASTNodeUsing));
+    // printASTNodeSizes(parser->arena);
 
-    log(parser->arena, "ASTNodeBlockStatement                     %d", sizeof(ASTNodeBlockStatement));
-    log(parser->arena, "ASTNodeYulVariableDeclaration             %d", sizeof(ASTNodeYulVariableDeclaration));
-    log(parser->arena, "ASTNodeYulNumberLitExpression             %d", sizeof(ASTNodeYulNumberLitExpression));
-    log(parser->arena, "ASTNodeYulNumberLitExpression             %d", sizeof(ASTNodeYulNumberLitExpression));
-    log(parser->arena, "ASTNodeYulNumberLitExpression             %d", sizeof(ASTNodeYulNumberLitExpression));
-    log(parser->arena, "ASTNodeYulNumberLitExpression             %d", sizeof(ASTNodeYulNumberLitExpression));
-    log(parser->arena, "ASTNodeYulNumberLitExpression             %d", sizeof(ASTNodeYulNumberLitExpression));
-    log(parser->arena, "ASTNodeYulIdentifierPathExpression        %d", sizeof(ASTNodeYulIdentifierPathExpression));
-    log(parser->arena, "ASTNodeYulFunctionCallExpression          %d", sizeof(ASTNodeYulFunctionCallExpression));
-    log(parser->arena, "ASTNodeYulVariableAssignment              %d", sizeof(ASTNodeYulVariableAssignment));
-    log(parser->arena, "ASTNodeYulIfStatement                     %d", sizeof(ASTNodeYulIfStatement));
-    log(parser->arena, "ASTNodeYulForStatement                    %d", sizeof(ASTNodeYulForStatement));
-    log(parser->arena, "ASTNodeYulFunctionDefinition              %d", sizeof(ASTNodeYulFunctionDefinition));
-    log(parser->arena, "ASTNodeYulSwitchStatement                 %d", sizeof(ASTNodeYulSwitchStatement));
-#endif
-    u32 parsingMemory = arenaFreeBytes(parser->arena);
+    u32 startMemory = (u32)structPush(parser->arena, u8);
 
     while(true) {
         ASTNodeLink *child = arrayPush(parser->arena, ASTNodeLink, 1);
@@ -2922,8 +2955,8 @@ parseSourceUnit(Parser *parser) {
         node.children.count += 1;
     }
 
-    parsingMemory -= arenaFreeBytes(parser->arena);
-    // log(parser->arena, "parsing memory needed     = %d", parsingMemory);
+    u32 endMemory = (u32)structPush(parser->arena, u8);
+    // log(parser->arena, "parsing memory needed     = %dKB", (endMemory - startMemory) / 1024);
 
     return node;
 }

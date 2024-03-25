@@ -627,6 +627,11 @@ static u32
 pushParameters(Serializer *s, ASTNodeList *list) {
     u32 l = 0;
 
+    if(list == 0x0) {
+        l += pushU32(s, 0xffffffff);
+        return l;
+    }
+
     l += pushU32(s, list->count);
     if(list->count == -1) {
         return l;
@@ -827,17 +832,17 @@ pushFunctionDefinition(Serializer *s, ASTNode *node) {
     l += pushU16(s, function->override);
 
     if(function->override != 0) {
-        l += pushU32(s, function->overrides.count);
-        ASTNodeLink *override = function->overrides.head;
-        for(u32 i = 0; i < function->overrides.count; i++, override = override->next) {
+        l += pushU32(s, function->overrides->count);
+        ASTNodeLink *override = function->overrides->head;
+        for(u32 i = 0; i < function->overrides->count; i++, override = override->next) {
             l += pushType(s, &override->node);
         }
     }
 
-    l += pushParameters(s, &function->returnParameters);
-    l += pushU32(s, function->modifiers.count);
-    ASTNodeLink *it = function->modifiers.head;
-    for(u32 i = 0; i < function->modifiers.count; i++, it = it->next) {
+    l += pushParameters(s, function->returnParameters);
+    l += pushU32(s, function->modifiers->count);
+    ASTNodeLink *it = function->modifiers->head;
+    for(u32 i = 0; i < function->modifiers->count; i++, it = it->next) {
         ASTNodeModifierInvocation *invocation = &it->node.modifierInvocationNode;
         l += pushNodeHeader(s, &it->node);
         l += pushType(s, invocation->identifier);
@@ -865,9 +870,9 @@ pushModifierDefinition(Serializer *s, ASTNode *node) {
     l += pushU16(s, function->override);
 
     if(function->override != 0) {
-        l += pushU32(s, function->overrides.count);
-        ASTNodeLink *override = function->overrides.head;
-        for(u32 i = 0; i < function->overrides.count; i++, override = override->next) {
+        l += pushU32(s, function->overrides->count);
+        ASTNodeLink *override = function->overrides->head;
+        for(u32 i = 0; i < function->overrides->count; i++, override = override->next) {
             l += pushType(s, &override->node);
         }
     }
