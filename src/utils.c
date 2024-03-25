@@ -138,6 +138,9 @@ typedef __builtin_va_list va_list;
 #define va_arg(v,l)     __builtin_va_arg(v,l)
 #define va_copy(d,s)    __builtin_va_copy(d,s)
 
+#define countLeadingZeros(x)  __builtin_clz(x)
+#define countTrailingZeros(x) __builtin_ctz(x)
+
 #endif
 
 typedef struct MemoryCursor {
@@ -650,6 +653,11 @@ consumerGood(ByteConsumer *c) {
 static u32
 consumerGoodN(ByteConsumer *c, u32 size) {
     return ((c->head - c->data) + size - 1) < c->length;
+}
+
+static void
+advanceN(ByteConsumer *c, u32 size) {
+    c->head += size;
 }
 
 static u8

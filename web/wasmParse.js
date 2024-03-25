@@ -6,7 +6,7 @@ const { myArray } = require('./inlineBinary');
 let loaded = false;
 let instance = null;
 
-function loadParserInline() {
+function loadParser() {
     profiler.trace_begin("Loading the parser inline");
 
     profiler.trace_begin("Creating the buffer");
@@ -15,27 +15,6 @@ function loadParserInline() {
 
     loadWasmModule(buffer)
     profiler.trace_end()
-}
-
-function loadParserNode() {
-    const fs = require('fs');
-    const path = require('path');
-    profiler.trace_begin("Loading the module");
-
-    profiler.trace_begin("Read from disk");
-    const wasmPath = path.join(__dirname, "./parser.wasm");
-    const wasmBuffer = fs.readFileSync(wasmPath);
-    profiler.trace_end();
-
-    loadWasmModule(wasmBuffer)
-
-    profiler.trace_end();
-}
-
-async function loadParserWeb() {
-    const response = await fetch('./parser.wasm');
-    const wasmBuffer = await response.arrayBuffer();
-    loadWasmModule(wasmBuffer);
 }
 
 function loadWasmModule(wasmBuffer) {
@@ -59,10 +38,12 @@ function saveProfileToDisk() {
 
 function parse(input, options) {
     if(loaded === false) {
-        loadParserInline()
+        loadParser()
     }
 
+    profiler.trace_begin("Memory clear")
     instance.exports.resetBumpPointer();
+    profiler.trace_end();
 
     profiler.trace_begin("Encoding")
     const jsArray = new TextEncoder().encode(input);

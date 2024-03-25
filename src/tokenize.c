@@ -546,6 +546,47 @@ categorizeSymbol(String symbol) {
     }
 }
 
+static u32
+consumeUntilNewline(ByteConsumer *c) {
+    u32 read = 0;
+    u32 SIMD_LANE_SIZE = sizeof(v128_t);
+
+    v128_t nlMask = wasm_i8x16_splat('\n');
+    for(;;) {
+        if(consumerGoodN(c, SIMD_LANE_SIZE)) {
+            String string = peekString(c, SIMD_LANE_SIZE);
+            v128_t bytes = wasm_v128_load(string.data);
+            v128_t nlCmp = wasm_i8x16_eq(bytes, nlMask);
+            u32 newlineMask = wasm_i8x16_bitmask(nlCmp);
+
+            if(newlineMask > 0) {
+                u32 toEat = countTrailingZeros(newlineMask);
+                toEat += 1; // we want to eat the newline as well
+                read += toEat;
+                advanceN(c, toEat);
+                break;
+            } else {
+                read += SIMD_LANE_SIZE;
+                advanceN(c, SIMD_LANE_SIZE);
+            }
+        } else {
+            while(consumerGood(c)) {
+                u8 nextByte = peekByte(c);
+                if(nextByte != '\n') {
+                    read += 1;
+                    consumeByte(c);
+                } else {
+                    break;
+                }
+            }
+
+            break;
+        }
+    }
+
+    return read;
+}
+
 static TokenizeResult
 tokenize(String source, Arena *arena) {
     TokenizeResult result = allocateTokenSpace(arena, source.size);
@@ -640,15 +681,7 @@ tokenize(String source, Arena *arena) {
             } else if(nextByte == '/') {
                 String symbol = { .data = c.head - 1, .size = 2 };
                 consumeByte(&c);
-                while(consumerGood(&c)) {
-                    u8 nextByte = peekByte(&c);
-                    if(nextByte != '\n') {
-                        symbol.size += 1;
-                        consumeByte(&c);
-                    } else {
-                        break;
-                    }
-                }
+                symbol.size += consumeUntilNewline(&c);
 
                 // pushToken(&result, TokenType_Comment, symbol);
             } else if(nextByte == '=') {
