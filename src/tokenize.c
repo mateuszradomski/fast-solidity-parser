@@ -587,6 +587,64 @@ consumeUntilNewline(ByteConsumer *c) {
     return read;
 }
 
+static u32
+consumeUntilMultilineCommentEnd(ByteConsumer *c) {
+    u32 read = 0;
+    u32 SIMD_LANE_SIZE = sizeof(v128_t);
+
+    v128_t starMask = wasm_i8x16_splat('*');
+    v128_t slashMask = wasm_i8x16_splat('/');
+    for(;;) {
+        if(consumerGoodN(c, SIMD_LANE_SIZE)) {
+            String string = peekString(c, SIMD_LANE_SIZE);
+
+            v128_t bytes = wasm_v128_load(string.data);
+            v128_t starCmp = wasm_i8x16_eq(bytes, starMask);
+            u32 starMask = wasm_i8x16_bitmask(starCmp);
+
+            if(starMask > 0) {
+                if(countTrailingZeros(starMask) == 0) {
+                    v128_t slashCmp = wasm_i8x16_eq(bytes, slashMask);
+                    u32 slashMask = wasm_i8x16_bitmask(slashCmp);
+                    if(slashMask & 2) {
+                        read += 2;
+                        advanceN(c, 2);
+                        break;
+                    } else {
+                        read += 1;
+                        advanceN(c, 1);
+                    }
+                } else {
+                    u32 toEat = countTrailingZeros(starMask);
+                    read += toEat;
+                    advanceN(c, toEat);
+                }
+            } else {
+                read += SIMD_LANE_SIZE;
+                advanceN(c, SIMD_LANE_SIZE);
+            }
+        } else {
+            while(consumerGood(c)) {
+                String next2Bytes = peekString(c, 2);
+
+                if(stringMatch(next2Bytes, LIT_TO_STR("*/"))) {
+                    read += 2;
+                    consumeByte(c);
+                    consumeByte(c);
+                    break;
+                } else {
+                    read += 1;
+                    consumeByte(c);
+                }
+            }
+
+            break;
+        }
+    }
+
+    return read;
+}
+
 static TokenizeResult
 tokenize(String source, Arena *arena) {
     TokenizeResult result = allocateTokenSpace(arena, source.size);
@@ -663,19 +721,7 @@ tokenize(String source, Arena *arena) {
             if(nextByte == '*') {
                 String symbol = { .data = c.head - 1, .size = 2 };
                 consumeByte(&c);
-                while(consumerGood(&c)) {
-                    String next2Bytes = peekString(&c, 2);
-
-                    if(stringMatch(next2Bytes, LIT_TO_STR("*/"))) { 
-                        symbol.size += 2;
-                        consumeByte(&c);
-                        consumeByte(&c);
-                        break;
-                    } else {
-                        symbol.size += 1;
-                        consumeByte(&c);
-                    }
-                }
+                symbol.size += consumeUntilMultilineCommentEnd(&c);
 
                 // pushToken(&result, TokenType_Comment, symbol);
             } else if(nextByte == '/') {
@@ -701,7 +747,7 @@ tokenize(String source, Arena *arena) {
                     break;
                 }
 
-                escapeCount = nextByte == '\\' ? escapeCount + 1 : 0; 
+                escapeCount = nextByte == '\\' ? escapeCount + 1 : 0;
                 symbol.size += 1;
             }
 
