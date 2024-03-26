@@ -1,5 +1,6 @@
 #include "./src/utils.c"
 #include "./src/tokenize.c"
+#include "./src/yulLexer.c"
 #include "./src/parser.c"
 
 String entryPointBinaryInterface(const char *string, int len) {

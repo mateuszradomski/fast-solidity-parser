@@ -538,6 +538,7 @@ createParser(TokenizeResult tokens, Arena *arena) {
 
 static void
 reportErrorVarArgs(Parser *parser, const char *file, u32 line, const char *userErrorFormat, va_list args) {
+#ifdef WASM
     va_list copiedArgs;
     va_copy(copiedArgs, args);
     String userError = stringPushfv(parser->arena, userErrorFormat, copiedArgs);
@@ -550,6 +551,9 @@ reportErrorVarArgs(Parser *parser, const char *file, u32 line, const char *userE
     bumpPointerArenaTop = (unsigned int)structPush(parser->arena, int);
     javascriptPrintStringPtr(&error);
     unreachable();
+#else
+    assert(false);
+#endif
 }
 
 static void
@@ -2903,8 +2907,6 @@ parseSourceUnit(Parser *parser) {
 
     // printASTNodeSizes(parser->arena);
 
-    u32 startMemory = (u32)structPush(parser->arena, u8);
-
     while(true) {
         ASTNodeLink *child = arrayPush(parser->arena, ASTNodeLink, 1);
 
@@ -2954,9 +2956,6 @@ parseSourceUnit(Parser *parser) {
         SLL_QUEUE_PUSH(node.children.head, node.children.last, child);
         node.children.count += 1;
     }
-
-    u32 endMemory = (u32)structPush(parser->arena, u8);
-    // log(parser->arena, "parsing memory needed     = %dKB", (endMemory - startMemory) / 1024);
 
     return node;
 }

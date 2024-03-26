@@ -140,6 +140,13 @@ typedef __builtin_va_list va_list;
 
 #define countLeadingZeros(x)  __builtin_clz(x)
 #define countTrailingZeros(x) __builtin_ctz(x)
+#else
+
+typedef __builtin_va_list va_list;
+#define va_start(v,l)   __builtin_va_start(v,l)
+#define va_end(v)       __builtin_va_end(v)
+#define va_arg(v,l)     __builtin_va_arg(v,l)
+#define va_copy(d,s)    __builtin_va_copy(d,s)
 
 #endif
 
@@ -165,7 +172,11 @@ arenaNewNode(Arena *arena, size_t size) {
     MemoryCursorNode *result = 0x0;
     size = MAX(arena->chunkSize, size);
     
+#ifdef WASM
     void *memory = (u8 *)malloc(size + sizeof(MemoryCursorNode));
+#else
+    void *memory = (u8 *)calloc(1, size + sizeof(MemoryCursorNode));
+#endif
     assert(memory);
     
     result = (MemoryCursorNode *)memory;

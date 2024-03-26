@@ -549,6 +549,7 @@ categorizeSymbol(String symbol) {
 static u32
 consumeUntilNewline(ByteConsumer *c) {
     u32 read = 0;
+#ifdef WASM
     u32 SIMD_LANE_SIZE = sizeof(v128_t);
 
     v128_t nlMask = wasm_i8x16_splat('\n');
@@ -584,12 +585,24 @@ consumeUntilNewline(ByteConsumer *c) {
         }
     }
 
+#else
+    while(consumerGood(c)) {
+        u8 nextByte = peekByte(c);
+        if(nextByte != '\n') {
+            read += 1;
+            consumeByte(c);
+        } else {
+            break;
+        }
+    }
+#endif
     return read;
 }
 
 static u32
 consumeUntilMultilineCommentEnd(ByteConsumer *c) {
     u32 read = 0;
+#ifdef WASM
     u32 SIMD_LANE_SIZE = sizeof(v128_t);
 
     v128_t starMask = wasm_i8x16_splat('*');
@@ -641,6 +654,21 @@ consumeUntilMultilineCommentEnd(ByteConsumer *c) {
             break;
         }
     }
+#else
+    while(consumerGood(c)) {
+        String next2Bytes = peekString(c, 2);
+
+        if(stringMatch(next2Bytes, LIT_TO_STR("*/"))) {
+            read += 2;
+            consumeByte(c);
+            consumeByte(c);
+            break;
+        } else {
+            read += 1;
+            consumeByte(c);
+        }
+    }
+#endif
 
     return read;
 }

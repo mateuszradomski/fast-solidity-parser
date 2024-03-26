@@ -840,13 +840,17 @@ pushFunctionDefinition(Serializer *s, ASTNode *node) {
     }
 
     l += pushParameters(s, function->returnParameters);
-    l += pushU32(s, function->modifiers->count);
-    ASTNodeLink *it = function->modifiers->head;
-    for(u32 i = 0; i < function->modifiers->count; i++, it = it->next) {
-        ASTNodeModifierInvocation *invocation = &it->node.modifierInvocationNode;
-        l += pushNodeHeader(s, &it->node);
-        l += pushType(s, invocation->identifier);
-        l += pushCallArgumentList(s, &invocation->argumentsExpression, &invocation->argumentsName);
+    if(function->modifiers == 0) {
+        l += pushU32(s, 0);
+    } else {
+        l += pushU32(s, function->modifiers->count);
+        ASTNodeLink *it = function->modifiers->head;
+        for(u32 i = 0; i < function->modifiers->count; i++, it = it->next) {
+            ASTNodeModifierInvocation *invocation = &it->node.modifierInvocationNode;
+            l += pushNodeHeader(s, &it->node);
+            l += pushType(s, invocation->identifier);
+            l += pushCallArgumentList(s, &invocation->argumentsExpression, &invocation->argumentsName);
+        }
     }
 
     l += pushU32(s, function->body != 0x0);
