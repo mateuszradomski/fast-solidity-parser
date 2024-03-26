@@ -511,7 +511,6 @@ typedef struct ASTNodeLink {
     struct ASTNodeLink *next;
 } ASTNodeLink;
 
-#include "./src/jsonIface.c"
 #include "./src/binaryIface.c"
 
 typedef struct Parser {

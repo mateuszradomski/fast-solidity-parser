@@ -1,6 +1,6 @@
 CC = clang
 TARGET = parser.wasm
-SRC = src/wasmMain.c src/parser.c src/tokenize.c src/utils.c src/jsonIface.c src/binaryIface.c
+SRC = src/wasmMain.c src/parser.c src/tokenize.c src/utils.c src/binaryIface.c
 INCLUDES = -I./
 WASM_FLAGS = -DWASM --target=wasm32 -nostdlib -Wl,--no-entry -Wl,--export-all -Wl,--allow-undefined -Wl,-z,stack-size=8388608 -msimd128 -mbulk-memory -mmultivalue
 LINUX_FLAGS = -DLINUX
