@@ -2193,7 +2193,8 @@ parseStatement(Parser *parser, ASTNode *node) {
             statement->variableStatement = structPush(parser->arena, ASTNode);
             parseStatement(parser, statement->variableStatement);
             assertError(statement->variableStatement->type == ASTNodeType_ExpressionStatement || 
-                        statement->variableStatement->type == ASTNodeType_VariableDeclarationStatement,
+                        statement->variableStatement->type == ASTNodeType_VariableDeclarationStatement ||
+                        statement->variableStatement->type == ASTNodeType_VariableDeclarationTupleStatement,
                         parser, "Expected variable declaration or expression statement in for loop initializer");
         }
 
