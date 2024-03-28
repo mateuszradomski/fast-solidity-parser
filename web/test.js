@@ -100,7 +100,7 @@ async function runSingleTest(args) {
 	}
 }
 
-async function runTestsFromList() {
+async function runTestsFromList(args) {
 	const listPath = args[0];
 	const list = readFileSync(listPath, "utf-8").split("\n");
 
