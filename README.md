@@ -45,10 +45,8 @@ The resulting AST object is identical to the one produced by @solidity-parser/pa
 ## Stuff that is not yet supported
 
 - `assembly { z =: 5; }`
-  Assembly stack assignments
-
-- `(,,) = fnCall()`
-  Empty tuple variable statements
+  Assembly stack assignments.
+  This is really old, and I've not yet found even a good explanation of what this code does.
 
 ## Stuff that @solidity-parser/parser will accept but is invalid
 

@@ -1820,24 +1820,27 @@ tryParseVariableDeclarationTuple(Parser *parser, ASTNode *node) {
     }
 
     ASTNodeVariableDeclarationTupleStatement *tuple = &node->variableDeclarationTupleStatementNode;
-    do {
-        ASTNodeLink *declaration = structPush(parser->arena, ASTNodeLink);
-        declaration->node.type = ASTNodeType_None;
+    if(!acceptToken(parser, TokenType_RParen)) {
+        do {
+            ASTNodeLink *declaration = structPush(parser->arena, ASTNodeLink);
+            declaration->node.type = ASTNodeType_None;
 
-        declaration->node.startToken = parser->current;
-        if(peekToken(parser).type != TokenType_Comma && peekToken(parser).type != TokenType_RParen) {
-            if(!tryParseVariableDeclaration(parser, &declaration->node)) {
-                setCurrentParserPosition(parser, startPosition);
-                return false;
+            declaration->node.startToken = parser->current;
+            if(peekToken(parser).type != TokenType_Comma && peekToken(parser).type != TokenType_RParen) {
+                if(!tryParseVariableDeclaration(parser, &declaration->node)) {
+                    setCurrentParserPosition(parser, startPosition);
+                    return false;
+                }
             }
-        }
 
-        declaration->node.endToken = parser->current - 1;
-        SLL_QUEUE_PUSH(tuple->declarations.head, tuple->declarations.last, declaration);
-        tuple->declarations.count += 1;
-    } while(acceptToken(parser, TokenType_Comma));
+            declaration->node.endToken = parser->current - 1;
+            SLL_QUEUE_PUSH(tuple->declarations.head, tuple->declarations.last, declaration);
+            tuple->declarations.count += 1;
+        } while(acceptToken(parser, TokenType_Comma));
 
-    expectToken(parser, TokenType_RParen);
+        expectToken(parser, TokenType_RParen);
+    }
+
     expectToken(parser, TokenType_Equal);
 
     tuple->initialValue = structPush(parser->arena, ASTNode);
