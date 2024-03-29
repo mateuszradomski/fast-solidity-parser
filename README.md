@@ -47,9 +47,6 @@ The resulting AST object is identical to the one produced by @solidity-parser/pa
 - `assembly { z =: 5; }`
   Assembly stack assignments
 
-- `1 szabo, 2 finney`
-  Old subdenominations
-
 - `(,,) = fnCall()`
   Empty tuple variable statements
 

@@ -119,6 +119,8 @@ typedef enum TokenType {
     TokenType_HexNumberLit,
     TokenType_Comment,
     TokenType_Constructor,
+    TokenType_Szabo,
+    TokenType_Finney,
     TokenType_EOF,
     TokenType_Count,
 } TokenType;
@@ -218,6 +220,8 @@ tokenTypeToString(TokenType tokenType) {
         case TokenType_Days: return LIT_TO_STR("Days");
         case TokenType_Weeks: return LIT_TO_STR("Weeks");
         case TokenType_Years: return LIT_TO_STR("Years");
+        case TokenType_Szabo: return LIT_TO_STR("Szabo");
+        case TokenType_Finney: return LIT_TO_STR("Finney");
         case TokenType_Exclamation: return LIT_TO_STR("Exclamation");
         case TokenType_Plus: return LIT_TO_STR("Plus");
         case TokenType_Minus: return LIT_TO_STR("Minus");
@@ -486,6 +490,7 @@ categorizeSymbol(String symbol) {
             if(stringMatch(symbol, LIT_TO_STR("weeks"))) return TokenType_Weeks;
             if(stringMatch(symbol, LIT_TO_STR("while"))) return TokenType_While;
             if(stringMatch(symbol, LIT_TO_STR("years"))) return TokenType_Years;
+            if(stringMatch(symbol, LIT_TO_STR("szabo"))) return TokenType_Szabo;
             return TokenType_Symbol;
         } break;
         case 6: {
@@ -498,6 +503,7 @@ categorizeSymbol(String symbol) {
             if(stringMatch(symbol, LIT_TO_STR("return"))) return TokenType_Return;
             if(stringMatch(symbol, LIT_TO_STR("revert"))) return TokenType_Revert;
             if(stringMatch(symbol, LIT_TO_STR("struct"))) return TokenType_Struct;
+            if(stringMatch(symbol, LIT_TO_STR("finney"))) return TokenType_Finney;
             return TokenType_Symbol;
         } break;
         case 7: {

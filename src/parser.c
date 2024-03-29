@@ -667,7 +667,9 @@ parseIdentifier(Parser *parser) {
         token.type == TokenType_Revert |
         token.type == TokenType_Error |
         token.type == TokenType_Global |
-        token.type == TokenType_Payable;
+        token.type == TokenType_Payable |
+        token.type == TokenType_Szabo |
+        token.type == TokenType_Finney;
 
     if(isIdent) {
         acceptToken(parser, token.type);
@@ -692,7 +694,9 @@ parseSubdenomination(Parser *parser) {
         token.type == TokenType_Hours |
         token.type == TokenType_Days |
         token.type == TokenType_Weeks |
-        token.type == TokenType_Years;
+        token.type == TokenType_Years |
+        token.type == TokenType_Finney |
+        token.type == TokenType_Szabo;
 
     if(isSubdenomination) {
         acceptToken(parser, token.type);
