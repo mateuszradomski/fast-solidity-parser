@@ -18,7 +18,7 @@ The engine is compiled into WASM and later called by a wrapper that redirects th
 # Performance
 
 Tested on M2 Pro, 16GB RAM, no battery saver, Node V16.20.1, 15 runs back-to-back, the result is the average of the runs.
-In the table this library is referred to as FSF while the [@solidity-parser/parser](https://github.com/solidity-parser/parser)) is denoted as ASP.
+In the table this library is referred to as FSF while the [@solidity-parser/parser](https://github.com/solidity-parser/parser) is denoted as ASP.
 
 ```
 | File size |        ASP |       FSP | Speedup |
@@ -32,8 +32,7 @@ In the table this library is referred to as FSF while the [@solidity-parser/pars
 A few notes about the performance numbers presented above.
 Please keep in mind that your mileage may vary when it comes to the amount of speed up you're going to perceive.
 The observed throughput varies a lot from run to run because of garbage collection which is a problem at these kind of speeds.
-With each run the throughput increases as the optimizer in V8 kicks in, it takes around 5 runs for it to JIT the entire deserializer. 
-This is both observed for the FSP and ASP.
+After the first run, each next increases the throughput as the optimizer in V8 kicks in, it takes around 5 runs for it to JIT the entire deserializer. 
 
 # Original @solidity-parser/parser compatibility
 
