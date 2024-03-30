@@ -34,6 +34,21 @@ Please keep in mind that your mileage may vary when it comes to the amount of sp
 The observed throughput varies a lot from run to run because of garbage collection which is a problem at these kind of speeds.
 After the first run, each next increases the throughput as the optimizer in V8 kicks in, it takes around 5 runs for it to JIT the entire deserializer. 
 
+# Size
+
+The entire WASM module is inlined during the build step so there is no need for reading from disk or fetching to initialize the module.
+The first call suffers a penalty, because the module initialization is performed if it hasn't been done before.
+On the setup described above the penalty has been measured to be around 1.5ms.
+Keep in mind that every subsequent call does not suffer this penalty.
+
+```
+|          Kind |   ASP |   FSP | Ratio |
+|---------------|-------|-------|-------|
+| minify + gzip |  76KB |  36KB |  48%  |
+| minify        | 362KB | 267KB |  74%  |
+| raw           | 865KB | 385KB |  45%  |
+```
+
 # Original @solidity-parser/parser compatibility
 
 The API is very similar as the one exposed be the ANTLR parser.
