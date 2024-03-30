@@ -37,6 +37,7 @@ function saveProfileToDisk() {
 }
 
 function parse(input, options) {
+    profiler.trace_begin("parse")
     if(loaded === false) {
         loadParser()
     }
@@ -64,6 +65,7 @@ function parse(input, options) {
 
     profiler.trace_begin("parseBinary");
     const object = parseBinary(input, memoryBuffer, resultPointer, options);
+    profiler.trace_end();
     profiler.trace_end();
 
     return object;

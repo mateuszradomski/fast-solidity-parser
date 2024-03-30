@@ -6,29 +6,39 @@ async function runBinaryInterface(input) {
     let elapsed = -performance.now()
     parse(input)
     elapsed += performance.now();
-    const lines = input.split('\n').length;
-    const linesPerSeconds = lines / (elapsed / 1000);
-    console.error("WASM: Lines per second:", formatSI(linesPerSeconds, "LPS"));
 
     saveProfileToDisk();
+    return elapsed;
 }
 
 async function runAntlrParser(input) {
     let elapsed = -performance.now()
     parser.parse(input)
     elapsed += performance.now();
-    const lines = input.split('\n').length;
-    const linesPerSeconds = lines / (elapsed / 1000);
-    console.error("ANTLR: Lines per second:", formatSI(linesPerSeconds, "LPS"));
+    return elapsed;
 }
 
 async function main() {
     const input = fs.readFileSync("web/sources/parserbuilding.sol", 'utf-8')
 
-    for(let i = 0; i < 100; i++) {
-        await runBinaryInterface(input)
+    const wasmTimes = []
+    for(let i = 0; i < 15; i++) {
+        wasmTimes.push(await runBinaryInterface(input))
     }
-    await runAntlrParser(input)
+
+    const averageWasmTime = wasmTimes.reduce((a, b) => a + b, 0) / wasmTimes.length;
+    console.error("WASM: Bytes per second:", formatSI(input.length / (averageWasmTime / 1000), "BPS"))
+
+    const antlrTimes = []
+    for(let i = 0; i < 15; i++) {
+        antlrTimes.push(await runAntlrParser(input))
+    }
+
+    const averageAntlrTime = antlrTimes.reduce((a, b) => a + b, 0) / antlrTimes.length;
+    console.error("ANTLR: Bytes per second:", formatSI(input.length / (averageAntlrTime / 1000), "BPS"))
+
+    const speedup = averageAntlrTime / averageWasmTime
+    console.error("Speedup:", speedup.toFixed(2))
 }
 
 main()
