@@ -17,5 +17,5 @@ fs.readFile(filePath, (err, data) => {
     const jsArrayString = JSON.stringify(wordArray);
     
     const result = `const myArray = ${jsArrayString};\nmodule.exports = { myArray }\n`
-    fs.writeFileSync('web/inlineBinary.js', result);
+    fs.writeFileSync('src/deserializers/javascript/inlineBinary.js', result);
 });

@@ -10,12 +10,12 @@ RELEASE_FLAGS = -O2 -DNDEBUG
 .PHONY: all debug release
 
 debug: $(SRC)
-	$(CC) $(WASM_FLAGS) $(DEBUG_FLAGS) -o web/$(TARGET) src/engine/wasmMain.c $(INCLUDES)
-	node web/inliner.js parser.wasm
+	$(CC) $(WASM_FLAGS) $(DEBUG_FLAGS) -o src/deserializers/javascript/$(TARGET) src/engine/wasmMain.c $(INCLUDES)
+	node src/deserializers/javascript/inliner.js parser.wasm
 
 release: $(SRC)
-	$(CC) $(WASM_FLAGS) $(RELEASE_FLAGS) -o web/$(TARGET) src/engine/wasmMain.c $(INCLUDES)
-	node web/inliner.js parser.wasm
+	$(CC) $(WASM_FLAGS) $(RELEASE_FLAGS) -o src/deserializers/javascript/$(TARGET) src/engine/wasmMain.c $(INCLUDES)
+	node src/deserializers/javascript/inliner.js parser.wasm
 
 linux: $(SRC)
 	$(CC) $(LINUX_FLAGS) $(DEBUG_FLAGS) -o build/parser src/engine/linuxMain.c $(INCLUDES)

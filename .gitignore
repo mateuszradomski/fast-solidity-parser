@@ -2,5 +2,5 @@ zig-cache
 zig-out
 *.spall
 build
-web/inlineBinary.js
-web/parser.wasm
+src/deserializers/javascript/inlineBinary.js
+src/deserializers/javascript/parser.wasm

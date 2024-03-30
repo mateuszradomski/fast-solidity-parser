@@ -19,7 +19,7 @@ async function runAntlrParser(input) {
 }
 
 async function main() {
-    const input = fs.readFileSync("web/sources/parserbuilding.sol", 'utf-8')
+    const input = fs.readFileSync("src/deserializers/javascript/sources/parserbuilding.sol", 'utf-8')
 
     const wasmTimes = []
     for(let i = 0; i < 15; i++) {

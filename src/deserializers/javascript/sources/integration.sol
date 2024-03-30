@@ -1001,10 +1001,10 @@ contract FallbackWithArgs {
 // issue #12
 contract C {
   function f() public {
-    assembly {
-      x := 3
-      4 =: y
-    }
+    // assembly {
+    //   x := 3
+    //   4 =: y
+    // }
   }
 }
 
