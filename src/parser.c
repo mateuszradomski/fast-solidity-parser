@@ -1987,8 +1987,13 @@ parseYulStatement(Parser *parser, ASTNode *node, YulLexer *lexer) {
             c->yulCaseNode.literal = structPush(parser->arena, ASTNode);
             c->yulCaseNode.block = structPush(parser->arena, ASTNode);
 
-            // TODO(radomski): error on non-literal
             parseYulExpression(parser, c->yulCaseNode.literal, lexer);
+            assertError(c->yulCaseNode.literal->type == ASTNodeType_YulNumberLitExpression |
+                        c->yulCaseNode.literal->type == ASTNodeType_YulStringLitExpression |
+                        c->yulCaseNode.literal->type == ASTNodeType_YulHexNumberLitExpression |
+                        c->yulCaseNode.literal->type == ASTNodeType_YulBoolLitExpression |
+                        c->yulCaseNode.literal->type == ASTNodeType_YulHexStringLitExpression,
+                        parser, "Switch case requires a literal");
             parseYulStatement(parser, c->yulCaseNode.block, lexer);
 
             c->endToken = lexer->currentPosition - 1;
