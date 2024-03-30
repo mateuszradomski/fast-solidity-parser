@@ -1,7 +1,7 @@
-#include "./src/utils.c"
-#include "./src/tokenize.c"
-#include "./src/yulLexer.c"
-#include "./src/parser.c"
+#include "./src/engine/utils.c"
+#include "./src/engine/tokenize.c"
+#include "./src/engine/yulLexer.c"
+#include "./src/engine/parser.c"
 
 String entryPointBinaryInterface(const char *string, int len) {
     Arena arena = arenaCreate(64 * Megabyte, 32 * Kilobyte, 64);

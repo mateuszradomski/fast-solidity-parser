@@ -509,7 +509,7 @@ typedef struct ASTNodeLink {
     struct ASTNodeLink *next;
 } ASTNodeLink;
 
-#include "./src/binaryIface.c"
+#include "./src/engine/binaryIface.c"
 
 typedef struct Parser {
     Token *tokens;

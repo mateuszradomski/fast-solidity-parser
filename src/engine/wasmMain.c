@@ -1,7 +1,7 @@
-#include "./src/utils.c"
-#include "./src/tokenize.c"
-#include "./src/yulLexer.c"
-#include "./src/parser.c"
+#include "./src/engine/utils.c"
+#include "./src/engine/tokenize.c"
+#include "./src/engine/yulLexer.c"
+#include "./src/engine/parser.c"
 
 static String result = { 0 };
 
@@ -10,7 +10,7 @@ entryPointBinaryInterface(const char *string, int len) {
     bumpPointerArenaTop = 0xffffffff;
 
     traceBegin(1);
-    Arena arena = arenaCreate(16 * Megabyte, 32 * Kilobyte, 64);
+    Arena arena = arenaCreate(len * 16, 32 * Kilobyte, 64);
     traceEnd();
 
     traceBegin(2);
