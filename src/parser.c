@@ -313,8 +313,6 @@ typedef struct ASTNodeConstructorDefinition {
 
 typedef struct ASTNodeNamedParametersExpression {
     ASTNode *expression;
-    // TODO(radomski): This probably should be a different node, but I'm lazy
-    // so I'm going to store the start and end token inline
     u32 listStartToken;
     u32 listEndToken;
     TokenIdList names;
@@ -707,6 +705,34 @@ parseSubdenomination(Parser *parser) {
 }
 
 static bool
+isSizedType(String string, String prefix, u32 min, u32 max, u32 order) {
+    if(stringStartsWith(string, prefix)) {
+        String suffix = {
+            .data = string.data + prefix.size,
+            .size = string.size - prefix.size
+        };
+
+        if(!stringIsInteger(suffix)) {
+            return false;
+        }
+
+        u32 size = stringToInteger(suffix);
+
+        if(size % order != 0) {
+            return false;
+        }
+
+        if(size < min || size > max) {
+            return false;
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
+static bool
 isFixedPointNumberType(String string, String fixedPointPrefix) {
     if(stringStartsWith(string, fixedPointPrefix)) {
         String suffix = {
@@ -743,7 +769,6 @@ isFixedPointNumberType(String string, String fixedPointPrefix) {
     return false;
 }
 
-// TODO(radomski): This is obviously stupid
 static bool
 isBaseTypeName(String string) {
     static String elementaryTypeNames[] = {
@@ -753,107 +778,17 @@ isBaseTypeName(String string) {
         LIT_TO_STR("byte"),
         LIT_TO_STR("bytes"),
         LIT_TO_STR("int"),
-        LIT_TO_STR("int8"),
-        LIT_TO_STR("int16"),
-        LIT_TO_STR("int24"),
-        LIT_TO_STR("int32"),
-        LIT_TO_STR("int40"),
-        LIT_TO_STR("int48"),
-        LIT_TO_STR("int56"),
-        LIT_TO_STR("int64"),
-        LIT_TO_STR("int72"),
-        LIT_TO_STR("int80"),
-        LIT_TO_STR("int88"),
-        LIT_TO_STR("int96"),
-        LIT_TO_STR("int104"),
-        LIT_TO_STR("int112"),
-        LIT_TO_STR("int120"),
-        LIT_TO_STR("int128"),
-        LIT_TO_STR("int136"),
-        LIT_TO_STR("int144"),
-        LIT_TO_STR("int152"),
-        LIT_TO_STR("int160"),
-        LIT_TO_STR("int168"),
-        LIT_TO_STR("int176"),
-        LIT_TO_STR("int184"),
-        LIT_TO_STR("int192"),
-        LIT_TO_STR("int200"),
-        LIT_TO_STR("int208"),
-        LIT_TO_STR("int216"),
-        LIT_TO_STR("int224"),
-        LIT_TO_STR("int232"),
-        LIT_TO_STR("int240"),
-        LIT_TO_STR("int248"),
-        LIT_TO_STR("int256"),
         LIT_TO_STR("var"),
         LIT_TO_STR("uint"),
-        LIT_TO_STR("uint8"),
-        LIT_TO_STR("uint16"),
-        LIT_TO_STR("uint24"),
-        LIT_TO_STR("uint32"),
-        LIT_TO_STR("uint40"),
-        LIT_TO_STR("uint48"),
-        LIT_TO_STR("uint56"),
-        LIT_TO_STR("uint64"),
-        LIT_TO_STR("uint72"),
-        LIT_TO_STR("uint80"),
-        LIT_TO_STR("uint88"),
-        LIT_TO_STR("uint96"),
-        LIT_TO_STR("uint104"),
-        LIT_TO_STR("uint112"),
-        LIT_TO_STR("uint120"),
-        LIT_TO_STR("uint128"),
-        LIT_TO_STR("uint136"),
-        LIT_TO_STR("uint144"),
-        LIT_TO_STR("uint152"),
-        LIT_TO_STR("uint160"),
-        LIT_TO_STR("uint168"),
-        LIT_TO_STR("uint176"),
-        LIT_TO_STR("uint184"),
-        LIT_TO_STR("uint192"),
-        LIT_TO_STR("uint200"),
-        LIT_TO_STR("uint208"),
-        LIT_TO_STR("uint216"),
-        LIT_TO_STR("uint224"),
-        LIT_TO_STR("uint232"),
-        LIT_TO_STR("uint240"),
-        LIT_TO_STR("uint248"),
-        LIT_TO_STR("uint256"),
-        LIT_TO_STR("bytes1"),
-        LIT_TO_STR("bytes2"),
-        LIT_TO_STR("bytes3"),
-        LIT_TO_STR("bytes4"),
-        LIT_TO_STR("bytes5"),
-        LIT_TO_STR("bytes6"),
-        LIT_TO_STR("bytes7"),
-        LIT_TO_STR("bytes8"),
-        LIT_TO_STR("bytes9"),
-        LIT_TO_STR("bytes10"),
-        LIT_TO_STR("bytes11"),
-        LIT_TO_STR("bytes12"),
-        LIT_TO_STR("bytes13"),
-        LIT_TO_STR("bytes14"),
-        LIT_TO_STR("bytes15"),
-        LIT_TO_STR("bytes16"),
-        LIT_TO_STR("bytes17"),
-        LIT_TO_STR("bytes18"),
-        LIT_TO_STR("bytes19"),
-        LIT_TO_STR("bytes20"),
-        LIT_TO_STR("bytes21"),
-        LIT_TO_STR("bytes22"),
-        LIT_TO_STR("bytes23"),
-        LIT_TO_STR("bytes24"),
-        LIT_TO_STR("bytes25"),
-        LIT_TO_STR("bytes26"),
-        LIT_TO_STR("bytes27"),
-        LIT_TO_STR("bytes28"),
-        LIT_TO_STR("bytes29"),
-        LIT_TO_STR("bytes30"),
-        LIT_TO_STR("bytes31"),
-        LIT_TO_STR("bytes32"),
         LIT_TO_STR("fixed"),
         LIT_TO_STR("ufixed"),
     };
+
+    if(isSizedType(string, LIT_TO_STR("int"), 8, 256, 8) ||
+       isSizedType(string, LIT_TO_STR("uint"), 8, 256, 8) ||
+       isSizedType(string, LIT_TO_STR("bytes"), 1, 32, 1)) {
+        return true;
+    }
 
     for(u32 i = 0; i < ARRAY_LENGTH(elementaryTypeNames); i++) {
         if(stringMatch(string, elementaryTypeNames[i])) {
