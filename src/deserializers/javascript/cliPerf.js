@@ -1,5 +1,5 @@
 const fs = require('fs');
-const { parse, saveProfileToDisk } = require('./wasmParse');
+const { parse } = require('./wasmParse');
 const parser = require('@solidity-parser/parser')
 
 async function runBinaryInterface(input) {
@@ -7,7 +7,6 @@ async function runBinaryInterface(input) {
     parse(input)
     elapsed += performance.now();
 
-    saveProfileToDisk();
     return elapsed;
 }
 
