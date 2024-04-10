@@ -1,5 +1,17 @@
 {
-  "dependencies": {
-    "@solidity-parser/parser": "^0.18.0"
-  }
+	"name": "@mradomski/fast-solidity-parser",
+	"description": "A hand rolled parser for Solidity with megabytes of throughput",
+	"version": "0.1.1",
+	"homepage": "https://github.com/mateuszradomski/fast-solidity-parser",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/mateuszradomski/fast-solidity-parser.git"
+	},
+	"license": "MIT",
+	"main": "wasmParse.js",
+	"types": "wasmParse.d.ts",
+	"scripts": {},
+	"devDependencies": {
+		"@solidity-parser/parser": "^0.18.0"
+	}
 }
