@@ -546,7 +546,7 @@ reportErrorVarArgs(Parser *parser, const char *file, u32 line, const char *userE
 
     memoryUsed = arenaTakenBytes(parser->arena);
     bumpPointerArenaTop = (unsigned int)structPush(parser->arena, int);
-    javascriptPrintStringPtr(&error);
+    javascriptThrowErrorStringPtr(&error);
     unreachable();
 #else
     assert(false);

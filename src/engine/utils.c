@@ -11,6 +11,14 @@ typedef u32 bool;
 typedef u32 size_t;
 #endif
 
+typedef struct String
+{
+    u8 *data;
+    size_t size;
+} String;
+
+#define LIT_TO_STR(x) ((String){ .data = (u8 *)x, .size = sizeof(x) - 1 })
+
 #ifdef LINUX
 #include <stdint.h>
 
@@ -73,6 +81,7 @@ unsigned int bumpPointerArenaTop = 0;
 unsigned int bumpPointer = (unsigned int)(&__heap_base);
 
 extern void javascriptPrintStringPtr(void *s);
+extern void javascriptThrowErrorStringPtr(void *s);
 extern void javascriptPrintNumber(u32 n);
 extern void traceBegin(u32 n);
 extern void traceEnd();
@@ -83,7 +92,8 @@ static void unreachable() {
 
 static void __assert(void *boolean, int line) {
     if (!boolean) {
-        javascriptPrintNumber(line);
+        String message = LIT_TO_STR("Assertion failed");
+        javascriptThrowErrorStringPtr(&message);
         __builtin_unreachable();
     }
 }
@@ -358,14 +368,6 @@ arenaPushZero(Arena *arena, size_t size) {
 #define arrayPushZero(a,T,c) ((T *)arenaPushZero((a), sizeof(T)*(c)))
 #define structPush(a, T) ((T *)arenaPush((a), sizeof(T)))
 #define bytesPush(a, c) (arenaPush((a), (c)))
-
-typedef struct String
-{
-    u8 *data;
-    size_t size;     
-} String;
-
-#define LIT_TO_STR(x) ((String){ .data = (u8 *)x, .size = sizeof(x) - 1 })
 
 #define javascriptPrintString(s) _javascriptPrintString((s), sizeof(s) - 1)
 

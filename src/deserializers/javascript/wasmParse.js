@@ -50,15 +50,21 @@ function parseBinary(inputString, memoryBuffer, pointer, options) {
 
 function javascriptPrintStringPtr(pointer) {
     const memoryBuffer = instance.exports.memory.buffer;
-    const json_string = struct_string_by_pointer(memoryBuffer, pointer);
-    console.log(json_string);
+    const string = structStringByPointer(memoryBuffer, pointer);
+    console.log(string);
+}
+
+function javascriptThrowErrorStringPtr(pointer) {
+    const memoryBuffer = instance.exports.memory.buffer;
+    const string = structStringByPointer(memoryBuffer, pointer);
+    throw new Error(string);
 }
 
 function javascriptPrintNumber(number) {
     console.log(number);
 }
 
-function struct_string_by_pointer(mem_buffer, ptr) {
+function structStringByPointer(mem_buffer, ptr) {
     const mem = new Uint32Array(mem_buffer);
     const string_pointer = mem[ptr / 4];
     const string_length = mem[(ptr / 4) + 1];
@@ -71,6 +77,8 @@ function makeEnv(env) {
         get(target, prop, receiver) {
             if(prop === "javascriptPrintStringPtr") {
                 return javascriptPrintStringPtr;
+            } else if(prop === "javascriptThrowErrorStringPtr") {
+                return javascriptThrowErrorStringPtr;
             } else if(prop === "javascriptPrintNumber") {
                 return javascriptPrintNumber;
             }
