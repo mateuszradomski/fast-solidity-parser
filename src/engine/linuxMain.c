@@ -3,6 +3,12 @@
 #include "./src/engine/yulLexer.c"
 #include "./src/engine/parser.c"
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <stdio.h>
+
 String entryPointBinaryInterface(const char *string, int len) {
     Arena arena = arenaCreate(64 * Megabyte, 32 * Kilobyte, 64);
     String input = { .data = (u8 *)string, .size = len };
@@ -16,8 +22,20 @@ String entryPointBinaryInterface(const char *string, int len) {
 }
 
 int main() {
-    const char *str = "function helper(uint x) pure returns (uint) { min = min > max ? max : min; }";
-    u32 length = strlen(str);
+    const char *filepath = "tests/parserbuilding.sol";
 
-    String result = entryPointBinaryInterface(str, length);
+    struct stat fileStat;
+    int success = stat(filepath, &fileStat);
+    assert(success == 0);
+
+    u32 contentLength = fileStat.st_size;
+    char *content = (char *)malloc(contentLength + 1);
+    int fd = open(filepath, O_RDWR);
+    read(fd, content, contentLength);
+    close(fd);
+    content[contentLength] = 0;
+    printf("Content length = %u\n", contentLength);
+
+    String result = entryPointBinaryInterface(content, contentLength);
+    printf("Result size    = %zu\n", result.size);
 }
