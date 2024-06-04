@@ -5,7 +5,7 @@ INCLUDES = -I./
 WASM_FLAGS = -DWASM --target=wasm32 -nostdlib -Wl,--no-entry -Wl,--export-all -Wl,--allow-undefined -Wl,-z,stack-size=8388608 -msimd128 -mbulk-memory -mmultivalue
 LINUX_FLAGS = -DLINUX
 DEBUG_FLAGS = -g -O0
-RELEASE_FLAGS = -O2 -DNDEBUG
+RELEASE_FLAGS = -O2
 
 .PHONY: all debug release
 
@@ -18,4 +18,7 @@ release: $(SRC)
 	node src/deserializers/javascript/inliner.js parser.wasm
 
 linux: $(SRC)
-	$(CC) $(LINUX_FLAGS) $(DEBUG_FLAGS) -o build/parser src/engine/linuxMain.c $(INCLUDES)
+	$(CC) $(LINUX_FLAGS) $(DEBUG_FLAGS) -fsanitize=address -o build/parser src/engine/linuxMain.c $(INCLUDES)
+
+linux_release: $(SRC)
+	$(CC) $(LINUX_FLAGS) $(RELEASE_FLAGS) -g -o build/parser src/engine/linuxMain.c $(INCLUDES)
