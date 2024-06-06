@@ -65,9 +65,9 @@ pushTokenStringById(Serializer *s, TokenId token) {
             pushU32(s, INVALID_TOKEN_ID);
             pushU32(s, 0);
         } else {
-            Token t = getToken(s->tokens, token);
-            pushU32(s, (u32)(t.string.data - s->inputStringBase));
-            pushU32(s, (u32)t.string.size);
+            String string = getTokenString(s->tokens, token);
+            pushU32(s, (u32)(string.data - s->inputStringBase));
+            pushU32(s, (u32)string.size);
         }
     }
 
@@ -77,16 +77,19 @@ pushTokenStringById(Serializer *s, TokenId token) {
 static u32
 pushByteRanges(Serializer *s, TokenId start, TokenId end) {
     if(s->head) {
-        Token startToken = getToken(s->tokens, start);
-        Token endToken = getToken(s->tokens, end);
-        u32 startOffset = (u32)(startToken.string.data - s->inputStringBase);
-        u32 endOffset = (u32)(endToken.string.data - s->inputStringBase + endToken.string.size) - 1;
-        if(startToken.type == TokenType_StringLit) { startOffset--; }
-        if(startToken.type == TokenType_HexStringLit) { startOffset -= 4; }
-        if(startToken.type == TokenType_UnicodeStringLit) { startOffset -= 8; }
-        if(endToken.type == TokenType_StringLit) { endOffset++; }
-        if(endToken.type == TokenType_HexStringLit) { endOffset++; }
-        if(endToken.type == TokenType_UnicodeStringLit) { endOffset++; }
+        String startTokenString = getTokenString(s->tokens, start);
+        String endTokenString = getTokenString(s->tokens, end);
+        TokenType startTokenType = getTokenType(s->tokens, start);
+        TokenType endTokenType = getTokenType(s->tokens, end);
+        u32 startOffset = (u32)(startTokenString.data - s->inputStringBase);
+        u32 endOffset = (u32)(endTokenString.data - s->inputStringBase + endTokenString.size) - 1;
+
+        if(startTokenType == TokenType_StringLit) { startOffset--; }
+        if(startTokenType == TokenType_HexStringLit) { startOffset -= 4; }
+        if(startTokenType == TokenType_UnicodeStringLit) { startOffset -= 8; }
+        if(endTokenType == TokenType_StringLit) { endOffset++; }
+        if(endTokenType == TokenType_HexStringLit) { endOffset++; }
+        if(endTokenType == TokenType_UnicodeStringLit) { endOffset++; }
         pushU32(s, startOffset);
         pushU32(s, endOffset);
     }
@@ -252,12 +255,12 @@ pushExpression(Serializer *s, ASTNode *node) {
             l += pushCallArgumentList(s, &function->argumentsExpression, &function->argumentsName);
         } break;
         case ASTNodeType_BaseType: {
-            Token token = getToken(s->tokens, node->baseTypeNode.typeName);
+            String tokenString = getTokenString(s->tokens, node->baseTypeNode.typeName);
 
             // NOTE(radomski): @HACK: the solidity parser when parsing
             // `address(this)` will not return the address as a type name but
             // as an identifier.
-            if(stringMatch(token.string, LIT_TO_STR("address"))) {
+            if(stringMatch(tokenString, LIT_TO_STR("address"))) {
                 l += popU32(s);
                 l += popU32(s);
                 l += popU32(s);
@@ -657,8 +660,8 @@ pushPragma(Serializer *s, ASTNode *node) {
     l += pushTokenStringById(s, pragma->major);
     TokenId firstTokenId = listGetTokenId(&pragma->following, 0);
     TokenId lastTokenId = listGetTokenId(&pragma->following, pragma->following.count - 1);
-    String first = getToken(s->tokens, firstTokenId).string;
-    String last = getToken(s->tokens, lastTokenId).string;
+    String first = getTokenString(s->tokens, firstTokenId);
+    String last = getTokenString(s->tokens, lastTokenId);
     String string = {
         .data = first.data,
         .size = (u32)(last.data - first.data) + last.size,

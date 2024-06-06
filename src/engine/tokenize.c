@@ -1,4 +1,4 @@
-typedef enum TokenType {
+enum {
     TokenType_None,
     TokenType_Library,
     TokenType_Contract,
@@ -123,7 +123,9 @@ typedef enum TokenType {
     TokenType_Finney,
     TokenType_EOF,
     TokenType_Count,
-} TokenType;
+};
+
+typedef u16 TokenType;
 
 #define INVALID_TOKEN_ID ((u32)(-1))
 typedef u32 TokenId;
@@ -146,7 +148,8 @@ typedef struct Token {
 } Token;
 
 typedef struct TokenizeResult {
-    Token *tokens;
+    TokenType *tokenTypes;
+    String *tokenStrings;
     u32 count;
     u32 capacity;
 } TokenizeResult;
@@ -278,6 +281,7 @@ tokenTypeToString(TokenType tokenType) {
         case TokenType_Constructor: return LIT_TO_STR("Constructor");
         case TokenType_Count: return LIT_TO_STR("Count");
         case TokenType_EOF: return LIT_TO_STR("EOF");
+        default: return LIT_TO_STR("<UNKNOWN>");
     }
 }
 
@@ -317,15 +321,20 @@ listGetTokenId(TokenIdList *list, u32 index) {
 static TokenizeResult
 allocateTokenSpace(Arena *arena, u32 capacity) {
     TokenizeResult result = {0};
-    result.tokens = arrayPush(arena, Token, capacity);
+    result.tokenTypes = arrayPush(arena, TokenType, capacity);
+    result.tokenStrings = arrayPush(arena, String, capacity);
     result.capacity = capacity;
     return result;
 }
 
-static Token
-getToken(TokenizeResult tokens, TokenId tokenId) {
-    assert(tokenId >= 0 && tokenId < tokens.count);
-    return tokens.tokens[tokenId];
+static TokenType
+getTokenType(TokenizeResult tokens, TokenId tokenId) {
+    return tokens.tokenTypes[tokenId];
+}
+
+static String
+getTokenString(TokenizeResult tokens, TokenId tokenId) {
+    return tokens.tokenStrings[tokenId];
 }
 
 static void
@@ -365,10 +374,9 @@ static void
 pushToken(TokenizeResult *result, TokenType tokenType, String string) {
     assert(result->count < result->capacity);
 
-    result->tokens[result->count++] = (Token){
-        .type = tokenType,
-        .string = string
-    };
+    result->tokenTypes[result->count] = tokenType;
+    result->tokenStrings[result->count] = string;
+    result->count += 1;
 }
 
 static Token
@@ -966,7 +974,7 @@ tokenize(String source, Arena *arena) {
 
     pushToken(&result, TokenType_EOF, (String){0});
 
-    arenaPop(arena, (result.capacity - result.count) * sizeof(Token));
+    // arenaPop(arena, (result.capacity - result.count) * sizeof(Token));
 
     return result;
 }

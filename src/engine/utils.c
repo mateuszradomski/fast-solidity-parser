@@ -11,16 +11,9 @@ typedef u32 bool;
 typedef u32 size_t;
 #endif
 
-typedef struct String
-{
-    u8 *data;
-    size_t size;
-} String;
-
-#define LIT_TO_STR(x) ((String){ .data = (u8 *)x, .size = sizeof(x) - 1 })
-
 #ifdef LINUX
 #include <stdint.h>
+#include <stddef.h>
 
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -32,6 +25,14 @@ typedef int32_t s32;
 
 typedef u32 bool;
 #endif
+
+typedef struct String
+{
+    u8 *data;
+    size_t size;
+} String;
+
+#define LIT_TO_STR(x) ((String){ .data = (u8 *)x, .size = sizeof(x) - 1 })
 
 const u32 Kilobyte = 1024;
 const u32 Megabyte = Kilobyte * 1024;
