@@ -62,13 +62,14 @@ mergeOutputBuffers(Serializer *s) {
     }
 
     u8 *data = arrayPush(s->arena, u8, totalMemoryUsed);
+    u8 *head = data;
     u32 outputSize = 0;
     for(u32 i = 0; i < s->bufferCount; i++) {
         u32 count = s->bufferHead[i] - s->buffers[i].data;
         outputSize += count;
 
-        memcpy(data, s->buffers[i].data, count);
-        data += count;
+        memcpy(head, s->buffers[i].data, count);
+        head += count;
     }
 
     return (String) { .data = data, .size = outputSize };
