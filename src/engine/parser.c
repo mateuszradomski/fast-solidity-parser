@@ -2843,7 +2843,7 @@ printASTNodeSizes(Arena *arena) {
 
     for(u32 i = 0; i < ARRAY_LENGTH(entries); i++) {
         if(entries[i].size > 20) {
-            log(arena, "%S %d", entries[i].name, entries[i].size);
+            logInfo(arena, "%S %d", entries[i].name, entries[i].size);
         }
     }
 }

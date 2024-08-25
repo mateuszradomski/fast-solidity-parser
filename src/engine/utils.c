@@ -376,7 +376,7 @@ void _javascriptPrintString(char *s, u32 size) {
 
 static String stringPushfv(Arena *arena, const char *format, va_list args);
 
-static void log(Arena *arena, const char *fmt, ...) {
+static void logInfo(Arena *arena, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
     String output = stringPushfv(arena, fmt, args);
