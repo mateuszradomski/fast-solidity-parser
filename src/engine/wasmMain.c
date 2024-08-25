@@ -17,7 +17,7 @@ entryPointBinaryInterface(const char *string, int len) {
     ASTNode node = parseSourceUnit(&parser);
 
     Serializer s = createSerializer(&arena, input.data, tokens);
-    result = astNodeToBinary(&s, &node);
+    result = serialize(&s, &node, len);
 
     memoryUsed = arenaTakenBytes(&arena);
     bumpPointerArenaTop = (unsigned int)structPush(&arena, int);

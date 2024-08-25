@@ -232,17 +232,49 @@ char *skippedTests[] = {
     "tests/solcTests/wrong_panic.sol",
     "tests/solcTests/zero_dot.sol",
     "tests/solcTests/zero_signature.sol",
+
+    "tests/solcTests/license_cr_endings.sol",
 };
+
+typedef unsigned long long u64;
 
 String entryPointBinaryInterface(Arena *arena, const char *string, int len) {
     String input = { .data = (u8 *)string, .size = len };
 
+    u64 cycles = -__rdtsc();
     TokenizeResult tokens = tokenize(input, arena);
+    cycles += __rdtsc();
+    printf("Tokenize:      %11zu | %f\n", cycles, (double)cycles / 4.2e6);
+
+    cycles = -__rdtsc();
     Parser parser = createParser(tokens, arena);
     ASTNode node = parseSourceUnit(&parser);
+    cycles += __rdtsc();
+    printf("Parsing:       %11zu | %f\n", cycles, (double)cycles / 4.2e6);
 
+    cycles = -__rdtsc();
     Serializer s = createSerializer(arena, string, tokens);
-    return astNodeToBinary(&s, &node);
+    String result = serialize(&s, &node, input.size);
+    cycles += __rdtsc();
+    printf("Serialization: %11zu | %f\n", cycles, (double)cycles / 4.2e6);
+
+    return result;
+}
+
+u32 CRC32KoopmanHD8(const u8 *bytes, u32 count) {
+    u32 g = 0xf8c9140a;
+    u32 crc = 0;
+
+    for(u32 i = 0; i < count; i++) {
+        crc ^= (((u32)bytes[0]) << 24);
+        for(int i = 0; i < 8; i++) {
+            u32 mask = -((crc & 0x80000000) >> 31);
+            crc = (crc << 1) ^ (g & mask);
+        }
+        bytes++;
+    }
+    
+    return crc;
 }
 
 static int
@@ -276,13 +308,19 @@ printHistogram(int *histogram, int count) {
 int main() {
     glob_t files = { 0 };
 
+#if 0
     assert(glob("tests/**/*.sol", 0, 0x0, &files) == 0);
+#else
+    assert(glob("tests/parserbuilding.sol", 0, 0x0, &files) == 0);
+#endif
     printf("paths matched = %zu\n", files.gl_pathc);
 
     Arena arena = arenaCreate(128 * Megabyte, 32 * Kilobyte, 64);
 
     int totalMemoryUsedHistogram[128] = { 0 };
     int outputBytesPerInputHistogram[128] = { 0 };
+
+    u32 crc = 0;
 
     for(u32 i = 0; i < files.gl_pathc; i++) {
         char *filepath = files.gl_pathv[i];
@@ -305,14 +343,18 @@ int main() {
         String result = entryPointBinaryInterface(&arena, content, contentLength);
         memoryUsed -= arenaFreeBytes(&arena);
 
-        int perInputByte = ceil((double)memoryUsed / (double)contentLength);
-        totalMemoryUsedHistogram[perInputByte] += 1;
+        //int perInputByte = ceil((double)memoryUsed / (double)contentLength);
+        //totalMemoryUsedHistogram[perInputByte] += 1;
 
         int outputPerInput = ceil((double)result.size / (double)contentLength);
         outputBytesPerInputHistogram[outputPerInput] += 1;
 
-        printf("%120s %d, %d\n", filepath, i, perInputByte);
+        crc ^= CRC32KoopmanHD8(result.data, result.size);
+        printf("Final CRC = 0x%08x\n", crc);
+
+        printf("%120s %d, %d\n", filepath, i, outputPerInput);
     }
 
     printHistogram(outputBytesPerInputHistogram, ARRAY_LENGTH(outputBytesPerInputHistogram));
+    printf("Final CRC = 0x%08x\n", crc);
 }
