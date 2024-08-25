@@ -1,6 +1,6 @@
 CC = clang
 TARGET = parser.wasm
-SRC = src/engine/wasmMain.c src/engine/parser.c src/engine/tokenize.c src/engine/utils.c src/engine/binaryIface.c
+SRC = src/engine/wasmMain.c src/engine/parser.c src/engine/tokenize.c src/engine/utils.c src/engine/serializer.c
 INCLUDES = -I./
 WASM_FLAGS = -DWASM --target=wasm32 -nostdlib -Wl,--no-entry -Wl,--export-all -Wl,--allow-undefined -Wl,-z,stack-size=8388608 -msimd128 -mbulk-memory -mmultivalue
 LINUX_FLAGS = -DLINUX
@@ -18,7 +18,7 @@ release: $(SRC)
 	node src/deserializers/javascript/inliner.js parser.wasm
 
 linux: $(SRC)
-	$(CC) $(LINUX_FLAGS) $(DEBUG_FLAGS) -fsanitize=address -o build/parser src/engine/linuxMain.c $(INCLUDES)
+	$(CC) $(LINUX_FLAGS) $(DEBUG_FLAGS) -lm -o build/parser src/engine/linuxMain.c $(INCLUDES)
 
 linux_release: $(SRC)
 	$(CC) $(LINUX_FLAGS) $(RELEASE_FLAGS) -g -o build/parser src/engine/linuxMain.c $(INCLUDES)

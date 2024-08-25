@@ -242,7 +242,7 @@ String entryPointBinaryInterface(Arena *arena, const char *string, int len) {
     ASTNode node = parseSourceUnit(&parser);
 
     Serializer s = createSerializer(arena, string, tokens);
-    return astNodeToBinary(&s, &node);
+    return serialize(&s, &node, input.size);
 }
 
 static int

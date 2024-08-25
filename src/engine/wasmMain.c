@@ -27,7 +27,7 @@ entryPointBinaryInterface(const char *string, int len) {
 
     traceBegin(5);
     Serializer s = createSerializer(&arena, input.data, tokens);
-    result = astNodeToBinary(&s, &node);
+    result = serialize(&s, &node);
     traceEnd();
 
     memoryUsed = arenaTakenBytes(&arena);

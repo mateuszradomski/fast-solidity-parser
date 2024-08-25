@@ -2,10 +2,32 @@ typedef struct Serializer {
     Arena *arena;
     TokenizeResult tokens;
     const u8 *inputStringBase;
-    char **head;
+    u8 *head;
+    String buffers[16];
+    u32 bufferCount;
 } Serializer;
 
 static u32 pushASTNode(Serializer *s, ASTNode *node);
+
+static void
+pushOutputBuffer(Serializer *s, u32 size) {
+    u8 *data = arrayPush(s->arena, u8, size);
+    s->buffers[s->bufferCount++] = (String){ .data = data, .size = size };
+    s->head = data;
+}
+
+static String
+getCurrentOutputBuffer(Serializer *s) {
+    return s->buffers[s->bufferCount - 1];
+}
+
+static String
+mergeOutputBuffers(Serializer *s) {
+    // TODO(radomski): Support for more
+    assert(s->bufferCount == 1);
+
+    return s->buffers[0];
+}
 
 static Serializer
 createSerializer(Arena *arena, const void *inputStringBase, TokenizeResult tokens) {
@@ -21,32 +43,31 @@ createSerializer(Arena *arena, const void *inputStringBase, TokenizeResult token
 
 static u32
 pushU16(Serializer *s, u16 value) {
-    if(s->head) {
-        u16 *ptr = (u16 *)*s->head;
-        *ptr = value;
-        *s->head += sizeof(u16);
-    }
+    String buffer = getCurrentOutputBuffer(s);
+    assert(s->head - buffer.data + 2 < buffer.size);
+
+    u16 *ptr = (u16 *)s->head;
+    *ptr = value;
+    *s->head += sizeof(u16);
 
     return sizeof(u16);
 }
 
 static u32
 pushU32(Serializer *s, u32 value) {
-    if(s->head) {
-        u32 *ptr = (u32 *)*s->head;
-        *ptr = value;
-        *s->head += sizeof(u32);
-    }
+    String buffer = getCurrentOutputBuffer(s);
+    assert(s->head - buffer.data + 4 < buffer.size);
+
+    u32 *ptr = (u32 *)s->head;
+    *ptr = value;
+    *s->head += sizeof(u32);
 
     return sizeof(u32);
 }
 
 static u32
 popU32(Serializer *s) {
-    if(s->head) {
-        *s->head -= sizeof(u32);
-    }
-
+    s->head -= sizeof(u32);
     return -((u32)(sizeof(u32)));
 }
 
@@ -1020,22 +1041,13 @@ pushSourceUnit(Serializer *s, ASTNode *node) {
     return l;
 }
 
-static u32
-calculateResultingSize(Serializer *s, ASTNode *node) {
-    assert(s->head == 0x0);
-    u32 result = pushSourceUnit(s, node);
-    return result;
-}
-
 static String
-astNodeToBinary(Serializer *s, ASTNode *node) {
-    u32 size = calculateResultingSize(s, node);
-    u8 *data = arrayPush(s->arena, u8, size);
-    String result = { .data = data, .size = size };
-    s->head = (char **)&data;
+serialize(Serializer *s, ASTNode *node, u32 inputSize) {
+    u32 initialGuess = 8 * inputSize;
+    pushOutputBuffer(s, initialGuess);
 
     pushSourceUnit(s, node);
 
-    return result;
+    return mergeOutputBuffers(s);
 }
 
