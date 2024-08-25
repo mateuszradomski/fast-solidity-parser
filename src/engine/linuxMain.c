@@ -245,6 +245,22 @@ String entryPointBinaryInterface(Arena *arena, const char *string, int len) {
     return serialize(&s, &node, input.size);
 }
 
+u32 CRC32KoopmanHD8(const u8 *bytes, u32 count) {
+    u32 g = 0xf8c9140a;
+    u32 crc = 0;
+
+    for(u32 i = 0; i < count; i++) {
+        crc ^= (((u32)bytes[0]) << 24);
+        for(int i = 0; i < 8; i++) {
+            u32 mask = -((crc & 0x80000000) >> 31);
+            crc = (crc << 1) ^ (g & mask);
+        }
+        bytes++;
+    }
+    
+    return crc;
+}
+
 static int
 isSkipped(const char *filepath, char **skipped, u32 count) {
     for(u32 i = 0; i < count; i++) {
@@ -284,6 +300,8 @@ int main() {
     int totalMemoryUsedHistogram[128] = { 0 };
     int outputBytesPerInputHistogram[128] = { 0 };
 
+    u32 crc = 0;
+
     for(u32 i = 0; i < files.gl_pathc; i++) {
         char *filepath = files.gl_pathv[i];
         if(isSkipped(filepath, skippedTests, ARRAY_LENGTH(skippedTests))) {
@@ -311,8 +329,12 @@ int main() {
         int outputPerInput = ceil((double)result.size / (double)contentLength);
         outputBytesPerInputHistogram[outputPerInput] += 1;
 
+        crc ^= CRC32KoopmanHD8(result.data, result.size);
+        printf("Final CRC = 0x%08x\n", crc);
+
         printf("%120s %d, %d\n", filepath, i, perInputByte);
     }
 
     printHistogram(outputBytesPerInputHistogram, ARRAY_LENGTH(outputBytesPerInputHistogram));
+    printf("Final CRC = 0x%08x\n", crc);
 }
