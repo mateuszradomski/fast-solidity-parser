@@ -3,30 +3,75 @@ typedef struct Serializer {
     TokenizeResult tokens;
     const u8 *inputStringBase;
     u8 *head;
+    u8 *bufferHead[16];
     String buffers[16];
     u32 bufferCount;
+    u32 activeBuffer;
 } Serializer;
 
 static u32 pushASTNode(Serializer *s, ASTNode *node);
 
 static void
+switchToPreviousBuffer(Serializer *s) {
+    assert(s->activeBuffer != 0);
+    s->activeBuffer -= 1;
+    s->head = s->bufferHead[s->activeBuffer];
+}
+
+static void
+switchToNextBuffer(Serializer *s) {
+    s->activeBuffer += 1;
+    s->bufferHead[s->activeBuffer] = s->head;
+}
+
+static void
 pushOutputBuffer(Serializer *s, u32 size) {
     u8 *data = arrayPush(s->arena, u8, size);
-    s->buffers[s->bufferCount++] = (String){ .data = data, .size = size };
+
+    if(s->bufferCount > 0) {
+        s->bufferHead[s->bufferCount - 1] = s->head;
+    }
+
     s->head = data;
+    s->buffers[s->bufferCount++] = (String){ .data = data, .size = size };
+    switchToNextBuffer(s);
+}
+
+static void
+finalizeBuffers(Serializer *s) {
+    s->bufferHead[s->activeBuffer] = s->head;
 }
 
 static String
 getCurrentOutputBuffer(Serializer *s) {
-    return s->buffers[s->bufferCount - 1];
+    return s->buffers[s->activeBuffer];
 }
 
 static String
 mergeOutputBuffers(Serializer *s) {
-    // TODO(radomski): Support for more
-    assert(s->bufferCount == 1);
+    if(s->bufferCount == 1) {
+        s->buffers[0].size = s->head - s->buffers[0].data;
+        return s->buffers[0];
+    }
 
-    return s->buffers[0];
+    finalizeBuffers(s);
+
+    u32 totalMemoryUsed = 0;
+    for(u32 i = 0; i < s->bufferCount; i++) {
+        totalMemoryUsed += s->buffers[i].size;
+    }
+
+    u8 *data = arrayPush(s->arena, u8, totalMemoryUsed);
+    u32 outputSize = 0;
+    for(u32 i = 0; i < s->bufferCount; i++) {
+        u32 count = s->bufferHead[i] - s->buffers[i].data;
+        outputSize += count;
+
+        memcpy(data, s->buffers[i].data, count);
+        data += count;
+    }
+
+    return (String) { .data = data, .size = outputSize };
 }
 
 static Serializer
@@ -36,6 +81,7 @@ createSerializer(Arena *arena, const void *inputStringBase, TokenizeResult token
         .tokens = tokens,
         .inputStringBase = (const u8 *)inputStringBase,
         .head = 0x0,
+        .activeBuffer = ((u32)-1),
     };
 
     return s;
@@ -44,11 +90,15 @@ createSerializer(Arena *arena, const void *inputStringBase, TokenizeResult token
 static u32
 pushU16(Serializer *s, u16 value) {
     String buffer = getCurrentOutputBuffer(s);
+    if(s->head - buffer.data + 2 >= buffer.size) {
+        pushOutputBuffer(s, buffer.size);
+        buffer = getCurrentOutputBuffer(s);
+    }
     assert(s->head - buffer.data + 2 < buffer.size);
 
     u16 *ptr = (u16 *)s->head;
     *ptr = value;
-    *s->head += sizeof(u16);
+    s->head += sizeof(u16);
 
     return sizeof(u16);
 }
@@ -56,17 +106,28 @@ pushU16(Serializer *s, u16 value) {
 static u32
 pushU32(Serializer *s, u32 value) {
     String buffer = getCurrentOutputBuffer(s);
+    if(s->head - buffer.data + 4 >= buffer.size) {
+        pushOutputBuffer(s, buffer.size);
+        buffer = getCurrentOutputBuffer(s);
+    }
     assert(s->head - buffer.data + 4 < buffer.size);
 
     u32 *ptr = (u32 *)s->head;
     *ptr = value;
-    *s->head += sizeof(u32);
+    s->head += sizeof(u32);
 
     return sizeof(u32);
 }
 
 static u32
 popU32(Serializer *s) {
+    String buffer = getCurrentOutputBuffer(s);
+    if(s->head - buffer.data < 4) {
+        switchToPreviousBuffer(s);
+        buffer = getCurrentOutputBuffer(s);
+    }
+    assert(s->head - buffer.data >= 4);
+
     s->head -= sizeof(u32);
     return -((u32)(sizeof(u32)));
 }
@@ -81,15 +142,13 @@ pushString(Serializer *s, String string) {
 
 static u32
 pushTokenStringById(Serializer *s, TokenId token) {
-    if(s->head) {
-        if(token == INVALID_TOKEN_ID) {
-            pushU32(s, INVALID_TOKEN_ID);
-            pushU32(s, 0);
-        } else {
-            Token t = getToken(s->tokens, token);
-            pushU32(s, (u32)(t.string.data - s->inputStringBase));
-            pushU32(s, (u32)t.string.size);
-        }
+    if(token == INVALID_TOKEN_ID) {
+        pushU32(s, INVALID_TOKEN_ID);
+        pushU32(s, 0);
+    } else {
+        Token t = getToken(s->tokens, token);
+        pushU32(s, (u32)(t.string.data - s->inputStringBase));
+        pushU32(s, (u32)t.string.size);
     }
 
     return 2 * sizeof(u32);
@@ -97,20 +156,18 @@ pushTokenStringById(Serializer *s, TokenId token) {
 
 static u32
 pushByteRanges(Serializer *s, TokenId start, TokenId end) {
-    if(s->head) {
-        Token startToken = getToken(s->tokens, start);
-        Token endToken = getToken(s->tokens, end);
-        u32 startOffset = (u32)(startToken.string.data - s->inputStringBase);
-        u32 endOffset = (u32)(endToken.string.data - s->inputStringBase + endToken.string.size) - 1;
-        if(startToken.type == TokenType_StringLit) { startOffset--; }
-        if(startToken.type == TokenType_HexStringLit) { startOffset -= 4; }
-        if(startToken.type == TokenType_UnicodeStringLit) { startOffset -= 8; }
-        if(endToken.type == TokenType_StringLit) { endOffset++; }
-        if(endToken.type == TokenType_HexStringLit) { endOffset++; }
-        if(endToken.type == TokenType_UnicodeStringLit) { endOffset++; }
-        pushU32(s, startOffset);
-        pushU32(s, endOffset);
-    }
+    Token startToken = getToken(s->tokens, start);
+    Token endToken = getToken(s->tokens, end);
+    u32 startOffset = (u32)(startToken.string.data - s->inputStringBase);
+    u32 endOffset = (u32)(endToken.string.data - s->inputStringBase + endToken.string.size) - 1;
+    if(startToken.type == TokenType_StringLit) { startOffset--; }
+    if(startToken.type == TokenType_HexStringLit) { startOffset -= 4; }
+    if(startToken.type == TokenType_UnicodeStringLit) { startOffset -= 8; }
+    if(endToken.type == TokenType_StringLit) { endOffset++; }
+    if(endToken.type == TokenType_HexStringLit) { endOffset++; }
+    if(endToken.type == TokenType_UnicodeStringLit) { endOffset++; }
+    pushU32(s, startOffset);
+    pushU32(s, endOffset);
 
     return 2 * sizeof(u32);
 }
@@ -1043,7 +1100,7 @@ pushSourceUnit(Serializer *s, ASTNode *node) {
 
 static String
 serialize(Serializer *s, ASTNode *node, u32 inputSize) {
-    u32 initialGuess = 8 * inputSize;
+    u32 initialGuess = 4 * inputSize;
     pushOutputBuffer(s, initialGuess);
 
     pushSourceUnit(s, node);
