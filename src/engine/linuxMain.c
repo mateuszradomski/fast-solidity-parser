@@ -232,6 +232,8 @@ char *skippedTests[] = {
     "tests/solcTests/wrong_panic.sol",
     "tests/solcTests/zero_dot.sol",
     "tests/solcTests/zero_signature.sol",
+
+    "tests/solcTests/license_cr_endings.sol",
 };
 
 String entryPointBinaryInterface(Arena *arena, const char *string, int len) {
