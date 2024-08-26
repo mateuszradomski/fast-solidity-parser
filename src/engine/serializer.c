@@ -1,10 +1,14 @@
+typedef struct Buffer {
+    u8 *data;
+    size_t size;
+    size_t capacity;
+} Buffer;
+
 typedef struct Serializer {
     Arena *arena;
     TokenizeResult tokens;
     const u8 *inputStringBase;
-    u8 *head;
-    u8 *bufferHead[16];
-    String buffers[16];
+    Buffer buffers[16];
     u32 bufferCount;
     u32 activeBuffer;
 } Serializer;
@@ -15,57 +19,42 @@ static void
 switchToPreviousBuffer(Serializer *s) {
     assert(s->activeBuffer != 0);
     s->activeBuffer -= 1;
-    s->head = s->bufferHead[s->activeBuffer];
 }
 
 static void
 switchToNextBuffer(Serializer *s) {
     s->activeBuffer += 1;
-    s->bufferHead[s->activeBuffer] = s->head;
 }
 
 static void
 pushOutputBuffer(Serializer *s, u32 size) {
     u8 *data = arrayPush(s->arena, u8, size);
 
-    if(s->bufferCount > 0) {
-        s->bufferHead[s->bufferCount - 1] = s->head;
-    }
-
-    s->head = data;
-    s->buffers[s->bufferCount++] = (String){ .data = data, .size = size };
+    s->buffers[s->bufferCount++] = (Buffer){ .data = data, .size = 0, .capacity = size };
     switchToNextBuffer(s);
 }
 
-static void
-finalizeBuffers(Serializer *s) {
-    s->bufferHead[s->activeBuffer] = s->head;
-}
-
-static String
+static Buffer *
 getCurrentOutputBuffer(Serializer *s) {
-    return s->buffers[s->activeBuffer];
+    return s->buffers + s->activeBuffer;
 }
 
 static String
 mergeOutputBuffers(Serializer *s) {
     if(s->bufferCount == 1) {
-        s->buffers[0].size = s->head - s->buffers[0].data;
-        return s->buffers[0];
+        return (String){ .data = s->buffers[0].data, .size = s->buffers[0].size };
     }
-
-    finalizeBuffers(s);
 
     u32 totalMemoryUsed = 0;
     for(u32 i = 0; i < s->bufferCount; i++) {
-        totalMemoryUsed += s->buffers[i].size;
+        totalMemoryUsed += s->buffers[i].capacity;
     }
 
     u8 *data = arrayPush(s->arena, u8, totalMemoryUsed);
     u8 *head = data;
     u32 outputSize = 0;
     for(u32 i = 0; i < s->bufferCount; i++) {
-        u32 count = s->bufferHead[i] - s->buffers[i].data;
+        u32 count = s->buffers[i].size;
         outputSize += count;
 
         memcpy(head, s->buffers[i].data, count);
@@ -81,7 +70,6 @@ createSerializer(Arena *arena, const void *inputStringBase, TokenizeResult token
         .arena = arena,
         .tokens = tokens,
         .inputStringBase = (const u8 *)inputStringBase,
-        .head = 0x0,
         .activeBuffer = ((u32)-1),
     };
 
@@ -90,46 +78,46 @@ createSerializer(Arena *arena, const void *inputStringBase, TokenizeResult token
 
 static u32
 pushU16(Serializer *s, u16 value) {
-    String buffer = getCurrentOutputBuffer(s);
-    if(s->head - buffer.data + 2 >= buffer.size) {
-        pushOutputBuffer(s, buffer.size);
+    Buffer *buffer = getCurrentOutputBuffer(s);
+    if(buffer->size + 2 >= buffer->capacity) {
+        pushOutputBuffer(s, buffer->capacity);
         buffer = getCurrentOutputBuffer(s);
     }
-    assert(s->head - buffer.data + 2 < buffer.size);
+    assert(buffer->size + 2 < buffer->capacity);
 
-    u16 *ptr = (u16 *)s->head;
+    u16 *ptr = (u16 *)(buffer->data + buffer->size);
     *ptr = value;
-    s->head += sizeof(u16);
+    buffer->size += sizeof(u16);
 
     return sizeof(u16);
 }
 
 static u32
 pushU32(Serializer *s, u32 value) {
-    String buffer = getCurrentOutputBuffer(s);
-    if(s->head - buffer.data + 4 >= buffer.size) {
-        pushOutputBuffer(s, buffer.size);
+    Buffer *buffer = getCurrentOutputBuffer(s);
+    if(buffer->size + 4 >= buffer->capacity) {
+        pushOutputBuffer(s, buffer->capacity);
         buffer = getCurrentOutputBuffer(s);
     }
-    assert(s->head - buffer.data + 4 < buffer.size);
+    assert(buffer->size + 4 < buffer->capacity);
 
-    u32 *ptr = (u32 *)s->head;
+    u32 *ptr = (u32 *)(buffer->data + buffer->size);
     *ptr = value;
-    s->head += sizeof(u32);
+    buffer->size += sizeof(u32);
 
     return sizeof(u32);
 }
 
 static u32
 popU32(Serializer *s) {
-    String buffer = getCurrentOutputBuffer(s);
-    if(s->head - buffer.data < 4) {
+    Buffer *buffer = getCurrentOutputBuffer(s);
+    if(buffer->size < 4) {
         switchToPreviousBuffer(s);
         buffer = getCurrentOutputBuffer(s);
     }
-    assert(s->head - buffer.data >= 4);
+    assert(buffer->size >= 4);
 
-    s->head -= sizeof(u32);
+    buffer->size -= 4;
     return -((u32)(sizeof(u32)));
 }
 
@@ -1101,7 +1089,7 @@ pushSourceUnit(Serializer *s, ASTNode *node) {
 
 static String
 serialize(Serializer *s, ASTNode *node, u32 inputSize) {
-    u32 initialGuess = 4 * inputSize;
+    u32 initialGuess = 8 * inputSize;
     pushOutputBuffer(s, initialGuess);
 
     pushSourceUnit(s, node);
