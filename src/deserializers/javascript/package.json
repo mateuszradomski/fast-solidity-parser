@@ -1,7 +1,7 @@
 {
 	"name": "@mradomski/fast-solidity-parser",
 	"description": "A hand rolled parser for Solidity with megabytes of throughput",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"homepage": "https://github.com/mateuszradomski/fast-solidity-parser",
 	"repository": {
 		"type": "git",
