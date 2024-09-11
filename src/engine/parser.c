@@ -53,7 +53,6 @@ typedef enum ASTNodeType_Enum {
     ASTNodeType_InterfaceDefinition,
     ASTNodeType_AbstractContractDefinition,
     ASTNodeType_InheritanceSpecifier,
-    ASTNodeType_NameValue,
     ASTNodeType_Pragma,
     ASTNodeType_ModifierInvocation,
     ASTNodeType_Using,

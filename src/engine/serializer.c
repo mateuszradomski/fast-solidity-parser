@@ -359,11 +359,6 @@ pushExpression(Serializer *s, ASTNode *node) {
                 pushExpression(s, &expression->node);
             }
         } break;
-        case ASTNodeType_NameValue: {
-            ASTNodeNameValue *nameValue = &node->nameValueNode;
-            pushTokenStringById(s, nameValue->name);
-            pushExpression(s, nameValue->value);
-        } break;
         default: {
             javascriptPrintNumber(node->type);
             javascriptPrintString("here");

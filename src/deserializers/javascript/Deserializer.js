@@ -52,32 +52,31 @@ const ASTNodeType_NamedParametersExpression = 51;
 const ASTNodeType_InterfaceDefinition = 52;
 const ASTNodeType_AbstractContractDefinition = 53;
 const ASTNodeType_InheritanceSpecifier = 54;
-const ASTNodeType_NameValue = 55;
-const ASTNodeType_Pragma = 56;
-const ASTNodeType_ModifierInvocation = 57;
-const ASTNodeType_Using = 58;
-const ASTNodeType_UnicodeStringLitExpression = 59;
-const ASTNodeType_InlineArrayExpression = 60;
-const ASTNodeType_DoWhileStatement = 61;
-const ASTNodeType_TryStatement = 62;
-const ASTNodeType_AssemblyStatement = 64;
-const ASTNodeType_YulBlockStatement = 65;
-const ASTNodeType_YulVariableDeclaration = 66;
-const ASTNodeType_YulNumberLitExpression = 67;
-const ASTNodeType_YulStringLitExpression = 68;
-const ASTNodeType_YulHexNumberLitExpression = 69;
-const ASTNodeType_YulBoolLitExpression = 70;
-const ASTNodeType_YulHexStringLitExpression = 71;
-const ASTNodeType_YulMemberAccessExpression = 72;
-const ASTNodeType_YulFunctionCallExpression = 73;
-const ASTNodeType_YulVariableAssignment = 74;
-const ASTNodeType_YulIfStatement = 75;
-const ASTNodeType_YulForStatement = 76;
-const ASTNodeType_YulLeaveStatement = 77;
-const ASTNodeType_YulBreakStatement = 78;
-const ASTNodeType_YulContinueStatement = 79;
-const ASTNodeType_YulFunctionDefinition = 80;
-const ASTNodeType_YulSwitchStatement = 81;
+const ASTNodeType_Pragma = 55;
+const ASTNodeType_ModifierInvocation = 56;
+const ASTNodeType_Using = 57;
+const ASTNodeType_UnicodeStringLitExpression = 58;
+const ASTNodeType_InlineArrayExpression = 59;
+const ASTNodeType_DoWhileStatement = 60;
+const ASTNodeType_TryStatement = 61;
+const ASTNodeType_AssemblyStatement = 63;
+const ASTNodeType_YulBlockStatement = 64;
+const ASTNodeType_YulVariableDeclaration = 65;
+const ASTNodeType_YulNumberLitExpression = 66;
+const ASTNodeType_YulStringLitExpression = 67;
+const ASTNodeType_YulHexNumberLitExpression = 68;
+const ASTNodeType_YulBoolLitExpression = 69;
+const ASTNodeType_YulHexStringLitExpression = 70;
+const ASTNodeType_YulMemberAccessExpression = 71;
+const ASTNodeType_YulFunctionCallExpression = 72;
+const ASTNodeType_YulVariableAssignment = 73;
+const ASTNodeType_YulIfStatement = 74;
+const ASTNodeType_YulForStatement = 75;
+const ASTNodeType_YulLeaveStatement = 76;
+const ASTNodeType_YulBreakStatement = 77;
+const ASTNodeType_YulContinueStatement = 78;
+const ASTNodeType_YulFunctionDefinition = 79;
+const ASTNodeType_YulSwitchStatement = 80;
 
 class Deserializer {
 	constructor(inputString, dataView, options) {
@@ -642,15 +641,6 @@ class Deserializer {
 			};
 		} else if (kind === ASTNodeType_ArrayType) {
 			return this.popType();
-		} else if (kind === ASTNodeType_NameValue) {
-			const name = this.popString();
-			const value = this.popExpression();
-			return {
-				type: "NameValueExpression",
-				name,
-				value,
-				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
-			};
 		} else {
 			throw new Error(`Unknown/Unsupported expression type: ${kind}`);
 		}
