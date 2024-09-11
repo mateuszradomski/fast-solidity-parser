@@ -1818,27 +1818,27 @@ parseYulExpression(Parser *parser, ASTNode *node, YulLexer *lexer) {
     } else if(acceptYulToken(lexer, YulTokenType_Identifier)) {
         TokenId identifier = peekYulLastToken(lexer);
 
+        node->type = ASTNodeType_YulMemberAccessExpression;
+        node->yulIdentifierPathExpressionNode.identifiers[0] = identifier;
+        node->yulIdentifierPathExpressionNode.count = 1;
 
         if(acceptYulToken(lexer, YulTokenType_Dot)) {
-            node->type = ASTNodeType_YulMemberAccessExpression;
-            node->yulIdentifierPathExpressionNode.identifiers[0] = identifier;
             node->yulIdentifierPathExpressionNode.identifiers[1] = parseYulIdentifier(lexer);
             node->yulIdentifierPathExpressionNode.count = 2;
-        } else {
+        } else if(acceptYulToken(lexer, YulTokenType_LParen)) {
+            memset(&node->yulIdentifierPathExpressionNode, 0, sizeof(node->yulIdentifierPathExpressionNode));
             node->type = ASTNodeType_YulFunctionCallExpression;
             ASTNodeYulFunctionCallExpression *functionCall = &node->yulFunctionCallExpressionNode;
             functionCall->identifier = identifier;
 
-            if(acceptYulToken(lexer, YulTokenType_LParen)) {
-                if(!acceptYulToken(lexer, YulTokenType_RParen)) {
-                    do {
-                        ASTNodeLink *argument = structPush(parser->arena, ASTNodeLink);
-                        parseYulExpression(parser, &argument->node, lexer);
-                        SLL_QUEUE_PUSH(functionCall->arguments.head, functionCall->arguments.last, argument);
-                        functionCall->arguments.count += 1;
-                    } while(acceptYulToken(lexer, YulTokenType_Comma));
-                    expectYulToken(parser, lexer, YulTokenType_RParen);
-                }
+            if(!acceptYulToken(lexer, YulTokenType_RParen)) {
+                do {
+                    ASTNodeLink *argument = structPush(parser->arena, ASTNodeLink);
+                    parseYulExpression(parser, &argument->node, lexer);
+                    SLL_QUEUE_PUSH(functionCall->arguments.head, functionCall->arguments.last, argument);
+                    functionCall->arguments.count += 1;
+                } while(acceptYulToken(lexer, YulTokenType_Comma));
+                expectYulToken(parser, lexer, YulTokenType_RParen);
             }
         }
     } else {

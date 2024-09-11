@@ -154,3 +154,36 @@ The resulting AST object is identical to the one produced by @solidity-parser/pa
     "conditionExpression": null,
     "loopExpression": null,
   ```
+
+- `assembly { add(_in, 32) }`
+  They decode the `_in` as a function call not as an identifier.
+  We decode it correctly as an identifier.
+
+  Wrong:
+  ```
+    "type": "AssemblyCall",
+    "functionName": "add",
+    "arguments": [{
+      "type": "AssemblyCall",
+      "functionName": "_in",
+      "arguments": [],
+    },
+    {
+      "type": "DecimalNumber",
+      "value": "32",
+    }],
+  ```
+
+  Correct:
+  ```
+    "type": "AssemblyCall",
+    "functionName": "add",
+    "arguments": [{
+      "type": "Identifier",
+      "name": "_in",
+    },
+    {
+      "type": "DecimalNumber",
+      "value": "32",
+    }],
+  ```
