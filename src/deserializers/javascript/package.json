@@ -12,6 +12,7 @@
 	"types": "wasmParse.d.ts",
 	"scripts": {},
 	"devDependencies": {
-		"@solidity-parser/parser": "^0.18.0"
+		"@solidity-parser/parser": "^0.18.0",
+		"mitata": "^1.0.32"
 	}
 }

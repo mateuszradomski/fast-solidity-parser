@@ -15,7 +15,8 @@ debug: $(SRC)
 
 release: $(SRC)
 	$(CC) $(WASM_FLAGS) $(RELEASE_FLAGS) -o src/deserializers/javascript/$(TARGET) src/engine/wasmMain.c $(INCLUDES)
-	node src/deserializers/javascript/inliner.js parser.wasm
+	wasm-opt -O4 --enable-simd --enable-bulk-memory-opt --enable-multivalue --enable-bulk-memory --enable-mutable-globals --enable-nontrapping-float-to-int --enable-sign-ext src/deserializers/javascript/parser.wasm -o src/deserializers/javascript/optimized.wasm
+	node src/deserializers/javascript/inliner.js optimized.wasm
 
 linux: $(SRC)
 	$(CC) $(LINUX_FLAGS) $(DEBUG_FLAGS) -lm -o build/parser src/engine/linuxMain.c $(INCLUDES)

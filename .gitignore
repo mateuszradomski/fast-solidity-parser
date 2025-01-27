@@ -3,4 +3,4 @@ zig-out
 *.spall
 build
 src/deserializers/javascript/inlineBinary.js
-src/deserializers/javascript/parser.wasm
+src/deserializers/javascript/*.wasm
