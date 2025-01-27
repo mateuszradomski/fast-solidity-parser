@@ -34,9 +34,9 @@ typedef struct String
 
 #define LIT_TO_STR(x) ((String){ .data = (u8 *)x, .size = sizeof(x) - 1 })
 
-const u32 Kilobyte = 1024;
-const u32 Megabyte = Kilobyte * 1024;
-const u32 Gigabyte = Megabyte * 1024;
+static const u32 Kilobyte = 1024;
+static const u32 Megabyte = Kilobyte * 1024;
+static const u32 Gigabyte = Megabyte * 1024;
 
 #define true 1
 #define false 0
@@ -115,7 +115,7 @@ malloc(unsigned long n) {
 
 static void free(void* p) {}
 
-void *
+static void *
 memcpy(void *dst, const void *src, unsigned long n) {
     char *d = dst;
     const char *s = src;
