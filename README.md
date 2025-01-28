@@ -21,12 +21,12 @@ Tested on M2 Pro, 16GB RAM, no battery saver, Node V16.20.1, 15 runs back-to-bac
 In the table this library is referred to as FSF while the [@solidity-parser/parser](https://github.com/solidity-parser/parser) is denoted as ASP.
 
 ```
-| File size |        ASP |       FSP | Speedup |
-|-----------|------------|-----------|---------|
-|      7 KB | 685.9 KB/s | 43.2 MB/s |   x62.9 |
-|     20 KB | 617.7 KB/s | 57.4 MB/s |   x92.9 |
-|    103 KB | 644.5 KB/s | 95.6 MB/s |  x148.3 |
-|   1249 KB |   434 KB/s | 56.4 MB/s |  x129.9 |
+| File size |         ASP |         FSP | Speedup |
+|-----------|-------------|-------------|---------|
+|     8.4KB | 216.05 KB/s |  16.02 MB/s |  74.13x |
+|      20KB | 462.45 KB/s |  33.61 MB/s |  72.68x |
+|     103KB | 728.44 KB/s | 190.56 MB/s | 261.60x |
+|    1249KB | 441.26 KB/s |  77.10 MB/s | 174.73x |
 ```
 
 A few notes about the performance numbers presented above.
