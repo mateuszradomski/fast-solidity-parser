@@ -44,9 +44,9 @@ Keep in mind that every subsequent call does not suffer this penalty.
 ```
 |          Kind |   ASP |   FSP | Ratio |
 |---------------|-------|-------|-------|
-| minify + gzip |  76KB |  36KB |  48%  |
-| minify        | 362KB | 267KB |  74%  |
-| raw           | 865KB | 385KB |  45%  |
+| minify + gzip |  76KB |  42KB |   55% |
+| minify        | 362KB | 164KB |   45% |
+| raw           | 865KB | 185KB |   21% |
 ```
 
 # Original @solidity-parser/parser compatibility
