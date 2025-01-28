@@ -1,16 +1,25 @@
 const Deserializer = require('./Deserializer');
-const { myArray } = require('./inlineBinary');
+const { wasmBase64 } = require('./inlineBinary');
 
 let loaded = false;
 let instance = null;
 
-function loadParser() {
-    const buffer = Buffer.from(myArray)
-    loadWasmModule(buffer)
+function decodeBase64(base64) {
+  if (typeof Buffer !== 'undefined') {
+    return Buffer.from(base64, 'base64');
+  } else {
+    const binStr = atob(base64);
+    const bytes = new Uint8Array(binStr.length);
+    for (let i = 0; i < binStr.length; i++) {
+      bytes[i] = binStr.charCodeAt(i);
+    }
+    return bytes;
+  }
 }
 
-function loadWasmModule(wasmBuffer) {
-    const mod = new WebAssembly.Module(wasmBuffer);
+function loadParser() {
+    const buffer = decodeBase64(wasmBase64)
+    const mod = new WebAssembly.Module(buffer);
     instance = new WebAssembly.Instance(mod, {
         env: makeEnv({})
     });
