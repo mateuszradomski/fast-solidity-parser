@@ -11,6 +11,12 @@
 	"main": "wasmParse.js",
 	"types": "wasmParse.d.ts",
 	"scripts": {},
+	"files": [
+		"Deserializer.js",
+		"inlineBinary.js",
+		"wasmParse.d.ts",
+		"wasmParse.js"
+	],
 	"devDependencies": {
 		"@solidity-parser/parser": "^0.18.0",
 		"mitata": "^1.0.32"
