@@ -1,6 +1,7 @@
 const fs = require("fs");
-const { parse } = require("../wasmParse");
+const { parse } = require("../../wasmParse");
 const parser = require("@solidity-parser/parser");
+const path = require("path");
 
 function runBinaryInterface(input) {
 	let elapsed = -performance.now();
@@ -17,10 +18,10 @@ function runAntlrParser(input) {
 }
 
 const tests = [
-	["8.4KB", "bench/8kb.sol"],
-	["20KB", "bench/20kb.sol"],
-	["103KB", "bench/103kb.sol"],
-	["1249KB", "bench/1249kb.sol"],
+	["8.4KB", "8kb.sol"],
+	["20KB", "20kb.sol"],
+	["103KB", "103kb.sol"],
+	["1249KB", "1249kb.sol"],
 ];
 
 function benchmark(name, input) {
@@ -45,8 +46,9 @@ function benchmark(name, input) {
 }
 
 function main() {
-	for (const [name, path] of tests) {
-		const input = fs.readFileSync(path, "utf-8");
+	for (const [name, fileName] of tests) {
+        const filePath = path.join(__dirname, fileName)
+		const input = fs.readFileSync(filePath, "utf-8");
 		benchmark(name, input);
 	}
 }

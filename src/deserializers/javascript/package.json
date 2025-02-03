@@ -11,8 +11,8 @@
 	"main": "wasmParse.js",
 	"types": "wasmParse.d.ts",
 	"scripts": {
-        "test": "node test.js all ../../../tests/solcTests",
-        "bench": "node bench/index.js"
+        "test": "node utils/test.js all ../../../tests/solcTests",
+        "bench": "node utils/bench/index.js"
     },
 	"files": [
 		"Deserializer.js",

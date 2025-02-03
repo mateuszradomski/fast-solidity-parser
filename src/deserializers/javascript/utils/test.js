@@ -1,4 +1,4 @@
-const { parse } = require("./wasmParse");
+const { parse } = require("../wasmParse");
 const parser = require("@solidity-parser/parser");
 const { readFileSync } = require("fs");
 const fs = require("fs/promises");
