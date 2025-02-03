@@ -85,45 +85,45 @@ class Deserializer {
 		this.offset = 0;
 		this.includeByteRange = options && options.range === true;
 
-		this.operatorStrings = {
-			39: "delete",
-			66: "!",
-			67: "+",
-			68: "-",
-			69: "%",
-			70: "/",
-			71: "*",
-			72: "**",
-			73: "&",
-			74: "|",
-			75: "^",
-			76: "<<",
-			77: ">>",
-			78: ">>>",
-			79: "~",
-			80: "++",
-			81: "--",
-			82: "<",
-			83: ">",
-			84: "<=",
-			85: ">=",
-			86: "==",
-			87: "!=",
-			88: "&&",
-			89: "||",
-			90: "?",
-			91: "=",
-			92: "|=",
-			93: "^=",
-			94: "&=",
-			95: "<<=",
-			96: ">>=",
-			97: "+=",
-			98: "-=",
-			99: "*=",
-			100: "/=",
-			101: "%=",
-		};
+		this.operatorStrings = [
+			"delete",
+			"!",
+			"+",
+			"-",
+			"%",
+			"/",
+			"*",
+			"**",
+			"&",
+			"|",
+			"^",
+			"<<",
+			">>",
+			">>>",
+			"~",
+			"++",
+			"--",
+			"<",
+			">",
+			"<=",
+			">=",
+			"==",
+			"!=",
+			"&&",
+			"||",
+			"?",
+			"=",
+			"|=",
+			"^=",
+			"&=",
+			"<<=",
+			">>=",
+			"+=",
+			"-=",
+			"*=",
+			"/=",
+			"%=",
+		];
 
 		this.visibilityString = [
 			"default",
@@ -467,7 +467,7 @@ class Deserializer {
 			const lhs = this.popExpression();
 			const rhs = this.popExpression();
 
-			const operator = this.operatorStrings[operatorId];
+			const operator = this.operatorStrings[operatorId - 65];
 
 			return {
 				type: "BinaryOperation",
@@ -503,7 +503,7 @@ class Deserializer {
 
 			return {
 				type: "UnaryOperation",
-				operator: this.operatorStrings[operator],
+				operator: this.operatorStrings[operator - 65],
 				subExpression,
 				isPrefix: kind !== ASTNodeType_UnaryExpressionPostfix,
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
@@ -1165,7 +1165,7 @@ class Deserializer {
 			const operatorCount = this.popU32();
 			const operators = [];
 			for (let i = 0; i < operatorCount; i++) {
-				operators.push(this.operatorStrings[this.popU16()]);
+				operators.push(this.operatorStrings[this.popU16() - 65]);
 			}
 
 			const hasForType = this.popU16();
