@@ -3,6 +3,7 @@ const { wasmBase64 } = require('./inlineBinary');
 
 let loaded = false;
 let instance = null;
+const encoder = new TextEncoder()
 
 function decodeBase64(base64) {
   if (typeof Buffer !== 'undefined') {
@@ -33,15 +34,24 @@ function parse(input, options) {
     }
 
     instance.exports.resetBumpPointer();
-
-    const jsArray = new TextEncoder().encode(input);
-
-    const cArrayPointer = instance.exports.malloc(jsArray.length);
+    let cArrayPointer = instance.exports.malloc(input.length * 2);
     let memoryBuffer = instance.exports.memory.buffer;
-    const cArray = new Uint8Array(memoryBuffer, cArrayPointer, jsArray.length);
-    cArray.set(jsArray);
+    const cArray = new Uint8Array(memoryBuffer, cArrayPointer, input.length);
+    const { read, written } = encoder.encodeInto(input, cArray)
+    let length = written
 
-    const resultPointer = instance.exports.entryPointBinaryInterface(cArrayPointer, jsArray.length);
+    if(read !== input.length) {
+        instance.exports.resetBumpPointer();
+
+        const jsArray = encoder.encode(input);
+        cArrayPointer = instance.exports.malloc(jsArray.length);
+        let memoryBuffer = instance.exports.memory.buffer;
+        const cArray = new Uint8Array(memoryBuffer, cArrayPointer, jsArray.length);
+        cArray.set(jsArray);
+        length = jsArray.length
+    }
+
+    const resultPointer = instance.exports.entryPointBinaryInterface(cArrayPointer, length);
     memoryBuffer = instance.exports.memory.buffer;
     return parseBinary(input, memoryBuffer, resultPointer, options);
 }
