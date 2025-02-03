@@ -79,79 +79,77 @@ const ASTNodeType_YulFunctionDefinition = 79;
 const ASTNodeType_YulSwitchStatement = 80;
 
 class Deserializer {
+    static operatorStrings = [
+        "delete",
+        "!",
+        "+",
+        "-",
+        "%",
+        "/",
+        "*",
+        "**",
+        "&",
+        "|",
+        "^",
+        "<<",
+        ">>",
+        ">>>",
+        "~",
+        "++",
+        "--",
+        "<",
+        ">",
+        "<=",
+        ">=",
+        "==",
+        "!=",
+        "&&",
+        "||",
+        "?",
+        "=",
+        "|=",
+        "^=",
+        "&=",
+        "<<=",
+        ">>=",
+        "+=",
+        "-=",
+        "*=",
+        "/=",
+        "%=",
+    ];
+
+    static stateMutabilityString = [null, "pure", "view", "payable", "constant"];
+    static storageLocationString = [null, "memory", "storage", "calldata", null];
+    static visibilityString = [
+        "default",
+        "internal",
+        "external",
+        "private",
+        "public",
+    ];
+
+    static variableVisibilityString = [
+        "default",
+        "public",
+        "private",
+        "internal",
+        "constant",
+        "immutable",
+    ];
+
+    static contractKindMap = {
+        [ASTNodeType_ContractDefinition]: "contract",
+        [ASTNodeType_LibraryDefinition]: "library",
+        [ASTNodeType_InterfaceDefinition]: "interface",
+        [ASTNodeType_AbstractContractDefinition]: "abstract",
+    };
+
 	constructor(inputString, dataView, options) {
 		this.inputString = inputString;
 		this.dataView = dataView;
 		this.offset = 0;
 		this.includeByteRange = options && options.range === true;
-
-		this.operatorStrings = [
-			"delete",
-			"!",
-			"+",
-			"-",
-			"%",
-			"/",
-			"*",
-			"**",
-			"&",
-			"|",
-			"^",
-			"<<",
-			">>",
-			">>>",
-			"~",
-			"++",
-			"--",
-			"<",
-			">",
-			"<=",
-			">=",
-			"==",
-			"!=",
-			"&&",
-			"||",
-			"?",
-			"=",
-			"|=",
-			"^=",
-			"&=",
-			"<<=",
-			">>=",
-			"+=",
-			"-=",
-			"*=",
-			"/=",
-			"%=",
-		];
-
-		this.visibilityString = [
-			"default",
-			"internal",
-			"external",
-			"private",
-			"public",
-		];
-
-		this.variableVisibilityString = [
-			"default",
-			"public",
-			"private",
-			"internal",
-			"constant",
-			"immutable",
-		];
-
-		this.contractKindMap = {
-			[ASTNodeType_ContractDefinition]: "contract",
-			[ASTNodeType_LibraryDefinition]: "library",
-			[ASTNodeType_InterfaceDefinition]: "interface",
-			[ASTNodeType_AbstractContractDefinition]: "abstract",
-		};
-
-		this.stateMutabilityString = [null, "pure", "view", "payable", "constant"];
-
-		this.storageLocationString = [null, "memory", "storage", "calldata", null];
 	}
 
 	popU16() {
@@ -276,8 +274,8 @@ class Deserializer {
 				type: "FunctionTypeName",
 				parameterTypes,
 				returnTypes,
-				visibility: this.visibilityString[visibility],
-				stateMutability: this.stateMutabilityString[stateMutability],
+				visibility: Deserializer.visibilityString[visibility],
+				stateMutability: Deserializer.stateMutabilityString[stateMutability],
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
 		} else if (kind === ASTNodeType_ArrayType) {
@@ -313,7 +311,7 @@ class Deserializer {
 			typeName,
 			name: identifier?.name ?? null,
 			identifier,
-			storageLocation: this.storageLocationString[dataLocation],
+			storageLocation: Deserializer.storageLocationString[dataLocation],
 			isStateVar: false,
 			isIndexed: dataLocation === 4,
 			expression: null,
@@ -337,7 +335,7 @@ class Deserializer {
 			identifier,
 			isStateVar: false,
 			isIndexed: dataLocation === 4,
-			storageLocation: this.storageLocationString[dataLocation],
+			storageLocation: Deserializer.storageLocationString[dataLocation],
 			expression: null,
 			range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 		};
@@ -357,7 +355,7 @@ class Deserializer {
 			name: identifier.name,
 			identifier,
 			typeName,
-			storageLocation: this.storageLocationString[dataLocation],
+			storageLocation: Deserializer.storageLocationString[dataLocation],
 			isStateVar: false,
 			isIndexed: false,
 			expression: null,
@@ -467,7 +465,7 @@ class Deserializer {
 			const lhs = this.popExpression();
 			const rhs = this.popExpression();
 
-			const operator = this.operatorStrings[operatorId - 65];
+			const operator = Deserializer.operatorStrings[operatorId - 65];
 
 			return {
 				type: "BinaryOperation",
@@ -503,7 +501,7 @@ class Deserializer {
 
 			return {
 				type: "UnaryOperation",
-				operator: this.operatorStrings[operator - 65],
+				operator: Deserializer.operatorStrings[operator - 65],
 				subExpression,
 				isPrefix: kind !== ASTNodeType_UnaryExpressionPostfix,
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
@@ -1165,7 +1163,7 @@ class Deserializer {
 			const operatorCount = this.popU32();
 			const operators = [];
 			for (let i = 0; i < operatorCount; i++) {
-				operators.push(this.operatorStrings[this.popU16() - 65]);
+				operators.push(Deserializer.operatorStrings[this.popU16() - 65]);
 			}
 
 			const hasForType = this.popU16();
@@ -1298,7 +1296,7 @@ class Deserializer {
 						name: identifier.name,
 						identifier,
 						expression,
-						visibility: this.variableVisibilityString[visibility],
+						visibility: Deserializer.variableVisibilityString[visibility],
 						isStateVar: true,
 						isDeclaredConst: mutability === 1,
 						isIndexed: false,
@@ -1365,14 +1363,14 @@ class Deserializer {
 				parameters,
 				returnParameters,
 				body,
-				visibility: this.visibilityString[visibility],
+				visibility: Deserializer.visibilityString[visibility],
 				modifiers,
 				override,
 				isConstructor: false,
 				isReceiveEther,
 				isFallback,
 				isVirtual: isVirtual == 1,
-				stateMutability: this.stateMutabilityString[stateMutability],
+				stateMutability: Deserializer.stateMutabilityString[stateMutability],
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
 		} else if (kind === ASTNodeType_ModifierDefinition) {
@@ -1436,7 +1434,7 @@ class Deserializer {
 				name,
 				baseContracts,
 				subNodes,
-				kind: this.contractKindMap[kind],
+				kind: Deserializer.contractKindMap[kind],
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
 		} else if (kind === ASTNodeType_ConstructorDefinition) {
@@ -1468,14 +1466,14 @@ class Deserializer {
 				parameters,
 				returnParameters: null,
 				body,
-				visibility: this.visibilityString[visibility],
+				visibility: Deserializer.visibilityString[visibility],
 				modifiers,
 				override: null,
 				isConstructor: true,
 				isReceiveEther: false,
 				isFallback: false,
 				isVirtual: false,
-				stateMutability: this.stateMutabilityString[stateMutability],
+				stateMutability: Deserializer.stateMutabilityString[stateMutability],
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
 		} else if (kind === ASTNodeType_InheritanceSpecifier) {
