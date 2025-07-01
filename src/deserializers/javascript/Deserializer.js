@@ -465,7 +465,7 @@ class Deserializer {
 			const lhs = this.popExpression();
 			const rhs = this.popExpression();
 
-			const operator = Deserializer.operatorStrings[operatorId - 65];
+			const operator = Deserializer.operatorStrings[operatorId - 66];
 
 			return {
 				type: "BinaryOperation",
@@ -501,7 +501,7 @@ class Deserializer {
 
 			return {
 				type: "UnaryOperation",
-				operator: Deserializer.operatorStrings[operator - 65],
+				operator: Deserializer.operatorStrings[operator - 66],
 				subExpression,
 				isPrefix: kind !== ASTNodeType_UnaryExpressionPostfix,
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
@@ -1163,7 +1163,7 @@ class Deserializer {
 			const operatorCount = this.popU32();
 			const operators = [];
 			for (let i = 0; i < operatorCount; i++) {
-				operators.push(Deserializer.operatorStrings[this.popU16() - 65]);
+				operators.push(Deserializer.operatorStrings[this.popU16() - 66]);
 			}
 
 			const hasForType = this.popU16();
@@ -1301,6 +1301,7 @@ class Deserializer {
 						isDeclaredConst: mutability === 1,
 						isIndexed: false,
 						isImmutable: mutability === 2,
+						isTransient: mutability === 3,
 						override,
 						storageLocation: null,
 						range: this.includeByteRange ? [startOffset, endOffset] : undefined,
