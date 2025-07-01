@@ -1,7 +1,7 @@
 {
 	"name": "@mradomski/fast-solidity-parser",
 	"description": "A hand rolled parser for Solidity with megabytes of throughput",
-	"version": "0.1.3",
+	"version": "0.1.4",
 	"homepage": "https://github.com/mateuszradomski/fast-solidity-parser",
 	"repository": {
 		"type": "git",
@@ -21,6 +21,6 @@
 		"wasmParse.js"
 	],
 	"devDependencies": {
-		"@solidity-parser/parser": "^0.18.0"
+		"@solidity-parser/parser": "^0.20.1"
 	}
 }

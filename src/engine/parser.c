@@ -668,6 +668,7 @@ static TokenId
 parseIdentifier(Parser *parser) {
     TokenType tokenType = peekTokenType(parser);
 
+    // TODO(radomski): We might consider adding Transient here
     u32 isIdent =
         tokenType == TokenType_Symbol |
         tokenType == TokenType_From |
@@ -904,7 +905,7 @@ parseType(Parser *parser, ASTNode *node) {
                 }
                 function->visibility = 1;
             } else if(acceptToken(parser, TokenType_External)) {
-                if(function->visibility != 0) { 
+                if(function->visibility != 0) {
                     parser->current -= 1;
                     break;
                 }
@@ -1105,7 +1106,7 @@ parseUserDefinableOperator(Parser *parser) {
 static bool
 parseUsing(Parser *parser, ASTNode *node) {
     node->startToken = parser->current - 1;
-    if(acceptToken(parser, TokenType_LParen)) { 
+    if(acceptToken(parser, TokenType_LParen)) {
         reportError(parser, "Using statement with parenthesis is not supported");
     }
 
@@ -1758,7 +1759,7 @@ tryParseVariableDeclaration(Parser *parser, ASTNode *node) {
 static bool
 tryParseVariableDeclarationTuple(Parser *parser, ASTNode *node) {
     u32 startPosition = getCurrentParserPosition(parser);
-    
+
     if(!acceptToken(parser, TokenType_LParen)) {
         setCurrentParserPosition(parser, startPosition);
         return false;
@@ -1943,7 +1944,7 @@ parseYulStatement(Parser *parser, ASTNode *node, YulLexer *lexer) {
     } else if(acceptYulToken(lexer, YulTokenType_For)) {
         node->type = ASTNodeType_YulForStatement;
         ASTNodeYulForStatement *forStatement = &node->yulForStatementNode;
-        
+
         forStatement->variableDeclaration = structPush(parser->arena, ASTNode);
         forStatement->condition = structPush(parser->arena, ASTNode);
         forStatement->increment = structPush(parser->arena, ASTNode);
@@ -2149,7 +2150,7 @@ parseStatement(Parser *parser, ASTNode *node) {
         if(!acceptToken(parser, TokenType_Semicolon)) {
             statement->variableStatement = structPush(parser->arena, ASTNode);
             parseStatement(parser, statement->variableStatement);
-            assertError(statement->variableStatement->type == ASTNodeType_ExpressionStatement || 
+            assertError(statement->variableStatement->type == ASTNodeType_ExpressionStatement ||
                         statement->variableStatement->type == ASTNodeType_VariableDeclarationStatement ||
                         statement->variableStatement->type == ASTNodeType_VariableDeclarationTupleStatement,
                         parser, "Expected variable declaration or expression statement in for loop initializer");
@@ -2387,6 +2388,9 @@ tryParseStateVariableDeclaration(Parser *parser, ASTNode *node) {
         } else if(acceptToken(parser, TokenType_Immutable)) {
             assertError(decl->mutability == 0, parser, "Mutability modifier already set");
             decl->mutability = 2;
+        } else if(acceptToken(parser, TokenType_Transient)) {
+            assertError(decl->mutability == 0, parser, "Mutability modifier already set");
+            decl->mutability = 3;
         } else if(acceptToken(parser, TokenType_Override)) {
             assertError(decl->override == 0, parser, "Override modifier already set");
             decl->override = 1;

@@ -7,6 +7,7 @@ enum {
     TokenType_Struct,
     TokenType_Private,
     TokenType_Immutable,
+    TokenType_Transient,
     TokenType_Constant,
     TokenType_Function,
     TokenType_Internal,
@@ -165,6 +166,7 @@ tokenTypeToString(TokenType tokenType) {
         case TokenType_Struct: return LIT_TO_STR("Struct");
         case TokenType_Private: return LIT_TO_STR("Private");
         case TokenType_Immutable: return LIT_TO_STR("Immutable");
+        case TokenType_Transient: return LIT_TO_STR("Transient");
         case TokenType_Constant: return LIT_TO_STR("Constant");
         case TokenType_Function: return LIT_TO_STR("Function");
         case TokenType_Internal: return LIT_TO_STR("Internal");
@@ -548,6 +550,7 @@ categorizeSymbol(String symbol) {
             if(stringMatch(symbol, LIT_TO_STR("immutable"))) return TokenType_Immutable;
             if(stringMatch(symbol, LIT_TO_STR("interface"))) return TokenType_Interface;
             if(stringMatch(symbol, LIT_TO_STR("unchecked"))) return TokenType_Unchecked;
+            if(stringMatch(symbol, LIT_TO_STR("transient"))) return TokenType_Transient;
             return TokenType_Symbol;
         }break;
         case 11: {
