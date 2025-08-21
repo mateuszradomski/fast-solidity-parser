@@ -69,6 +69,7 @@ advanceYulToken(YulLexer *lexer) {
     lexer->currentPosition += 1;
     switch(tokenType) {
         case TokenType_As:
+        case TokenType_At:
         case TokenType_Do:
         case TokenType_Is:
         case TokenType_New:
@@ -97,6 +98,7 @@ advanceYulToken(YulLexer *lexer) {
         case TokenType_Public:
         case TokenType_Return:
         case TokenType_Struct:
+        case TokenType_Layout:
         case TokenType_Indexed:
         case TokenType_Library:
         case TokenType_Mapping:
@@ -120,6 +122,7 @@ advanceYulToken(YulLexer *lexer) {
         case TokenType_Immutable:
         case TokenType_Interface:
         case TokenType_Unchecked:
+        case TokenType_Transient:
         case TokenType_Constructor:
         case TokenType_From:
         case TokenType_Receive:
@@ -254,6 +257,7 @@ parseYulIdentifier(YulLexer *lexer) {
 
     u32 isIdent =
         tokenType == TokenType_As |
+        tokenType == TokenType_At |
         tokenType == TokenType_Do |
         tokenType == TokenType_Is |
         tokenType == TokenType_New |
@@ -287,6 +291,7 @@ parseYulIdentifier(YulLexer *lexer) {
         tokenType == TokenType_Public |
         tokenType == TokenType_Return |
         tokenType == TokenType_Struct |
+        tokenType == TokenType_Layout |
         tokenType == TokenType_Indexed |
         tokenType == TokenType_Library |
         tokenType == TokenType_Mapping |
@@ -311,6 +316,7 @@ parseYulIdentifier(YulLexer *lexer) {
         tokenType == TokenType_Immutable |
         tokenType == TokenType_Interface |
         tokenType == TokenType_Unchecked |
+        tokenType == TokenType_Transient |
         tokenType == TokenType_Constructor |
         tokenType == TokenType_Payable;
 
