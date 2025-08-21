@@ -465,7 +465,7 @@ class Deserializer {
 			const lhs = this.popExpression();
 			const rhs = this.popExpression();
 
-			const operator = Deserializer.operatorStrings[operatorId - 66];
+			const operator = Deserializer.operatorStrings[operatorId - 68];
 
 			return {
 				type: "BinaryOperation",
@@ -501,7 +501,7 @@ class Deserializer {
 
 			return {
 				type: "UnaryOperation",
-				operator: Deserializer.operatorStrings[operator - 66],
+				operator: Deserializer.operatorStrings[operator - 68],
 				subExpression,
 				isPrefix: kind !== ASTNodeType_UnaryExpressionPostfix,
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
@@ -1163,7 +1163,7 @@ class Deserializer {
 			const operatorCount = this.popU32();
 			const operators = [];
 			for (let i = 0; i < operatorCount; i++) {
-				operators.push(Deserializer.operatorStrings[this.popU16() - 66]);
+				operators.push(Deserializer.operatorStrings[this.popU16() - 68]);
 			}
 
 			const hasForType = this.popU16();
@@ -1417,6 +1417,12 @@ class Deserializer {
 				baseContracts.push(this.popASTNode());
 			}
 
+			const hasLayout = this.popU32();
+			let storageLayout = undefined;
+			if (hasLayout) {
+				storageLayout = this.popExpression();
+			}
+
 			const subNodeCount = this.popU32();
 			const subNodes = [];
 
@@ -1436,6 +1442,7 @@ class Deserializer {
 				baseContracts,
 				subNodes,
 				kind: Deserializer.contractKindMap[kind],
+				storageLayout,
 				range: this.includeByteRange ? [startOffset, endOffset] : undefined,
 			};
 		} else if (kind === ASTNodeType_ConstructorDefinition) {

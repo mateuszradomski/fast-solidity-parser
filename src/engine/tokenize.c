@@ -8,6 +8,7 @@ enum {
     TokenType_Private,
     TokenType_Immutable,
     TokenType_Transient,
+    TokenType_Layout,
     TokenType_Constant,
     TokenType_Function,
     TokenType_Internal,
@@ -21,6 +22,7 @@ enum {
     TokenType_For,
     TokenType_Import,
     TokenType_As,
+    TokenType_At,
     TokenType_Is,
     TokenType_From,
     TokenType_External,
@@ -167,6 +169,7 @@ tokenTypeToString(TokenType tokenType) {
         case TokenType_Private: return LIT_TO_STR("Private");
         case TokenType_Immutable: return LIT_TO_STR("Immutable");
         case TokenType_Transient: return LIT_TO_STR("Transient");
+        case TokenType_Layout: return LIT_TO_STR("Layout");
         case TokenType_Constant: return LIT_TO_STR("Constant");
         case TokenType_Function: return LIT_TO_STR("Function");
         case TokenType_Internal: return LIT_TO_STR("Internal");
@@ -180,6 +183,7 @@ tokenTypeToString(TokenType tokenType) {
         case TokenType_For: return LIT_TO_STR("For");
         case TokenType_Import: return LIT_TO_STR("Import");
         case TokenType_As: return LIT_TO_STR("As");
+        case TokenType_At: return LIT_TO_STR("At");
         case TokenType_Is: return LIT_TO_STR("Is");
         case TokenType_From: return LIT_TO_STR("From");
         case TokenType_External: return LIT_TO_STR("External");
@@ -463,6 +467,7 @@ categorizeSymbol(String symbol) {
     switch(symbol.size) {
         case 2: {
             if(stringMatch(symbol, LIT_TO_STR("as"))) return TokenType_As;
+            if(stringMatch(symbol, LIT_TO_STR("at"))) return TokenType_At;
             if(stringMatch(symbol, LIT_TO_STR("do"))) return TokenType_Do;
             if(stringMatch(symbol, LIT_TO_STR("if"))) return TokenType_If;
             if(stringMatch(symbol, LIT_TO_STR("is"))) return TokenType_Is;
@@ -514,6 +519,7 @@ categorizeSymbol(String symbol) {
             if(stringMatch(symbol, LIT_TO_STR("revert"))) return TokenType_Revert;
             if(stringMatch(symbol, LIT_TO_STR("struct"))) return TokenType_Struct;
             if(stringMatch(symbol, LIT_TO_STR("finney"))) return TokenType_Finney;
+            if(stringMatch(symbol, LIT_TO_STR("layout"))) return TokenType_Layout;
             return TokenType_Symbol;
         } break;
         case 7: {

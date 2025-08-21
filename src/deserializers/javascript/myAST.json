@@ -1,0 +1,98 @@
+{
+  "type": "SourceUnit",
+  "children": [
+    {
+      "type": "PragmaDirective",
+      "name": "solidity",
+      "value": "0.8.29",
+      "range": [
+        32,
+        54
+      ]
+    },
+    {
+      "type": "ImportDirective",
+      "path": "./Calibur.sol",
+      "pathLiteral": {
+        "type": "StringLiteral",
+        "value": "./Calibur.sol",
+        "parts": [
+          "./Calibur.sol"
+        ],
+        "isUnicode": [
+          false
+        ],
+        "range": [
+          79,
+          93
+        ]
+      },
+      "unitAlias": null,
+      "unitAliasIdentifier": null,
+      "symbolAliases": [
+        [
+          "Calibur",
+          null
+        ]
+      ],
+      "symbolAliasesIdentifiers": [
+        [
+          {
+            "type": "Identifier",
+            "name": "Calibur",
+            "range": [
+              65,
+              71
+            ]
+          },
+          null
+        ]
+      ],
+      "range": [
+        57,
+        94
+      ]
+    },
+    {
+      "type": "ContractDefinition",
+      "name": "CaliburEntry",
+      "baseContracts": [
+        {
+          "type": "InheritanceSpecifier",
+          "baseName": {
+            "type": "UserDefinedTypeName",
+            "namePath": "Calibur",
+            "range": [
+              2435,
+              2441
+            ]
+          },
+          "arguments": [],
+          "range": [
+            2435,
+            2441
+          ]
+        }
+      ],
+      "subNodes": [],
+      "kind": "contract",
+      "storageLayout": {
+        "type": "NumberLiteral",
+        "number": "0x3b86514c5c56b21f08d8e56ab090292e07c2483b3e667a2a45849dcb71368600",
+        "subdenomination": null,
+        "range": [
+          2453,
+          2518
+        ]
+      },
+      "range": [
+        2410,
+        2521
+      ]
+    }
+  ],
+  "range": [
+    32,
+    2521
+  ]
+}
