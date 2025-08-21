@@ -273,6 +273,7 @@ typedef struct ASTNodeContractDefinition {
     TokenId name;
     ASTNodeList elements;
     ASTNodeList baseContracts;
+    ASTNode *layoutExpression;
 } ASTNodeContractDefinition;
 
 typedef struct ASTNodeLibraryDefinition {
@@ -678,6 +679,8 @@ parseIdentifier(Parser *parser) {
         tokenType == TokenType_Global |
         tokenType == TokenType_Payable |
         tokenType == TokenType_Szabo |
+        tokenType == TokenType_At |
+        tokenType == TokenType_Layout |
         tokenType == TokenType_Finney;
 
     if(isIdent) {
@@ -2698,28 +2701,37 @@ parseContract(Parser *parser, ASTNode *node) {
 
     contract->name = parseIdentifier(parser);
 
-    if(acceptToken(parser, TokenType_Is)) {
-        do {
-            ASTNodeLink *baseContractLink = structPush(parser->arena, ASTNodeLink);
+    while(true) {
+        if(acceptToken(parser, TokenType_Is)) {
+            do {
+                ASTNodeLink *baseContractLink = structPush(parser->arena, ASTNodeLink);
 
-            baseContractLink->node.type = ASTNodeType_InheritanceSpecifier;
-            baseContractLink->node.startToken = parser->current;
-            ASTNodeInheritanceSpecifier *inheritance = &baseContractLink->node.inheritanceSpecifierNode;
+                baseContractLink->node.type = ASTNodeType_InheritanceSpecifier;
+                baseContractLink->node.startToken = parser->current;
+                ASTNodeInheritanceSpecifier *inheritance = &baseContractLink->node.inheritanceSpecifierNode;
 
-            inheritance->identifier = structPush(parser->arena, ASTNode);
-            parseType(parser, inheritance->identifier);
-            assertError(inheritance->identifier->type == ASTNodeType_IdentifierPath,
-                        parser, "Expected identifier path in inheritance specifier");
+                inheritance->identifier = structPush(parser->arena, ASTNode);
+                parseType(parser, inheritance->identifier);
+                assertError(inheritance->identifier->type == ASTNodeType_IdentifierPath,
+                            parser, "Expected identifier path in inheritance specifier");
 
-            if(acceptToken(parser, TokenType_LParen)) {
-                parseCallArgumentList(parser, &inheritance->argumentsExpression, &inheritance->argumentsName);
-            }
+                if(acceptToken(parser, TokenType_LParen)) {
+                    parseCallArgumentList(parser, &inheritance->argumentsExpression, &inheritance->argumentsName);
+                }
 
-            baseContractLink->node.endToken = parser->current - 1;
+                baseContractLink->node.endToken = parser->current - 1;
 
-            SLL_QUEUE_PUSH(contract->baseContracts.head, contract->baseContracts.last, baseContractLink);
-            contract->baseContracts.count += 1;
-        } while(acceptToken(parser, TokenType_Comma));
+                SLL_QUEUE_PUSH(contract->baseContracts.head, contract->baseContracts.last, baseContractLink);
+                contract->baseContracts.count += 1;
+            } while(acceptToken(parser, TokenType_Comma));
+        } else if(acceptToken(parser, TokenType_Layout)) {
+            ASTNode *layout = structPush(parser->arena, ASTNode);
+            expectToken(parser, TokenType_At);
+            parseExpression(parser, layout);
+            contract->layoutExpression = layout;
+        } else {
+            break;
+        }
     }
 
     parseContractBody(parser, &contract->elements);

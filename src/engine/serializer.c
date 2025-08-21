@@ -904,6 +904,11 @@ pushContractDefinition(Serializer *s, ASTNode *node) {
         pushInheritanceSpecifier(s, &baseContract->node);
     }
 
+    pushU32(s, contract->layoutExpression != 0x0);
+    if(contract->layoutExpression != 0x0) {
+        pushExpression(s, contract->layoutExpression);
+    }
+
     pushU32(s, contract->elements.count);
     ASTNodeLink *element = contract->elements.head;
     for(u32 i = 0; i < contract->elements.count; i++, element = element->next) {
